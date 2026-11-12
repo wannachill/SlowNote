@@ -253,7 +253,7 @@ test('AI task page keeps the form in a sheet, uses swipe actions and defers hist
   // 历史报告入口已从定时报告页收敛到「我的」，任务页只留配置与授权。
   assert.doesNotMatch(template,/bindtap="notifications"/)
   assert.doesNotMatch(template,/查看站内通知/)
-  assert.match(template,/这些报告任务会按你设定的频率生成宝宝成长报告/)
+  assert.match(template,/按设定频率生成，默认保存在站内通知；可单独开启微信推送/)
 
   const mineLinks=[...mineTemplate.matchAll(/aria-label="(主题设置|小迈设置|定时报告|历史报告)"><text class="settings-name">([^<]+)</g)].map(match=>match[2])
   assert.deepEqual(mineLinks,['主题设置','小迈设置','定时报告','历史报告'])

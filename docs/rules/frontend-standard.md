@@ -9,7 +9,7 @@
 唯一悬浮操作为圆形“＋” FAB（无文字，加号线条用 --stroke-strong 加粗）；类目面板为三列线性图标网格（SVG mask，milk/food/droplet/ruler/book/brush）。小迈主页面顶部使用不预填问题的搜索框式问答入口；只显示选定范围内有记录的概况卡，不显示无记录类别。整体无数据时用嫩芽 SVG mask、简短说明和「去首页记一笔」主按钮引导登记，不显示空的概况卡片区。
 固定三导航：首页/小迈/我的。custom-tab-bar 用 SVG mask 线性图标（home/logo/mine，Lucide 风格）+ 文字，选中态强调文字色并加粗图标线条（--stroke-strong）；底栏使用 `var(--bg-mesh-base)` 不透明背景且无顶部分隔线，`.tab-track` 至少为 `var(--tab-height)` 高，`.tab-item` 垂直居中，底部 padding 仅保留 `env(safe-area-inset-bottom)`，不依赖位图图标。项目有全局 `box-sizing: border-box`；无顶线是既定视觉规则，不是为规避盒模型补偿。我的页为入口列表形态（登录卡 + 主题设置/小迈设置/定时报告/历史报告四个入口 + 退出登录），配置统一在对应子页面（pages/theme、pages/ai-settings、pages/ai-tasks、pages/ai-notifications）完成，不在我的页内直接展开表单。原「信息推送」中转页已删除。
 品牌标识 miniprogram/assets/icons/logo.svg（sparkles 星光）：我的页档案卡以 SVG mask 渲染，颜色 --color-accent-ink（浅色 #2e6da6 / 深色 #a8c8e8，随主题自适应）；原 images/logo.png 已无引用。男孩/女孩默认头像为 images/boy.png、images/girl.png，随宝宝性别动态切换，支持用户上传照片覆盖。
-站内提示统一为「独立提示卡」：淡主题色底 `--color-accent-soft` + 左侧 `--hint-bar-width` 主题色竖条（`--color-accent-ink`）+ 圆角与阴影，用于宝宝信息页、定时报告页、常见问题页；提示卡与下方卡片**等宽**（只受页面 32rpx 内边距约束，不额外加左右 margin）。提示卡不再以卡片内灰色 `form-note` 内嵌呈现。**定时报告页已移除「微信通知」订阅卡与「开启通知」按钮**（`.subscribe-card` / `.subscribe-btn` 均不再存在），改为「页面用途说明」文案，说明报告先存站内、可按卡片单独开启微信推送；微信通知由每个任务卡片上的原生 switch 控制（`notify`，乐观更新、不弹 toast、不刷新列表），switch 自身加 `data-no-swipe` + `catchtouchmove` 防滑动，祖先不拦截原生组件。报告任务卡片只展示报告标题、频率与时间、异常时才显示 `status-tag`，不展示数据类型、北京时间与数据范围；列表行统一 `--row-height` 最小高度、`gap: var(--space-xs) var(--space-sm)`、标题 `--font-body`、副行 `--space-xs` 上间距与原生 switch 右对齐；左滑动作区共用 `--swipe-action-width`。
+站内提示统一为「独立提示卡」：淡主题色底 `--color-accent-soft` + 左侧 `--hint-bar-width` 主题色竖条（`--color-accent-ink`）+ 圆角与阴影，用于宝宝信息页、定时报告页、常见问题页；提示卡与下方卡片**等宽**（只受页面 32rpx 内边距约束，不额外加左右 margin）。提示卡不再以卡片内灰色 `form-note` 内嵌呈现。**定时报告页已移除「微信通知」订阅卡与「开启通知」按钮**（`.subscribe-card` / `.subscribe-btn` 均不再存在），改为一句话的关键行为说明（默认存站内、可单独开启微信推送），不写「可添加/编辑/删除」等界面自明的操作（§4.1）；微信通知由每个任务卡片上的原生 switch 控制（`notify`，乐观更新、不弹 toast、不刷新列表），switch 自身加 `data-no-swipe` + `catchtouchmove` 防滑动，祖先不拦截原生组件。报告任务卡片只展示报告标题、频率与时间、异常时才显示 `status-tag`，不展示数据类型、北京时间与数据范围；列表行统一 `--row-height` 最小高度、`gap: var(--space-xs) var(--space-sm)`、标题 `--font-body`、副行 `--space-xs` 上间距与原生 switch 右对齐；左滑动作区共用 `--swipe-action-width`。
 
 历史报告页（pages/ai-notifications）为报告列表：卡片两行布局——首行标题（取 `report_title`）与右侧发送时间，次行左侧微信渠道短标签（`微信已送达`/`站内信`/`微信未送达`，彩色 `status-tag`）、右侧实心主题色「未读」标签；**不展示正文预览、数据类型与「站内通知」全称**。点击卡片弹出详情面板（`--sheet-max-height`（84vh），固定头部、正文独立滚动、打开即标记已读，详情区时间与状态标签垂直居中对齐），左滑露出「删除」（宽度为 `calc(var(--swipe-action-width) / 2)`，与常见问题单个动作等宽；二次确认后调用 `aiNotifications` 的 `remove`）。我的页入口自上而下固定为：主题设置、小迈设置、定时报告、历史报告。底栏「我的」Tab 不展示未读数字角标（未读数只在报告卡片上以「未读」文字标签呈现）。**添加报告的「数据类型」选择与「新增常见问题」一致**：「数据类型」标题行 + 右侧「全选/取消全选」链接 + 流式 pill 标签（`task-category-*`，对齐 `question-category-*`），不再用三列网格；`allSelected` 状态与 `toggleAllCategories` 联动。定时报告的数据范围是单选且文案短，用 `range-chips` 一行等宽 chip（`flex: 1 1 0`、`--font-caption`、不换行），下方 `range-hint` 说明「重叠 / 漏记」后果；月度任务隐藏范围区并回落到跟随频率。
 
@@ -49,6 +49,16 @@ theme.js 的偏好结构为 {color:'blue'|'pink'|'orange'|'mint'|'purple'|'dark'
 保留 aria-*，按钮/输入有标签；选中/禁用/已读等不能仅依赖颜色。键盘焦点保留，表单不遮挡，真机检查系统控件。
 写入使用稳定请求 ID，失败重试复用，成功或修改内容后生成新 ID；提交期间禁止重复写入。弱网不自动伪造成功或丢弃用户草稿。
 - 小迈对话页交互：输入卡片上方一行，左侧为可选深度思考胶囊，右侧为新建/历史圆形图标按钮；不设数据范围按钮。`utils/digest.js` 从提问识别今天、昨天、本周/上周、本月/上月、全部时间及近期天/月，近期滚动范围最多 90 天；`statistics` 服务端按七类白名单渲染记录明细与计数概览，客户端按服务端 `detailsLimit` 裁剪，不接收原始记录集合。常见问题在 `pages/ai-settings` 编辑面板可多选数据类型并提供「全选 / 取消全选」，推荐问题只取所选类别，自由提问不带类别时保持全量兼容，空选不发起查询。已附带明细在用户消息气泡中默认折叠为最多五行，可展开/收起；AI 请求只在用户确认发送后附带，云端 `redact()` 同时处理明细和对话。个人主体不可用 WechatSI，语音由 RecorderManager 录音并在松开后经 `asrProxy` 一次性转写；主体变更为非个人后可加回声明恢复实时预览，上传临时音频在完成后删除。
+
+### 4.1 文案与提示（少即是多，2026-11-12）
+
+全局原则：**只写用户当下理解状态、做决策所必需的信息**，一处只说一件事；同一件事不在标题、说明、按钮上重复表达。
+
+- **删除**：界面已自明的动作说明（「可添加 / 编辑 / 删除」「左滑可删除」「点卡片切换」「点右上方添加」并罗列表单字段）、产品自述与营销抒情句、重复解释按钮行为的长句。手势操作由左滑露出的按钮本身表达，不再加文字说明。
+- **保留且不得精简**：授权与合规告知（定时报告的第三方 AI 服务商 consent 全文、AI 生成仅供参考）、错误/失败原因与重试、破坏性操作的二次确认、数据与能力限制（月度任务固定上月整月、小迈不能联网、`{days}` / `{period}` 变量、明细折叠与「另有 X 条未展开」）、参考值 `refHint`、空状态一句引导、`aria-*` 标签。设置列表每项的一句导航说明用于区分设置项，也属保留项。
+- **长度**：提示卡（`page-tip` / `baby-hint` / `subscribe-note`）一句话 ≤ 40 字；`form-note` 只写差异信息，不重复标题与按钮；空状态最多「一句状态 + 一个动作」，不叠加标题 + 说明 + 按钮三层重复。
+- **本次精简范围**：`ai-tasks`（页面提示、空状态）、`ai-notifications`（空状态、列表统计行）、`baby`（提示卡、空状态）、`ai-settings`（四处提示词说明、深度思考、常见问题区、空状态）、`ai-chat` / `ai-history`（欢迎语、新对话确认）、`statistics`（空引导说明）、`feeding` / `solid` / `excretion`（空状态煽情标题）、`custom-record` / `milestone`（空状态自述）、`mine`（未登录状态）。无用节点（`.baby-hint-title`、`.empty-guide-copy`）与对应 WXSS 规则同步移除，不新增样式类。
+- **回归护栏**：`tests/copy-terse.test.cjs` 静态扫描全部 WXML，禁用冗余短语、限制 `page-tip` 长度，并断言合规文案与关键限制仍在。标题区副标题（「问一句，一眼看懂宝宝的成长。」等）属品牌排版文案，由 §1 约束，不参与本轮精简。
 
 ## 5. 页面与服务边界
 app.js 管理身份、宝宝资料缓存与主题；api.js 统一新页面云调用；date.js 统一日历/月龄；categories.js 定义面板映射；viewmodels.js 生成数值卡。现有登记页继续调用兼容云接口。

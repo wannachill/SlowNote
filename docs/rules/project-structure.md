@@ -25,9 +25,9 @@ cloudfunctions/                 # 15 个可调用云函数 + _shared
 scripts/
   sync-cloud-runtime.js         # 同步共享源码到 14 个受管函数 lib/
   check-project.js              # 项目注册与一致性检查
-tests/                          # 39 个 *.test.cjs 文件 + helpers.cjs
+tests/                          # 40 个 *.test.cjs 文件 + helpers.cjs
   ai-chat-images.test.cjs ai-chat-snapshot.test.cjs ai-chat-voice.test.cjs ai-settings-cache.test.cjs ai-settings-questions.test.cjs
-  baby-profile.test.cjs chart-bars.test.cjs chart-selection.test.cjs common-questions.test.cjs
+  baby-profile.test.cjs chart-bars.test.cjs chart-selection.test.cjs common-questions.test.cjs copy-terse.test.cjs
   custom-record-validation.test.cjs feature-retirement.test.cjs growth-multi-measurement.test.cjs
   home-cache.test.cjs home-card-edit.test.cjs home-card.test.cjs home-timeline.test.cjs
   interaction-motion.test.cjs list-swipe-performance.test.cjs llm-encoding.test.cjs markdown.test.cjs milestone-defs.test.cjs

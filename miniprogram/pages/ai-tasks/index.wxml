@@ -1,8 +1,8 @@
 <view class="theme-root {{themeClass}} page">
   <view class="sub-nav" style="height: calc({{statusBarHeight}}px + var(--nav-height)); padding-top: {{statusBarHeight}}px;"><button class="sub-nav-back" bindtap="goBack" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" aria-label="返回"></button><text class="sub-nav-title">定时报告</text><view class="sub-nav-spacer" aria-hidden="true"></view></view>
 
-  <!-- 一句话说明：与「常见问题」页同一风格，描述本页用途与可操作项 -->
-  <view class="page-tip">这些报告任务会按你设定的频率生成宝宝成长报告，先保存在站内通知，可按卡片单独开启微信推送。可添加、编辑或删除。</view>
+  <!-- 一句话说明：只讲关键行为，不写界面自明的操作 -->
+  <view class="page-tip">按设定频率生成，默认保存在站内通知；可单独开启微信推送。</view>
 
   <!-- 报告任务 -->
   <view class="section">
@@ -12,7 +12,7 @@
     </view>
     <view wx:if="{{loading && !items.length}}" class="status-block skeleton-loading" role="status"><text class="loading-copy">正在读取报告任务…</text><view class="skeleton-list"><view wx:for="{{[0,1]}}" wx:key="*this" class="skeleton-card"><view class="skeleton-line short"></view><view class="skeleton-line"></view></view></view></view>
     <view wx:elif="{{error}}" class="status-block">{{error}}<button class="btn-secondary" bindtap="load" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}">重试</button></view>
-    <view wx:elif="{{!items.length}}" class="empty"><text class="empty-title">还没有报告任务</text><text class="empty-note">点右上方添加，选择数据类型、数据范围与报告频率。</text></view>
+    <view wx:elif="{{!items.length}}" class="empty"><text class="empty-title">还没有报告任务</text><text class="empty-note">点上方「＋ 添加」。</text></view>
     <view wx:for="{{items}}" wx:key="_id" class="task-swipe {{item.swipeX ? 'swipe-open' : ''}}" data-id="{{item._id}}">
       <view class="swipe-actions">
         <button class="swipe-action edit-action" data-id="{{item._id}}" catchtap="startEdit" hover-class="tap-feedback" aria-label="编辑报告任务">编辑</button>

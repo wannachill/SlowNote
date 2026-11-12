@@ -2,8 +2,7 @@
   <view class="sub-nav" style="height: calc({{statusBarHeight}}px + var(--nav-height)); padding-top: {{statusBarHeight}}px;"><button class="sub-nav-back" bindtap="goBack" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" aria-label="返回"></button><text class="sub-nav-title">宝宝信息</text><view class="sub-nav-spacer" aria-hidden="true"></view></view>
   <view class="card baby-hint">
     <view class="baby-hint-body">
-      <text class="baby-hint-title">使用提示</text>
-      <text class="baby-hint-text">可维护多个宝宝，切换后各功能按当前宝宝记录与查看。点卡片切换当前宝宝，左滑可编辑或删除。</text>
+      <text class="baby-hint-text">切换宝宝后，各页记录按当前宝宝查看。</text>
     </view>
   </view>
 
@@ -15,7 +14,7 @@
 
     <view wx:if="{{!babies.length}}" class="empty">
       <text class="empty-title">还没有宝宝档案</text>
-      <text class="empty-note">点右上方添加，完善宝宝的昵称、生日与性别。</text>
+      <text class="empty-note">点上方「＋ 添加」建立档案。</text>
     </view>
 
     <view wx:for="{{babies}}" wx:key="baby_id" class="baby-swipe {{item.swipeX ? 'swipe-open' : ''}}" data-id="{{item.baby_id}}">

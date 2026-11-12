@@ -15,7 +15,6 @@
     <view wx:if="{{!hasInsightData}}" class="card empty-guide">
       <view class="ask-logo empty-guide-sprout" aria-hidden="true"></view>
       <text class="empty-guide-title">开始记录宝宝的成长</text>
-      <text class="empty-guide-copy">去首页记下宝宝的第一笔记录，小迈就能开始帮你看懂成长。</text>
       <view class="empty-guide-actions"><button class="btn-primary" bindtap="goHome" hover-class="tap-feedback">去首页记一笔</button></view>
     </view>
     <view wx:if="{{hasInsightData}}" class="section overview-section">

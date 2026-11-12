@@ -122,7 +122,7 @@ page({
     if (!this.data.messages.length) { wx.showToast({ title: '当前已经是新对话', icon: 'none' }); return }
     wx.showModal({
       title: '开始新对话',
-      content: '当前对话已自动保存，可随时在历史对话中查看。',
+      content: '当前对话已自动保存。',
       confirmText: '开始新对话', cancelText: '取消',
       success: res => {
         if (!res.confirm || this._disposed) return

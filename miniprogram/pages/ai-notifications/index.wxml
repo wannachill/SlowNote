@@ -11,10 +11,10 @@
   </view>
   <view wx:if="{{loading && !items.length}}" class="status-block skeleton-loading" role="status"><text class="loading-copy">正在读取报告…</text><view class="skeleton-list"><view wx:for="{{[0,1,2]}}" wx:key="*this" class="skeleton-card"><view class="skeleton-line short"></view><view class="skeleton-line"></view></view></view></view>
   <view wx:elif="{{error}}" class="status-block" role="alert">{{error}}<button class="btn-secondary" bindtap="load" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}">重试</button></view>
-  <view wx:elif="{{!items.length}}" class="empty-illustration"><view class="empty-book" aria-hidden="true"></view><text class="empty-title">所选时间内没有报告</text><text class="empty-note">可以调整起止日期，或设置定时报告任务。</text><button class="text-action" bindtap="goTasks" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}">去设置定时报告</button></view>
+  <view wx:elif="{{!items.length}}" class="empty-illustration"><view class="empty-book" aria-hidden="true"></view><text class="empty-title">所选时间内没有报告</text><text class="empty-note">换个日期范围试试。</text><button class="text-action" bindtap="goTasks" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}">去设置定时报告</button></view>
 
   <view wx:else class="report-list">
-    <text class="section-note">共 {{total}} 份报告，左滑可删除。</text>
+    <text class="section-note">共 {{total}} 份报告</text>
     <view wx:for="{{items}}" wx:key="id" class="report-swipe {{item.swipeX ? 'swipe-open' : ''}}" data-id="{{item.id}}">
       <view class="swipe-actions">
         <button class="swipe-action delete-action" data-id="{{item.id}}" catchtap="remove" hover-class="tap-feedback" aria-label="删除{{item.dateText}}的报告">删除</button>

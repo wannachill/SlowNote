@@ -126,12 +126,6 @@
   flex-direction: column;
   gap: var(--space-xs);
 }
-.baby-hint-title {
-  font-size: var(--font-body);
-  font-weight: var(--weight-medium);
-  color: var(--color-accent-ink);
-  line-height: var(--line-heading);
-}
 .baby-hint-text {
   font-size: var(--font-caption);
   color: var(--color-text-2);

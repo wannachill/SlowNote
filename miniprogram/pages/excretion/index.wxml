@@ -18,8 +18,7 @@
     <view wx:if="{{loading && !todayRecords.length}}" class="skeleton-loading" role="status"><view class="skeleton-list"><view wx:for="{{[0,1,2]}}" wx:key="*this" class="skeleton-card"><view class="skeleton-line short"></view><view class="skeleton-line"></view></view></view></view>
     <view wx:elif="{{loadError}}" class="status-block" role="alert"><text>{{loadError}}</text><button class="btn-secondary" bindtap="loadToday" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}">重试</button></view>
     <view wx:if="{{!todayRecords.length && !loading && !loadError}}" class="empty">
-      <text class="empty-title">这一天的第一笔，从这里开始</text>
-      <text class="empty-note">{{cardEditMode ? '当天暂无可编辑记录。' : '点上方便便，记下刚刚的情况。'}}</text>
+      <text class="empty-note">{{cardEditMode ? '当天暂无可编辑记录。' : '点上方便便记一笔。'}}</text>
     </view>
     <view wx:for="{{todayRecords}}" wx:key="id" class="record pressable" data-id="{{item.id}}" bindtap="startEdit" hover-class="tap-feedback" aria-role="button" aria-label="编辑{{item.desc}}">
       <text class="record-time">{{item.time}}</text>

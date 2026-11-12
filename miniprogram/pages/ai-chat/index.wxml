@@ -2,7 +2,7 @@
   <view class="sub-nav" style="height: calc({{statusBarHeight}}px + var(--nav-height)); padding-top: {{statusBarHeight}}px;"><button class="sub-nav-back" bindtap="goBack" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" aria-label="返回"></button><text class="sub-nav-title">小迈</text><view class="sub-nav-spacer" aria-hidden="true"></view></view>
   <scroll-view class="chat-list" scroll-y enhanced scroll-into-view="{{scrollInto}}" show-scrollbar="{{false}}" bindscroll="onChatScroll">
     <view wx:if="{{!messages.length}}" class="chat-welcome">
-      <text class="welcome-hint">随时提问，也可以添加照片、语音或记录一起分析。</text>
+      <text class="welcome-hint">可附照片、语音或记录一起分析。</text>
       <view class="common-bubbles">
         <view class="common-bubbles-head"><text class="common-label">常问问题</text><button class="text-action" bindtap="refreshCommon" hover-class="tap-feedback" hover-stop-propagation="{{true}}" hover-start-time="20" hover-stay-time="60" aria-label="换一批常见问题">换一批</button></view>
         <button wx:for="{{commonList}}" wx:key="text" class="common-bubble" data-s="{{item}}" bindtap="onSuggest" disabled="{{sending || selecting || attaching}}" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" aria-label="{{item.text}}">{{item.text}}</button>

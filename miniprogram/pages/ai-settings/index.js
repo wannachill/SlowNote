@@ -47,7 +47,7 @@ function currentValue(showThinking, prompts) { return JSON.stringify({ showThink
 
 const SECTIONS = [
   { name: '对话', items: [
-    { view: 'thinking', name: '深度思考', note: '显示在小迈聊天页输入框上方的开关' }
+    { view: 'thinking', name: '深度思考', note: '聊天页的深度思考入口' }
   ] },
   { name: '提示词', items: [
     { view: 'style', name: '回答风格', note: '决定小迈怎么组织和表达回答' },

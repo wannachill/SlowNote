@@ -51,7 +51,7 @@ AI 参与一迈一记（SlowNote）的分析、实现与验证时，必须以已
 - PRD：`docs/prd/slownote-prd.md`（§7 登录、数据隔离与 AI 明细外发边界，§8 验收清单）
 - 项目说明：`docs/rules/introduction.md`
 - 目录规范：`docs/rules/project-structure.md`
-- 前端规范：`docs/rules/frontend-standard.md`
+- 前端规范：`docs/rules/frontend-standard.md`（§4.1 为「文案与提示 / 少即是多」规范，新增或修改页面提示文案前必读）
 - 后端/外部服务边界：`docs/rules/backend-standard.md`
 - 代码规范：`docs/rules/code-style.md`
 - 避坑指南：`docs/rules/pitfalls.md`

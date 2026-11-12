@@ -183,7 +183,7 @@ test('定时报告面板同时提供数据类型与数据范围选择', () => {
   assert.match(wxml, /同意将所选数据类型的记录明细发送给第三方 AI 服务商/)
   assert.match(wxml, /可能包含日记正文、里程碑事项及辅食或自定义备注/)
   assert.doesNotMatch(wxml, /数值汇总发送给 AI|不包含姓名、生日、日记正文/)
-  assert.match(wxml, /这些报告任务会按你设定的频率生成宝宝成长报告/)
+  assert.match(wxml, /按设定频率生成，默认保存在站内通知；可单独开启微信推送/)
   assert.match(wxml, /wx:if="\{\{loading && !items\.length\}\}" class="status-block skeleton-loading"/)
   assert.doesNotMatch(wxml, /wx:if="\{\{loading\}\}" class="status-block skeleton-loading"/)
   assert.match(wxml, /报告标题/)

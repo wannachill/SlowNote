@@ -19,15 +19,15 @@
     <view wx:elif="{{view === 'thinking'}}" class="settings-detail">
       <view class="card setting-card">
         <text class="title">深度思考</text>
-        <text class="form-note">控制小迈聊天页是否显示深度思考入口；关闭后不会自动开启。</text>
-        <view class="ai-setting-row"><view class="ai-setting-copy"><text class="ai-setting-name">显示深度思考按钮</text><text class="ai-setting-note">开启后可在小迈聊天页手动切换。</text></view><switch checked="{{showThinking}}" disabled="{{saving}}" color="{{themeAccent}}" bindchange="onThinkingToggle" aria-label="显示深度思考按钮" /></view>
+        <text class="form-note">关闭后不会自动开启。</text>
+        <view class="ai-setting-row"><view class="ai-setting-copy"><text class="ai-setting-name">显示深度思考按钮</text><text class="ai-setting-note">开启后可在聊天页手动切换。</text></view><switch checked="{{showThinking}}" disabled="{{saving}}" color="{{themeAccent}}" bindchange="onThinkingToggle" aria-label="显示深度思考按钮" /></view>
       </view>
     </view>
 
     <view wx:elif="{{view === 'style'}}" class="settings-detail">
       <view class="card setting-card">
         <text class="title">回答风格</text>
-        <text class="form-note">决定小迈怎么组织和表达回答，不影响固定安全规则。留空将使用服务端默认提示词。小迈不能联网或查询外部资料。</text>
+        <text class="form-note">留空使用默认提示词；小迈不能联网。</text>
         <view class="prompt-field">
           <view class="prompt-label"><text>回答风格与结构</text><text wx:if="{{custom.style}}" class="prompt-custom">已自定义</text></view>
           <textarea class="prompt-editor" fixed="{{true}}" auto-height maxlength="{{limits.style}}" disabled="{{saving}}" value="{{prompts.style}}" data-key="style" bindinput="onPromptInput" aria-label="回答风格提示词" />
@@ -39,7 +39,7 @@
     <view wx:elif="{{view === 'vision'}}" class="settings-detail">
       <view class="card setting-card">
         <text class="title">图片分析</text>
-        <text class="form-note">看照片时补充的观察要求。留空将使用服务端默认提示词。</text>
+        <text class="form-note">留空使用默认提示词。</text>
         <view class="prompt-field">
           <view class="prompt-label"><text>图片分析补充说明</text><text wx:if="{{custom.vision}}" class="prompt-custom">已自定义</text></view>
           <textarea class="prompt-editor" fixed="{{true}}" auto-height maxlength="{{limits.vision}}" disabled="{{saving}}" value="{{prompts.vision}}" data-key="vision" bindinput="onPromptInput" aria-label="图片分析提示词" />
@@ -51,10 +51,10 @@
     <view wx:elif="{{view === 'report'}}" class="settings-detail">
       <view class="card setting-card">
         <text class="title">定时报告</text>
-        <text class="form-note">定时报告使用的指令，按任务频率（每日/每周/每月）生成。留空将使用服务端默认提示词。</text>
+        <text class="form-note">留空使用默认提示词。</text>
         <view class="prompt-field">
           <view class="prompt-label"><text>报告内容指令</text><text wx:if="{{custom.report}}" class="prompt-custom">已自定义</text></view>
-          <text class="prompt-help">可用 {days} 表示覆盖天数、{period} 表示覆盖周期（今天/最近一周/上个月）；小迈不能联网或查询外部资料。</text>
+          <text class="prompt-help">可用 {days} 表示覆盖天数、{period} 表示周期；小迈不能联网。</text>
           <textarea class="prompt-editor" fixed="{{true}}" auto-height maxlength="{{limits.report}}" disabled="{{saving}}" value="{{prompts.report}}" data-key="report" bindinput="onPromptInput" aria-label="定时报告提示词" />
           <text class="prompt-count">{{prompts.report.length}} / {{limits.report}}</text>
         </view>
@@ -65,7 +65,7 @@
       <view class="card subscribe-card questions-hint">
         <view class="subscribe-main">
           <text class="subscribe-title">常见问题</text>
-          <text class="subscribe-note">这些问题会展示在小迈聊天页，方便你一键提问。可添加、编辑或删除；点「恢复默认」可还原系统内置问题（你的自定义问题会保留）。</text>
+          <text class="subscribe-note">展示在小迈聊天页，可一键提问。</text>
         </view>
         <button class="btn-primary subscribe-btn" bindtap="onRestoreQuestions" disabled="{{saving}}" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}">恢复默认</button>
       </view>
@@ -73,7 +73,7 @@
         <text class="title">常见问题</text>
         <button class="link-btn" bindtap="openQuestionPanel" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}">＋ 添加</button>
       </view>
-      <view wx:if="{{!questions.length}}" class="empty question-empty"><text class="empty-note">暂无问题，先添加一条吧</text></view>
+      <view wx:if="{{!questions.length}}" class="empty question-empty"><text class="empty-note">暂无问题</text></view>
       <view wx:for="{{questions}}" wx:key="id" class="question-swipe {{item.swipeX ? 'swipe-open' : ''}}" data-id="{{item.id}}">
         <view class="question-swipe-actions">
           <button class="question-swipe-action question-edit-action" data-id="{{item.id}}" catchtap="startEditQuestion" hover-class="tap-feedback" aria-label="编辑问题">编辑</button>

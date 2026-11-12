@@ -105,7 +105,6 @@
   color: var(--color-text-2);
 }
 .empty-guide-title { color: var(--color-text-1); font-size: var(--font-heading); font-weight: var(--weight-bold); line-height: var(--line-tight); }
-.empty-guide-copy { max-width: 34em; color: var(--color-text-2); font-size: var(--font-caption); line-height: var(--line-body); }
 .empty-guide-actions { display: flex; width: 100%; flex-direction: column; align-items: center; gap: var(--space-xs); margin-top: var(--space-xs); }
 .empty-guide-actions .btn-primary { margin: 0; }
 .empty-guide-actions .text-action { min-height: var(--control-height); color: var(--color-text-2); }
