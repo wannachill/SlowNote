@@ -98,6 +98,66 @@ test('报告按数据类型切片：喂养不再吞并便便排尿与辅食', ()
   assert.equal(diaryOnly.diary.count, 0)
 })
 
+test('记录聚合与明细渲染只携带所选类别及其同源子类型', async () => {
+  const { aggregate } = load('cloudfunctions/_shared/aggregation.js')
+  const { buildDetails } = load('cloudfunctions/_shared/record-details.js')
+  const data = seed()
+  data.feeding_records = [
+    { _id: 'f1', openid: 'user-a', baby_id: 'baby-a', type: 'feed', payload: { mode: 'bottle', amountMl: 120 }, record_date: '2026-10-20' },
+    { _id: 's1', openid: 'user-a', baby_id: 'baby-a', type: 'solid', payload: { name: '南瓜泥', note: '吃了两口' }, record_date: '2026-10-20' },
+    { _id: 'e1', openid: 'user-a', baby_id: 'baby-a', type: 'excretion', payload: { kind: 'stool', count: 1, shape: '软便' }, record_date: '2026-10-20' }
+  ]
+  data.diary_records = [{ _id: 'd1', openid: 'user-a', baby_id: 'baby-a', content: '宝宝第一次翻身', record_date: '2026-10-21' }]
+  const db = memoryDb(data)
+  const context = { scope: { openid: 'user-a' } }
+  const feeding = await aggregate(db, context, { start: '2026-10-15', end: '2026-10-22' }, 'baby-a', ['feeding'])
+  assert.deepEqual(Array.from(feeding.data.feeding, row => row.type), ['feed'])
+  const excretion = await aggregate(db, context, { start: '2026-10-15', end: '2026-10-22' }, 'baby-a', ['excretion'])
+  assert.deepEqual(Array.from(excretion.data.feeding, row => row.type), ['excretion'])
+  const diary = await aggregate(db, context, { start: '2026-10-15', end: '2026-10-22' }, 'baby-a', ['diary'])
+  const text = await buildDetails(diary.data, ['diary'], { range: '7d' })
+  assert.match(text, /宝宝第一次翻身/)
+  assert.doesNotMatch(text, /奶瓶|南瓜泥|软便/)
+})
+
+test('定时报告将同一白名单渲染明细发给模型并保留具体事项', async () => {
+  let sent = ''
+  const https = { request(url, options, callback) {
+    const req = new (require('events').EventEmitter)()
+    req.destroy = () => req.emit('close')
+    req.end = body => {
+      sent = body
+      queueMicrotask(() => {
+        const res = new (require('events').EventEmitter)()
+        res.statusCode = 200
+        callback(res)
+        res.emit('data', JSON.stringify({ choices: [{ message: { content: '记录显示宝宝最近有新的动作尝试。' } }] }))
+        res.emit('end')
+        req.emit('close')
+      })
+    }
+    return req
+  } }
+  const db = memoryDb({
+    ...seed(),
+    babies: [{ _id: 'baby-a', baby_id: 'baby-a', openid: 'user-a', nickname: '小满', birthday: '2026-09-10' }],
+    ai_tasks: [{ _id: 'task-a', openid: 'user-a', baby_id: 'baby-a', categories: ['milestone', 'diary'], frequency: 'daily', range: 'auto', time: '20:00', consent: true, enabled: true, notify: false, next_run_at: new Date(+NOW - 1000), lease_until: new Date(0) }],
+    diary_records: [{ _id: 'diary-a', openid: 'user-a', baby_id: 'baby-a', record_date: '2026-10-21', content: '宝宝第一次尝试从仰卧翻到侧卧，小满；openid: user-a' }],
+    milestone_records: [{ _id: 'milestone-a', openid: 'user-a', baby_id: 'baby-a', record_date: '2026-10-21', milestone_key: 'roll_side', domain: '大运动' }],
+    milestone_defs: [{ _id: 'definition-a', openid: 'user-a', baby_id: 'baby-a', key: 'roll_side', name: '能从仰卧翻到侧卧', domain: '大运动', month: 3 }],
+    feeding_records: [{ _id: 'feeding-a', openid: 'user-a', baby_id: 'baby-a', type: 'feed', payload: { mode: 'bottle', amountMl: 120 }, record_date: '2026-10-21' }],
+    custom_records: [{ _id: 'custom-a', openid: 'user-a', baby_id: 'baby-a', category: 'custom', label: 'PRIVATE_CUSTOM', value: 1, record_date: '2026-10-21' }]
+  })
+  const report = service('aiReport', db, { openid: '', env: { LLM_API_URL: 'https://model.example/v1', LLM_API_KEY: 'test', LLM_MODEL: 'test' }, substitutions: { https } })
+  const result = await report.main({ Type: 'Timer', TriggerName: 'aiReportTimer' })
+  assert.equal(result.processed, 1)
+  const body = JSON.parse(sent), prompt = body.messages[1].content
+  assert.match(prompt, /宝宝第一次尝试从仰卧翻到侧卧/)
+  assert.match(prompt, /能从仰卧翻到侧卧/)
+  assert.doesNotMatch(prompt, /奶瓶|120 ml|PRIVATE_CUSTOM|小满|user-a/)
+  assert.match(db.rows('ai_notifications')[0].content, /记录显示宝宝最近有新的动作尝试/)
+})
+
 test('定时报告面板同时提供数据类型与数据范围选择', () => {
   const wxml = read('miniprogram/pages/ai-tasks/index.wxml')
   const js = read('miniprogram/pages/ai-tasks/index.js')
@@ -120,6 +180,9 @@ test('定时报告面板同时提供数据类型与数据范围选择', () => {
   assert.doesNotMatch(wxml, /北京时间/)
   assert.doesNotMatch(wxml, /\{\{item\.rangeTag\}\}/)
   assert.match(wxml, /bindchange="onNotifyChange"/)
+  assert.match(wxml, /同意将所选数据类型的记录明细发送给第三方 AI 服务商/)
+  assert.match(wxml, /可能包含日记正文、里程碑事项及辅食或自定义备注/)
+  assert.doesNotMatch(wxml, /数值汇总发送给 AI|不包含姓名、生日、日记正文/)
   assert.match(wxml, /这些报告任务会按你设定的频率生成宝宝成长报告/)
   assert.match(wxml, /wx:if="\{\{loading && !items\.length\}\}" class="status-block skeleton-loading"/)
   assert.doesNotMatch(wxml, /wx:if="\{\{loading\}\}" class="status-block skeleton-loading"/)

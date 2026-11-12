@@ -1,4 +1,5 @@
-const { endpoint, hash, fail, createOnce, access } = require('./lib/runtime')
+const { endpoint, hash, fail, createOnce, access, all } = require('./lib/runtime')
+const { DETAILS_LIMIT, MESSAGE_LIMIT, clipText } = require('./lib/record-details')
 const { ask, messages, DISCLAIMER, redact } = require('./lib/llm')
 const { compose, loadSettings } = require('./lib/ai-settings')
 const photos = require('./images')
@@ -15,9 +16,8 @@ exports.main = endpoint(async ({ event, cloud, db, openid }) => {
   const fileIDs = photos.ownedImages(event.images, openid)
   if (fileIDs.length && event.imageConsent !== true) fail(400, 'IMAGE_CONSENT_REQUIRED')
   try {
-    if (!Array.isArray(event.messages) || event.messages.length > 20 || event.messages.some(m => !m || !['user', 'assistant'].includes(m.role) || typeof m.content !== 'string' || m.content.length > 4000)) fail(400, 'INVALID_MESSAGES')
+    if (!Array.isArray(event.messages) || event.messages.length > 20 || event.messages.some(m => !m || !['user', 'assistant'].includes(m.role) || typeof m.content !== 'string' || m.content.length > MESSAGE_LIMIT * 2)) fail(400, 'INVALID_MESSAGES')
     if (!event.messages.length || event.messages[event.messages.length - 1].role !== 'user' || !event.messages[event.messages.length - 1].content.trim()) fail(400, 'EMPTY_QUESTION')
-    if (typeof event.snapshot === 'string' && event.snapshot.length > 2000) fail(400, 'SNAPSHOT_TOO_LONG')
     const context = await access(db, openid)
     const minute = Math.floor(Date.now() / 60000)
     let allowed = false
@@ -26,20 +26,22 @@ exports.main = endpoint(async ({ event, cloud, db, openid }) => {
       if (!result.duplicate) { allowed = true; break }
     }
     if (!allowed) fail(429, 'RATE_LIMITED')
-    const [baby, settings] = await Promise.all([
+    const [baby, settings, scopedBabies] = await Promise.all([
       db.collection('babies').where({ _id: hash(context.ownerKey) }).limit(1).get().then(result => result.data[0]),
-      loadSettings(db, hash(openid))
+      loadSettings(db, hash(openid)),
+      all(db, 'babies', context.scope)
     ])
-    const secrets = [openid, baby && baby.nickname, baby && baby.birthday]
+    const secrets = [openid, baby && baby.nickname, baby && baby.birthday, ...scopedBabies.flatMap(item => [item.nickname, item.birthday])]
     const note = []
     if (baby) {
       const gender = baby.gender === 'female' ? '女宝' : baby.gender === 'male' ? '男宝' : '宝宝'
       const age = baby.birthday ? monthAge(baby.birthday) : null
       note.push(`当前宝宝：${gender}${age !== null ? `，约 ${age} 个月大` : ''}。`)
     }
-    if (typeof event.snapshot === 'string' && event.snapshot.trim()) note.push(`用户主动附带的近期记录快照（仅数字统计）：\n${event.snapshot.trim()}`)
-    let input = messages(event.messages, secrets)
-    if (note.length) input = [{ role: 'user', content: redact(note.join('\n').slice(0, 2500), secrets) }, ...input]
+    const snapshot = typeof event.snapshot === 'string' ? clipText(event.snapshot, DETAILS_LIMIT) : ''
+    if (snapshot.trim()) note.push(`用户主动附带的近期记录明细：\n${snapshot.trim()}`)
+    let input = messages(event.messages, secrets, note.length ? MESSAGE_LIMIT : 0)
+    if (note.length) input = [{ role: 'user', content: clipText(redact(note.join('\n'), secrets), MESSAGE_LIMIT) }, ...input]
     if (!input.length) fail(400, 'EMPTY_QUESTION')
     if (fileIDs.length) {
       // 不把 fileID / 临时 URL / openid 发送给外部模型，仅传本轮经验证的图片内容。

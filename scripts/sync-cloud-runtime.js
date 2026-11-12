@@ -5,6 +5,6 @@ const functions = ['statistics', 'babyProfile', 'customRecord', 'aiChat', 'aiTas
 for (const name of functions) {
   const target = path.join(root, name, 'lib')
   fs.mkdirSync(target, { recursive: true })
-  for (const file of ['runtime.js', 'aggregation.js', 'llm.js', 'schedule.js', 'ai-settings.js']) fs.copyFileSync(path.join(root, '_shared', file), path.join(target, file))
+  for (const file of ['runtime.js', 'aggregation.js', 'record-details.js', 'llm.js', 'schedule.js', 'ai-settings.js']) fs.copyFileSync(path.join(root, '_shared', file), path.join(target, file))
 }
 console.log(`Synced shared runtime to ${functions.length} functions`)

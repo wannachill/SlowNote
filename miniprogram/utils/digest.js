@@ -114,8 +114,15 @@ function buildText(summary, label, categories) {
 
 async function fetchSnapshot(babyId, range, categories) {
   if (!babyId) return ''
-  if (Array.isArray(categories) && !categories.length) return ''
-  const result = await call('statistics', { action: 'range', range, baby_id: babyId })
+  const selected = Array.isArray(categories)
+    ? SNAPSHOT_CATEGORIES.filter(category => categories.includes(category))
+    : undefined
+  if (Array.isArray(selected) && !selected.length) return ''
+  const result = await call('statistics', { action: 'range', range, baby_id: babyId, ...(selected ? { categories: selected } : {}) })
+  if (typeof result.details === 'string') {
+    const limit = Number(result.detailsLimit)
+    return Number.isFinite(limit) && limit >= 0 ? Array.from(result.details).slice(0, limit).join('') : result.details
+  }
   return buildText(result.summary, rangeLabel(range), categories)
 }
 

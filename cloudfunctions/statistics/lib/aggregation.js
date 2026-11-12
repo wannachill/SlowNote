@@ -1,4 +1,5 @@
 const { key, validDate, fail, all } = require('./runtime')
+const { CATEGORY_KEYS, normalizeCategories } = require('./record-details')
 function range(kind, anchor = key()) {
   if (!validDate(anchor)) fail(400, 'INVALID_DATE')
   const day = new Date(`${anchor}T00:00:00Z`)
@@ -64,9 +65,25 @@ function summarize(data) {
     custom: { count: extra.filter(r => r.category === 'custom').length, entries: extra.filter(r => r.category === 'custom').map(r => ({ label: r.label, value: r.value, unit: r.unit })) }
   }
 }
-async function aggregate(db, context, dates, babyId = '') {
-  const data = {}, spec = [['feeding', 'feeding_records'], ['growth', 'growth_records'], ['diary', 'diary_records'], ['milestone', 'milestone_records'], ['custom', 'custom_records']]
+async function aggregate(db, context, dates, babyId = '', categories) {
+  const filterToCategories = categories !== undefined
+  const selected = filterToCategories ? normalizeCategories(categories) : CATEGORY_KEYS
+  const data = { feeding: [], growth: [], diary: [], milestone: [], custom: [] }
+  const spec = []
+  if (selected.some(category => ['feeding', 'solid', 'excretion'].includes(category))) spec.push(['feeding', 'feeding_records'])
+  if (selected.includes('growth')) spec.push(['growth', 'growth_records'])
+  if (selected.includes('diary')) spec.push(['diary', 'diary_records'])
+  if (selected.includes('milestone')) spec.push(['milestone', 'milestone_records'])
+  if (selected.includes('custom')) spec.push(['custom', 'custom_records'])
   await Promise.all(spec.map(async ([type, collection]) => { data[type] = await records(db, collection, context.scope, dates, babyId) }))
+  if (filterToCategories && selected.length && data.feeding.length) {
+    const allowed = new Set(selected.flatMap(category => category === 'feeding' ? ['feed'] : category === 'solid' || category === 'excretion' ? [category] : []))
+    data.feeding = data.feeding.filter(record => allowed.has(record.type))
+  }
+  if (filterToCategories) {
+    if (!selected.includes('custom')) data.custom = []
+    else data.custom = data.custom.filter(record => record.category === 'custom')
+  }
   return { data, summary: summarize(data) }
 }
 function series(data) {
@@ -140,7 +157,7 @@ function series(data) {
   }))
   return result
 }
-// Numeric aggregates only: no identifiers, prose, photos, nickname, or exact birthday.
+// Numeric aggregates remain available as overview; record prose is rendered separately by record-details.js.
 // feeding / excretion / solid 同源于 feeding_records，但按所选数据类型分别切片，未选中的不会被带进提示词。
 const FEED_MODES = ['breast', 'bottle', 'formula', 'mixed']
 function aiSummary(summary, categories) {

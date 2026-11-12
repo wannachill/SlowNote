@@ -1,10 +1,11 @@
 const cloud = require('wx-server-sdk')
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
-const { access, hash, createOnce } = require('./lib/runtime')
-const { aggregate, aiSummary } = require('./lib/aggregation')
+const { access, hash, createOnce, all } = require('./lib/runtime')
+const { aggregate } = require('./lib/aggregation')
+const { buildDetails, MESSAGE_LIMIT, clipText } = require('./lib/record-details')
 const { nextRun, reportWindow } = require('./lib/schedule')
-const { ask, DISCLAIMER } = require('./lib/llm')
+const { ask, DISCLAIMER, redact } = require('./lib/llm')
 const { compose, loadSettings } = require('./lib/ai-settings')
 async function sendNotice(openid, now, result) {
   const templateId = process.env.AI_REPORT_TEMPLATE_ID
@@ -58,11 +59,19 @@ async function processTask(task, now) {
       if (revoked) answer = { configured: false, unavailable: true, text: '定时报告已暂停。请确认数据使用同意后再启用任务。' }
       else {
         const window = reportWindow(task.frequency, now, task.range)
-        const [{ summary }, settings] = await Promise.all([
-          aggregate(db, context, { start: window.start, end: window.end }, task.baby_id || ''),
-          loadSettings(db, hash(task.openid))
+        const categories = Array.isArray(task.categories) ? task.categories : []
+        const [{ data }, settings, babies] = await Promise.all([
+          aggregate(db, context, { start: window.start, end: window.end }, task.baby_id || '', categories),
+          loadSettings(db, hash(task.openid)),
+          all(db, 'babies', context.scope)
         ])
-        answer = await ask([{ role: 'user', content: `没有记录不代表没有发生。${JSON.stringify(aiSummary(summary, task.categories))}` }], {
+        const scopedBabies = task.baby_id
+          ? babies.filter(baby => String(baby.baby_id || baby._id) === String(task.baby_id) || String(baby._id) === String(task.baby_id))
+          : babies
+        const secrets = [task.openid, ...scopedBabies.flatMap(baby => [baby.nickname, baby.birthday])]
+        const details = await buildDetails(data, categories, { db, scope: context.scope, babyId: task.baby_id || '', period: window.period })
+        const content = clipText(redact(`没有记录不代表没有发生。${details}`, secrets), MESSAGE_LIMIT)
+        answer = await ask([{ role: 'user', content }], {
           system: compose(settings.prompts, 'report', { days: window.days, period: window.period })
         })
       }

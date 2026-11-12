@@ -15,7 +15,7 @@
         <text wx:if="{{item.status}}" class="message-status">{{item.status}}</text>
         <view wx:if="{{item.images.length}}" class="message-images"><button wx:for="{{item.images}}" wx:for-item="photo" wx:key="id" class="photo-preview-button" data-src="{{photo.path}}" bindtap="previewPhoto" hover-class="tap-feedback" hover-stop-propagation="{{true}}" hover-start-time="20" hover-stay-time="60" aria-label="查看发送的照片"><image class="message-image" src="{{photo.path}}" mode="aspectFill" /></button></view>
         <text class="message-content">{{item.content}}</text>
-        <view wx:if="{{item.snapshot}}" class="message-snapshot"><text class="snapshot-label">已附带记录数据</text><text class="snapshot-text" selectable>{{item.snapshot}}</text></view>
+        <view wx:if="{{item.snapshot}}" class="message-snapshot"><text class="snapshot-label">已附带记录数据</text><text class="snapshot-text {{item.snapshotExpanded ? 'snapshot-expanded' : 'snapshot-collapsed'}}" selectable>{{item.snapshotExpanded ? item.snapshot : item.snapshotPreview}}</text><button wx:if="{{item.snapshotHasMore}}" class="snapshot-toggle" data-i="{{index}}" catchtap="toggleSnapshot" aria-label="{{item.snapshotExpanded ? '收起记录明细' : '展开记录明细'}}">{{item.snapshotExpanded ? '收起' : '展开'}}</button></view>
       </view>
       <view class="message-bubble" wx:else>
         <text wx:if="{{item.status}}" class="message-status">{{item.status}}</text>
@@ -26,7 +26,7 @@
           <view wx:if="{{item.reasoningPlaying || thinkOpen[item.id]}}" class="think-body"><rich-text class="think-rich" nodes="{{item.reasonNodes}}" /></view>
         </view>
         <rich-text wx:if="{{item.role !== 'user'}}" class="message-rich" nodes="{{item.nodes}}" />
-        <view wx:if="{{item.snapshot}}" class="message-snapshot"><text class="snapshot-label">已附带记录数据</text><text class="snapshot-text" selectable>{{item.snapshot}}</text></view>
+        <view wx:if="{{item.snapshot}}" class="message-snapshot"><text class="snapshot-label">已附带记录数据</text><text class="snapshot-text {{item.snapshotExpanded ? 'snapshot-expanded' : 'snapshot-collapsed'}}" selectable>{{item.snapshotExpanded ? item.snapshot : item.snapshotPreview}}</text><button wx:if="{{item.snapshotHasMore}}" class="snapshot-toggle" data-i="{{index}}" catchtap="toggleSnapshot" aria-label="{{item.snapshotExpanded ? '收起记录明细' : '展开记录明细'}}">{{item.snapshotExpanded ? '收起' : '展开'}}</button></view>
         <text wx:if="{{item.failed}}" class="message-status">未发送成功，内容已保留</text>
         <view wx:if="{{!pickMode && !item.failed && typingMessageId !== item.id}}" class="answer-tools">
           <button class="answer-tool" bindtap="copyMessage" data-i="{{index}}" hover-class="tap-feedback" aria-label="复制回答"><view class="copy-symbol" aria-hidden="true"></view></button>

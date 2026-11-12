@@ -5,6 +5,7 @@ const store = require('../../utils/common-questions')
 const sessions = require('../../utils/ai-sessions')
 const parseMarkdown = require('../../utils/markdown')
 const aiSettings = require('../../utils/ai-settings')
+const SNAPSHOT_PREVIEW_LINES = 5
 page({
   data: { messages: [], messageViews: [], typingMessageId: '', activeMessageId: '', activeMessageIndex: -1, activeQuestionSummary: '', pickMode: false, picked: {}, pickedCount: 0, editing: null, quote: null, focusInput: false, thinkOpen: {}, question: '', images: [], liveTranscript: '', selecting: false, sending: false, keyboardHeight: 0, scrollInto: '', showJumpBottom: false, error: '', attachLabel: '', attaching: false, commonList: [], showThinking: false, thinkingSettingsReady: false, statusBarHeight: 20 },
   onLoad(options) {
@@ -203,6 +204,9 @@ page({
       const pairUserId = message.role === 'user' ? message.id : currentUserId
       return {
         ...message,
+        snapshotPreview: String(message.snapshot || '').split('\n').slice(0, SNAPSHOT_PREVIEW_LINES).join('\n'),
+        snapshotHasMore: String(message.snapshot || '').split('\n').length > SNAPSHOT_PREVIEW_LINES || Array.from(String(message.snapshot || '')).length > SNAPSHOT_PREVIEW_LINES * 32,
+        snapshotExpanded: !!message.snapshotExpanded,
         pairUserId,
         pickUser: message.role === 'user',
         pickSelected: !!(pairUserId && picked[pairUserId]),
@@ -215,6 +219,14 @@ page({
     })
   },
   toggleThink(e) { const id = e.currentTarget.dataset.id; if (id) this.setData({ ['thinkOpen.' + id]: !this.data.thinkOpen[id] }) },
+  toggleSnapshot(e) {
+    const index = Number(e.currentTarget.dataset.i)
+    const message = this.data.messages[index]
+    if (!message || !message.snapshot) return
+    const messages = this.data.messages.slice()
+    messages[index] = { ...message, snapshotExpanded: !message.snapshotExpanded }
+    this.setData({ messages, messageViews: this._messageViews(messages) })
+  },
   showMessageActions(e) {
     const message = this.data.messages[Number(e.currentTarget.dataset.i)]
     if (message) this.setData({ activeMessageId: message.id })

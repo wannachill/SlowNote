@@ -312,6 +312,23 @@
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+.snapshot-collapsed {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 5;
+}
+.snapshot-toggle {
+  display: block;
+  margin: var(--space-xs) 0 0 auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-accent-ink);
+  font-size: var(--font-caption);
+  line-height: var(--line-body);
+}
+.snapshot-toggle::after { border: 0; }
 .from-user {
   align-items: flex-end;
 }

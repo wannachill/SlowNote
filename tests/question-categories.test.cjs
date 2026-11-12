@@ -4,7 +4,16 @@ const { load, front } = require('./helpers.cjs')
 const calls = []
 // vm 沙箱里的数组与宿主 realm 原型不同，deepStrictEqual 会误判，统一转普通对象再比较。
 const plain = value => JSON.parse(JSON.stringify(value))
-const digest = load('miniprogram/utils/digest.js', {}, { './api': { call: async (name, payload) => { calls.push({ name, payload }); return { summary: sample() } } } })
+const digest = load('miniprogram/utils/digest.js', {}, { './api': { call: async (name, payload) => {
+  calls.push({ name, payload })
+  const selected = payload.categories || questionsAll
+  const lines = []
+  if (selected.includes('feeding')) lines.push('2026-10-21｜喂养｜喂养（奶瓶），奶量 120 ml')
+  if (selected.includes('diary')) lines.push('2026-10-21｜成长日记｜日记：宝宝今天笑了')
+  if (selected.includes('milestone')) lines.push('2026-10-21｜里程碑｜里程碑（大运动）：俯卧时能抬起头')
+  return { summary: sample(), details: `近7天记录概览：${selected.join('、')}\n${lines.join('\n')}`, detailsLimit: 1800 }
+} } })
+const questionsAll = ['feeding', 'excretion', 'solid', 'growth', 'diary', 'milestone', 'custom']
 
 function sample() {
   return {
@@ -72,8 +81,16 @@ test('fetchSnapshot 空选时不请求云端，正常选类别时透传范围与
   assert.equal(await digest.fetchSnapshot('baby-1', '7d', []), '')
   assert.equal(calls.length, 0, '空选应避免无意义的云函数调用')
   const text = await digest.fetchSnapshot('baby-1', '7d', ['feeding'])
-  assert.match(text, /喂养 5 次/)
-  assert.deepEqual(plain(calls[0]), { name: 'statistics', payload: { action: 'range', range: '7d', baby_id: 'baby-1' } })
+  assert.match(text, /喂养（奶瓶），奶量 120 ml/)
+  assert.doesNotMatch(text, /宝宝今天笑了|俯卧时能抬起头/)
+  assert.deepEqual(plain(calls[0]), { name: 'statistics', payload: { action: 'range', range: '7d', baby_id: 'baby-1', categories: ['feeding'] } })
+})
+
+test('问题快照展示选中类别的具体登记明细而非仅计数', async () => {
+  calls.length = 0
+  const text = await digest.fetchSnapshot('baby-1', '7d', ['milestone'])
+  assert.match(text, /俯卧时能抬起头/)
+  assert.doesNotMatch(text, /宝宝今天笑了|喂养（奶瓶）/)
 })
 
 test('推荐问题点击把自己的数据类型传给 send', async () => {

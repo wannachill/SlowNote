@@ -18,7 +18,7 @@
 
 - [ ] **#01 `[待确认]` 补齐合规信息** — 确定 AI 服务商、隐私政策、数据保留与删除责任人；再补齐「敏感数据保留周期、账号/宝宝删除流程、备份恢复目标、AI 服务商数据政策及责任人」。完成后去掉两处 `[待补充：上线前确认]`。来源：`docs/prd/slownote-prd.md` §7.4、`docs/database-design.md:77`
 - [x] **#02 `[本地]` 同步共享库** — 只要改过 `cloudfunctions/_shared/` 或任一 `lib/`，先执行 `node scripts/sync-cloud-runtime.js`，按输出确认已复制到 14 个函数目录。来源：`docs/deployment-checklist.md:14,20`。（2026-11-12 已执行：`_shared` 与 14 个 `lib/` 逐文件比对零差异；脚本输出 `Synced shared runtime to 14 functions`，执行后工作区无新增变更，幂等。）
-- [x] **#03 `[本地]` 本地回归基线** — 执行 `node --test tests/*.test.cjs`，当前基线 **289/289 通过、0 失败**；`git status --short` 应干净。来源：2026-11-12 审计（基线以每次测试输出为准，不写死提交号）。（2026-11-12 初次执行 286/286；随后合并「列表手势优化 + 常见问题端侧数据按 openid 分桶」改动后用例增至 289，复测 289/289 通过。2026-11-12 全部改动已提交并推送至 `origin/main`，复测仍为 289/289 通过、工作树干净。）
+- [x] **#03 `[本地]` 本地回归基线** — 执行 `node --test tests/*.test.cjs`，当前基线 **301/301 通过、0 失败**；`git status --short` 应干净。来源：2026-11-12 审计（基线以每次测试输出为准，不写死提交号）。（2026-11-12 初次执行 286/286；合并「列表手势优化 + 常见问题端侧数据按 openid 分桶」后增至 289；本次「记录明细替代计数快照」新增 12 个用例，复测 301/301 通过、0 失败。本轮改动提交并推送至 `origin/main` 后工作树干净。）
 
 ## 阶段 1 · 云环境、数据库与旧函数清理
 
@@ -38,11 +38,11 @@
 - [ ] **#12 `[控制台]` 配置订阅模板变量** — `aiReport` 与 `aiTasks` 的 `AI_REPORT_TEMPLATE_ID` 必须同值（从公众平台「我的模板」复制，勿手抄）；`aiReport` 另配 `AI_REPORT_TITLE_FIELD=thing1`、`AI_REPORT_TIME_FIELD=time2`、`AI_REPORT_RESULT_FIELD=thing3`。变量名只能是 `AI_REPORT_TEMPLATE_ID`（误建 `REMINDER_TEMPLATE_ID` 会稳定返回 501）。来源：`docs/deployment-checklist.md:38,39,53,56,57`
 - [ ] **#13 `[控制台]` 确认订阅模板可用** — 「查看报告提醒」`IBU-7JzVwiyk0eD0pBoDLxZJg9l37V4gnsWMOKfNGE`，字段为 thing1/thing3/time2（以「我的模板」详情页为准，非固定 thing1/time13）；若无合适模板则从公共模板库选含 `thingN`+`timeN` 的一次性模板，新模板提审需 3-7 工作日。来源：`docs/deployment-checklist.md:89`（原 D14）、`:53`
 - [ ] **#14 `[控制台]` 服务器域名** — 云开发免配置；ASR 走云函数中转，无需小程序侧域名白名单，确认无需额外配置即可。来源：`docs/deployment-checklist.md:91`（原 D15）
-- [ ] **#15 `[控制台]` 隐私协议 / 用户隐私保护指引** — 补充声明「录音用于语音识别」，并覆盖宝宝记录、照片等实际收集范围（依赖 #01 的服务商与责任人信息）。来源：`docs/deployment-checklist.md:92`（原 D16）
+- [ ] **#15 `[控制台]` 隐私协议 / 用户隐私保护指引** — 补充声明「录音用于语音识别」，并覆盖宝宝记录、照片等实际收集范围；明确成长日记正文、里程碑事项、辅食/自定义备注会在用户主动附带问答或已同意的定时报告中发送给第三方 AI 服务商（依赖 #01 的服务商与责任人信息）。来源：`docs/deployment-checklist.md:92`（原 D16）
 
 ## 阶段 3 · 云函数、触发器与权限
 
-- [ ] **#16 `[控制台]` 逐个部署 15 个云函数** — aiChat、aiNotifications、aiReport、aiSettings、aiTasks、asrProxy、babyProfile、customRecord、diaryRecord、feedingRecord、growthRecord、homeCards、login、milestoneRecord、statistics；每个都选「上传并部署：云端安装依赖」，含各自 `lib/` 与 `package.json`；`_shared` 不作为云函数部署。**本轮改过 `statistics/index.js`（action 白名单），须重新部署该函数。** 来源：`docs/deployment-checklist.md:13,20`、提交 `72fe172`。**【登录硬前置】** 其中 `login` 未部署时 `app.js` 静默保持未登录态、全员无法进入（PRD §7.3）。
+- [ ] **#16 `[控制台]` 逐个部署 15 个云函数** — aiChat、aiNotifications、aiReport、aiSettings、aiTasks、asrProxy、babyProfile、customRecord、diaryRecord、feedingRecord、growthRecord、homeCards、login、milestoneRecord、statistics；每个都选「上传并部署：云端安装依赖」，含各自 `lib/` 与 `package.json`；`_shared` 不作为云函数部署。**本次新增 `_shared/record-details.js` 并修改 `aggregation.js`、`llm.js`、`ai-settings.js`，同步脚本已把 6 份共享文件复制到全部 14 个受管函数目录；须先运行 `node scripts/sync-cloud-runtime.js`，再重新部署全部 14 个含 `lib/` 的云函数，最低限度也要重新部署 `statistics`、`aiChat`、`aiReport`、`aiSettings` 这 4 个直接消费明细与默认提示词的函数——只部署 4 个会让云端其余函数仍运行旧 `lib/`，与仓库版本不一致。** 来源：`docs/deployment-checklist.md:13,20`。**【登录硬前置】** 其中 `login` 未部署时 `app.js` 静默保持未登录态、全员无法进入（PRD §7.3）。
 - [ ] **#17 `[控制台]` 设置云函数超时** — `aiChat` ≥60 秒且内存 ≥256MB（含图片下载/编码、深度思考 45 秒应用层超时余量）；`aiReport` ≥60 秒。该值在控制台按函数设置，`config.json` 不承载。来源：`docs/deployment-checklist.md:22`（原 D5）、`:46`
 - [ ] **#18 `[控制台]` 上传 aiReport/config.json 触发器** — 确认 `aiReportTimer` 为 `0 */5 * * * * *`（每 5 分钟一次）。来源：`docs/deployment-checklist.md:24`（原 D7）
 - [ ] **#19 `[控制台]` 校验 aiReport 可信调度** — 仅接受无客户端 OPENID 且 `TriggerName=aiReportTimer` 的调用（`event.Type` 不作为唯一判据）；验证前端无法指定 openid 触发报告生成。来源：`docs/deployment-checklist.md:25`（原 D8）

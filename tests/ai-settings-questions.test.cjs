@@ -79,7 +79,7 @@ test('数据类型支持多选、全选与取消全选，并随问题一起保�
   page.toggleAllQuestionCategories()
   assert.deepEqual(plain(page.data.questionCategoryValues), ['feeding', 'excretion', 'solid', 'growth', 'diary', 'milestone', 'custom'])
   assert.equal(page.data.questionAllSelected, true)
-  assert.equal(page.data.questionCategoryHint, '附带全部记录摘要')
+  assert.equal(page.data.questionCategoryHint, '附带全部记录明细')
 
   page.toggleAllQuestionCategories()
   assert.deepEqual(plain(page.data.questionCategoryValues), [])

@@ -1,7 +1,8 @@
 const https = require('https')
 const { StringDecoder } = require('string_decoder')
+const { MESSAGE_LIMIT, CONTEXT_LIMIT } = require('./record-details')
 const DISCLAIMER = 'AI 生成，仅供参考。涉及宝宝健康异常，请及时咨询医生。'
-const SYSTEM = '你是育儿助手小迈，用温和简明中文回答。只根据提供的信息，不编造宝宝年龄、诊断、参考范围或记录。数据不足时明确说明。不能替代医生；出现呼吸困难、发绀、意识异常等急症立即建议就医。不要给出药物剂量或诊断。不输出用户标识。分析时分为情况分析、可执行建议、需留意的情况。不要使用表情符号或 emoji，用中文标点表达语气。用户没有说明时间范围且上下文中没有记录摘要时，先请用户说明想看哪段时间（今天、最近几天或这个月），不要凭空推测。记录摘要标注的覆盖范围与用户所问不一致时，先说明摘要覆盖的是哪段时间，不要把不同范围的数据当成用户所问区间的结论。'
+const SYSTEM = '你是育儿助手小迈，用温和简明中文回答。只根据提供的信息，不编造宝宝年龄、诊断、参考范围或记录。数据不足时明确说明。不能替代医生；出现呼吸困难、发绀、意识异常等急症立即建议就医。不要给出药物剂量或诊断。不输出用户标识。分析时分为情况分析、可执行建议、需留意的情况。不要使用表情符号或 emoji，用中文标点表达语气。用户没有说明时间范围且上下文中没有记录明细时，先请用户说明想看哪段时间（今天、最近几天或这个月），不要凭空推测。记录明细标注的覆盖范围与用户所问不一致时，先说明明细覆盖的是哪段时间，不要把不同范围的数据当成用户所问区间的结论。'
 const REASONING_TAIL_MARKERS = [
   /(?:^|\s+)final\s+answer[.!:：！。]*$/i,
   /最终答案[.!:：！。]*$/,
@@ -24,14 +25,15 @@ function cleanReasoningTail(value) {
   return text
 }
 function redact(value, secrets = []) {
-  let result = String(value || '').replace(/\b1[3-9]\d{9}\b/g, '[电话已隐去]').replace(/\b\d{17}[\dXx]\b/g, '[证件已隐去]').replace(/[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}/g, '[邮箱已隐去]').replace(/(?:openid|unionid|家庭码)\s*[:：=]?\s*[\w-]+/gi, '[标识已隐去]')
+  let result = String(value || '').replace(/\b1[3-9]\d{9}\b/g, '[电话已隐去]').replace(/\b\d{17}[\dXx]\b/g, '[证件已隐去]').replace(/[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}/g, '[邮箱已隐去]').replace(/(?:openid|unionid|family_id|baby_id|client_request_id|_id|fileid|created_at|家庭码)\s*[:：=]?\s*[\w./:+-]+/gi, '[标识已隐去]').replace(/\b(?:cloud|wxfile):\/\/[^\s"'，。]+/gi, '[文件标识已隐去]')
   for (const secret of secrets) if (typeof secret === 'string' && secret.length >= 2) result = result.split(secret).join('[私人信息已隐去]')
   return result
 }
-function messages(input, secrets = []) {
+function messages(input, secrets = [], reserve = 0) {
   if (!Array.isArray(input) || !input.length) return []
   let used = 0
-  return input.slice(-10).reverse().filter(m => m && ['user', 'assistant'].includes(m.role) && typeof m.content === 'string').map(m => ({ role: m.role, content: redact(m.content.slice(0, 2000), secrets) })).filter(m => { used += m.content.length; return used <= 8000 }).reverse()
+  const budget = Math.max(0, CONTEXT_LIMIT - Math.max(0, Number(reserve) || 0))
+  return input.slice(-10).reverse().filter(m => m && ['user', 'assistant'].includes(m.role) && typeof m.content === 'string').map(m => ({ role: m.role, content: redact(m.content.slice(0, MESSAGE_LIMIT), secrets) })).filter(m => { used += m.content.length; return used <= budget }).reverse()
 }
 async function ask(input, options = {}) {
   const startedAt = Date.now()

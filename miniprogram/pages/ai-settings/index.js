@@ -18,7 +18,7 @@ function categoryPatch(values) {
     questionCategoryValues: picked,
     questionCategories: CATEGORIES.map(item => ({ ...item, selected: picked.includes(item.value) })),
     questionAllSelected: all,
-    questionCategoryHint: all ? '附带全部记录摘要' : picked.length
+    questionCategoryHint: all ? '附带全部记录明细' : picked.length
       ? '附带：' + picked.map(value => (CATEGORIES.find(item => item.value === value) || {}).label).filter(Boolean).join(' · ')
       : '不附带记录数据，仅按问题文字作答'
   }

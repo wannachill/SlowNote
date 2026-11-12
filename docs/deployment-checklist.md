@@ -11,7 +11,7 @@
 
 ## 2. 云函数
 截至 2026-11-11，`cloudfunctions/` 有 **15 个可调用云函数 + `_shared`**（`_shared` 不作为云函数部署）：aiChat、aiNotifications、aiReport、aiSettings、aiTasks、asrProxy、babyProfile、customRecord、diaryRecord、feedingRecord、growthRecord、homeCards、login、milestoneRecord、statistics。
-共享库同步脚本当前将 runtime/aggregation/llm/schedule/ai-settings 复制到 14 个函数目录：statistics、babyProfile、customRecord、aiChat、aiTasks、aiNotifications、aiReport、aiSettings、asrProxy、feedingRecord、growthRecord、diaryRecord、homeCards、milestoneRecord。运行 `node scripts/sync-cloud-runtime.js` 后按输出确认。
+共享库同步脚本当前将 runtime/aggregation/record-details/llm/schedule/ai-settings 共 6 个文件复制到 14 个函数目录：statistics、babyProfile、customRecord、aiChat、aiTasks、aiNotifications、aiReport、aiSettings、asrProxy、feedingRecord、growthRecord、diaryRecord、homeCards、milestoneRecord。运行 `node scripts/sync-cloud-runtime.js` 后按输出确认。
 **已下线（2026-11-11，仓库内已移除，需在云开发控制台人工删除）**：`reminderRecord`。智能提醒与手机闹铃/日程重复，且一次性订阅无法保证送达，整条链路（页面、云函数、定时器、`reminder_items` 写入）已删除；存量 `reminder_items` 数据保留但不再读写。
 **已下线（2026-10-29，仓库内已移除，需在云开发控制台核对并人工删除旧函数）**：`family`、`migrateFamilyData`、`monthlyReport`、`expenseRecord`。控制台处理前按需归档 `expense_records` 与迁移函数产生的历史记录；保留数据库中的历史 `family_id` 字段，不删除集合或历史数据。
 **已下线（2026-10-30，安全下线，需在云开发控制台人工删除）**：`sendReminder`。
@@ -89,5 +89,5 @@ DeepSeek 思考模式由小迈页面的「深度思考」开关控制，默认�
 - [ ] 订阅消息模板：确认「查看报告提醒」模板可用（ID 见上方 §3）；定时报告通知配 `AI_REPORT_TEMPLATE_ID` + `AI_REPORT_TITLE_FIELD=thing1`/`AI_REPORT_TIME_FIELD=time2`/`AI_REPORT_RESULT_FIELD=thing3`（报告结果对应任务「报告标题」，未配置则不展示该字段），或从公共模板库搜索「提醒/通知/报告/结果/完成」等词，选用含 `thingN`+`timeN` 字段的一次性模板；确需新模板则在公共模板库最后一页点「找不到你想要的模板？帮我们完善模板库」提审，审核 3-7 工作日。字段编号以公众平台「我的模板」详情页为准（非固定 thing1/time13）。
 - 个人主体不可用 WechatSI，当前语音为 `RecorderManager → asrProxy` 一次性转写；主体变更为非个人后可加回插件声明恢复实时预览。真机需验证按住说话、松开后文字进入输入框。
 - [ ] 服务器域名：云开发免配置；若 ASR 服务走 HTTPS 可直连云函数中转，无需小程序侧域名白名单。
-- [ ] 隐私协议/用户隐私保护指引：补充声明「录音用于语音识别」，并覆盖宝宝记录、照片等实际收集范围。
+- [ ] 隐私协议/用户隐私保护指引：补充声明「录音用于语音识别」，并覆盖宝宝记录、照片等实际收集范围；明确成长日记正文、里程碑事项、辅食/自定义备注会在用户主动附带问答或已同意的定时报告中发送给第三方 AI 服务商。
 

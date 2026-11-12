@@ -1,5 +1,6 @@
 const { endpoint, access, validDate, fail } = require('./lib/runtime')
 const { aggregate, range, recordDate, series } = require('./lib/aggregation')
+const { buildDetails, DETAILS_LIMIT, normalizeCategories } = require('./lib/record-details')
 // 显式 action 白名单：省略 action 的旧调用仍走默认区间聚合，其余未知值必须报错，
 // 否则拼写错误会静默落到聚合分支，返回看似正常但语义不符的数据。
 const ACTIONS = ['trend', 'calendar', 'daily', 'range']
@@ -70,8 +71,13 @@ exports.main = endpoint(async ({ event, db, openid }) => {
     putTime('custom', (selected.custom || []).filter(record => record.category === 'custom'))
     return { code: 0, date: event.date, marks: [...marks], summary: require('./lib/aggregation').summarize(selected), times }
   }
-  // 'range'（AI 问答的数字快照）与省略 action 的旧调用共用区间聚合。
-  const dates = range(event.range || 'week')
-  const { summary } = await aggregate(db, context, dates, babyId)
-  return { code: 0, range: event.range || 'week', dates, summary }
+  // 'range' 为 AI 问答生成服务端明细；仅返回白名单渲染文本，不下发原始记录。
+  const kind = event.range || 'week'
+  const dates = range(kind)
+  const categories = event.categories === undefined
+    ? undefined
+    : normalizeCategories(Array.isArray(event.categories) ? event.categories : [])
+  const { data, summary } = await aggregate(db, context, dates, babyId, categories)
+  const details = await buildDetails(data, categories, { db, scope: context.scope, babyId, range: kind })
+  return { code: 0, range: kind, dates, summary, details, detailsLimit: DETAILS_LIMIT }
 })

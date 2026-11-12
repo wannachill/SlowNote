@@ -2,7 +2,6 @@
 const DB = 'ai_sessions'
 const MAX_TITLE = 14
 const MAX_CONTENT = 8000
-const MAX_SNAPSHOT = 3000
 const MAX_REASONING = 4000
 
 function tidy(messages) {
@@ -10,7 +9,8 @@ function tidy(messages) {
     id: m.id,
     role: m.role,
     content: (m.content || '').slice(0, MAX_CONTENT),
-    snapshot: m.snapshot ? m.snapshot.slice(0, MAX_SNAPSHOT) : '',
+    // Snapshots are capped by the statistics service's shared DETAILS_LIMIT before they reach the client.
+    snapshot: typeof m.snapshot === 'string' ? m.snapshot : '',
     images: (m.images || []).map(p => p.fileID || p.path).filter(Boolean),
     status: m.role === 'assistant' ? (m.status || '') : '',
     reasoning: (m.reasoning || '').slice(0, MAX_REASONING),

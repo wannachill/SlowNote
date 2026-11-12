@@ -416,7 +416,7 @@ test('monthly schedule runs on the next China month boundary and report range co
 test('monthly AI report settings fill period and actual month length without changing safety copy',()=>{
   const {compose,SAFETY}=load('cloudfunctions/_shared/ai-settings.js')
   const result=compose({},'report',{days:29,period:'上个月'})
-  assert(result.includes('上个月的记录汇总（共29天）'))
+  assert(result.includes('上个月的记录明细（共29天）'))
   assert(result.includes(SAFETY))
 })
 test('AI task saves monthly frequency and schedules the next first of month',async()=>{
@@ -443,13 +443,26 @@ test('AI transport is HTTPS-only and removes identity, nickname, phone, email an
   assert.equal(r.code,0);assert.equal(target.pathname,'/v1/chat/completions')
   for(const value of ['user-a','小满','2026-09-10','13812345678','person@example.com'])assert(!sent.includes(value))
 })
-test('model context is clipped and report summary never contains diary prose or identifiers',()=>{
-  const llm=load('cloudfunctions/_shared/llm.js'),agg=load('cloudfunctions/_shared/aggregation.js')
+test('AI chat sends selected record details and redacts identities within shared context limits',async()=>{
+  const llm=load('cloudfunctions/_shared/llm.js'),limits=load('cloudfunctions/_shared/record-details.js')
   const history=llm.messages(Array.from({length:20},()=>({role:'user',content:'x'.repeat(3000)})))
-  assert(history.length<=10);assert(history.reduce((n,m)=>n+m.content.length,0)<=8000)
-  const summary=agg.summarize({diary:[{content:'PRIVATE',openid:'secret'}],custom:[{category:'custom',label:'NAME',note:'SECRET',value:2}],growth:[]})
-  const report=JSON.stringify(agg.aiSummary(summary,['diary','custom']))
-  assert(!report.includes('PRIVATE'));assert(!report.includes('NAME'));assert(!report.includes('secret'))
+  assert(history.length<=10);assert(history.every(message=>message.content.length<=limits.MESSAGE_LIMIT))
+  assert(history.reduce((n,m)=>n+m.content.length,0)<=limits.CONTEXT_LIMIT)
+  const reserved=llm.messages(Array.from({length:20},()=>({role:'user',content:'x'.repeat(3000)})),[],limits.MESSAGE_LIMIT)
+  assert(reserved.reduce((n,m)=>n+m.content.length,0)<=limits.CONTEXT_LIMIT-limits.MESSAGE_LIMIT)
+
+  let sent=''
+  const https={request(url,options,callback){const req=new EventEmitter();req.destroy=()=>req.emit('close');req.end=body=>{sent=body;queueMicrotask(()=>{const res=new EventEmitter();res.statusCode=200;callback(res);res.emit('data',JSON.stringify({choices:[{message:{content:'可以继续观察。'}}]}));res.emit('end');req.emit('close')})};return req}}
+  const babyId=require('crypto').createHash('sha256').update('user:user-a').digest('hex').slice(0,32)
+  const data=seed();data.babies=[{_id:babyId,openid:'user-a',nickname:'小满',birthday:'2026-09-10'}]
+  const api=service('aiChat',memoryDb(data),{env:{LLM_API_URL:'https://model.example/v1',LLM_API_KEY:'test',LLM_MODEL:'test'},substitutions:{https}})
+  const snapshot=`近7天记录概览：成长日记 1 篇\n2026-10-20｜成长日记｜日记：宝宝第一次翻身；openid: user-a；baby_id: ${babyId}；fileID: cloud://private/photo.jpg；created_at: 2026-10-20T09:30:00Z；小满；2026-09-10\n${'补充'.repeat(limits.DETAILS_LIMIT)}`
+  const result=await api.main({consent:true,messages:[{role:'user',content:'最近有什么新本领'}],snapshot})
+  assert.equal(result.code,0)
+  const body=JSON.parse(sent),note=body.messages[1].content
+  assert.match(note,/宝宝第一次翻身/)
+  assert(note.length<=limits.MESSAGE_LIMIT)
+  for(const value of ['user-a',babyId,'cloud://private/photo.jpg','2026-10-20T09:30:00Z','小满','2026-09-10'])assert(!sent.includes(value),value)
 })
 test('timer rejects client spoofing and concurrent triggers create one in-app fallback',async()=>{
   const data=seed(),db=memoryDb(data),taskService=service('aiTasks',db)
