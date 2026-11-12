@@ -4,6 +4,7 @@
 > 用途：把 `docs/prd/slownote-prd.md` §8（8 项）与 `docs/deployment-checklist.md`（16 项）中**全部 24 项未勾选项**，按依赖关系重排成可逐项勾选、可执行的动作清单；另补入两份文档正文中未勾选但必须完成的前置动作（集合/权限/索引/环境变量/15 个云函数部署），以及 2026-11-12 功能审计发现的 3 项遗留（云端旧函数清理、2 处合规 `[待补充]`）。
 > 本文**不修改**上述两份文档正文；勾选在本文进行，全部完成后再回填原文档对应项。
 > 状态：本清单仅为整理产物，**所有云端部署与真机验收均未执行**。
+> 引用方式：PRD 的来源统一按「§7 小节」或「§8 第 N 项」定位，不用行号，避免 PRD 增删行后来源失效；部署清单仍按行号定位。2026-11-12 补充「登录与数据隔离」实现说明及登录硬前置，见 `docs/prd/slownote-prd.md` §7 与下方阶段 1 说明块。
 
 ## 用法
 
@@ -15,17 +16,19 @@
 
 ## 阶段 0 · 阻塞项与本地基线
 
-- [ ] **#01 `[待确认]` 补齐合规信息** — 确定 AI 服务商、隐私政策、数据保留与删除责任人；再补齐「敏感数据保留周期、账号/宝宝删除流程、备份恢复目标、AI 服务商数据政策及责任人」。完成后去掉两处 `[待补充：上线前确认]`。来源：`docs/prd/slownote-prd.md:62`、`docs/database-design.md:77`
+- [ ] **#01 `[待确认]` 补齐合规信息** — 确定 AI 服务商、隐私政策、数据保留与删除责任人；再补齐「敏感数据保留周期、账号/宝宝删除流程、备份恢复目标、AI 服务商数据政策及责任人」。完成后去掉两处 `[待补充：上线前确认]`。来源：`docs/prd/slownote-prd.md` §7.4、`docs/database-design.md:77`
 - [x] **#02 `[本地]` 同步共享库** — 只要改过 `cloudfunctions/_shared/` 或任一 `lib/`，先执行 `node scripts/sync-cloud-runtime.js`，按输出确认已复制到 14 个函数目录。来源：`docs/deployment-checklist.md:14,20`。（2026-11-12 已执行：`_shared` 与 14 个 `lib/` 逐文件比对零差异；脚本输出 `Synced shared runtime to 14 functions`，执行后工作区无新增变更，幂等。）
-- [x] **#03 `[本地]` 本地回归基线** — 执行 `node --test tests/*.test.cjs`，基线 **286/286 通过**；`git status --short` 应干净。来源：2026-11-12 审计（基线以每次测试输出为准，不写死提交号）。（2026-11-12 已执行：286/286 通过、0 失败；本轮改动提交并推送后工作树干净。）
+- [x] **#03 `[本地]` 本地回归基线** — 执行 `node --test tests/*.test.cjs`，已提交版本基线 **286/286 通过**；`git status --short` 应干净。来源：2026-11-12 审计（基线以每次测试输出为准，不写死提交号）。（2026-11-12 已执行：286/286 通过、0 失败；本轮改动提交并推送后工作树干净。2026-11-12 复测：工作区另有 4 个未提交的「常见问题端侧数据按 openid 分桶」改动，实测 **289/289 通过、0 失败**；该组改动提交后基线应更新为 289/289。）
 
 ## 阶段 1 · 云环境、数据库与旧函数清理
 
+> **登录可用性硬前置（依据 `docs/prd/slownote-prd.md` §7.3）**：#06 / #07 / #08 不只是建库步骤，而是「用户能否登录、数据是否真正隔离」的开关；另有 #04（AppID / 环境一致）与 #16（部署 `login`）共同决定登录链路。未完成的后果：#06 缺 `users` 集合 → `login` 自动建档报错、全员停在未登录态；#07 未收紧客户端权限 → 客户端可绕过云函数直连数据库，存在越权读取风险；#08 缺唯一索引 → 同一 openid 可能重复建档；#16 未部署 `login` → 前端静默保持未登录。真机验收建议随 #27 / #33 一并验证两个微信号数据互不可见、同账号退出重登与换设备后数据可恢复。
+
 - [ ] **#04 `[控制台]` 确认环境标识** — AppID `wx27a55616539c8020`、云环境 `cloud1-d6gil7n3u02d7414e` 与 `miniprogram/app.js` 的 `wx.cloud.init` 一致。来源：`docs/deployment-checklist.md:10`（原 D4）
 - [ ] **#05 `[控制台]` 测试不写生产数据** — 使用现有正确云环境，客户端与测试账号不得写入生产数据。来源：`docs/deployment-checklist.md:9`（原 D3）
-- [ ] **#06 `[控制台]` 创建 16 个集合** — `users`、`babies`、`family_members`、`feeding_records`、`custom_records`、`diary_records`、`growth_records`、`milestone_defs`、`milestone_records`、`ai_settings`、`ai_tasks`、`ai_notifications`、`ai_runs`、`ai_sessions`、`ai_rate_limits`、`mutation_receipts`；历史集合 `families`/`expense_records`/`reminder_items` 按现状保留，不新增、不读写。来源：`docs/deployment-checklist.md:61`
-- [ ] **#07 `[控制台]` 设置客户端权限** — 除 `ai_sessions` 外全部「所有用户不可读写」；`ai_sessions` 放行「仅本人读写本人记录」（`doc.openid == auth.openid`）；`ai_settings` 文档 ID 为 `hash(openid)`，仅云函数访问。来源：`docs/deployment-checklist.md:63,65,66`
-- [ ] **#08 `[控制台]` 建立索引** — 按 §4 索引表逐条建（`users.openid` 唯一、`ai_tasks: enabled + next_run_at + lease_until`、`ai_notifications: openid + created_at` 及 `delivery_status`、`ai_rate_limits.expires_at` 等）；控制台提示缺索引时以提示为准。来源：`docs/deployment-checklist.md:69-83`
+- [ ] **#06 `[控制台]` 创建 16 个集合** — `users`、`babies`、`family_members`、`feeding_records`、`custom_records`、`diary_records`、`growth_records`、`milestone_defs`、`milestone_records`、`ai_settings`、`ai_tasks`、`ai_notifications`、`ai_runs`、`ai_sessions`、`ai_rate_limits`、`mutation_receipts`；历史集合 `families`/`expense_records`/`reminder_items` 按现状保留，不新增、不读写。来源：`docs/deployment-checklist.md:61`。**【登录硬前置】** `login` 先查 `users`，缺集合则自动建档失败、所有人无法登录（PRD §7.3）。
+- [ ] **#07 `[控制台]` 设置客户端权限** — 除 `ai_sessions` 外全部「所有用户不可读写」；`ai_sessions` 放行「仅本人读写本人记录」（`doc.openid == auth.openid`）；`ai_settings` 文档 ID 为 `hash(openid)`，仅云函数访问。来源：`docs/deployment-checklist.md:63,65,66`。**【登录硬前置】** 未配置前客户端可绕过云函数直连数据库，openid 隔离不生效（PRD §7.3）。
+- [ ] **#08 `[控制台]` 建立索引** — 按 §4 索引表逐条建（`users.openid` 唯一、`ai_tasks: enabled + next_run_at + lease_until`、`ai_notifications: openid + created_at` 及 `delivery_status`、`ai_rate_limits.expires_at` 等）；控制台提示缺索引时以提示为准。来源：`docs/deployment-checklist.md:69-83`。**【登录硬前置】** `users.openid` 需唯一，避免同一微信号重复建档（PRD §7.3）。
 - [ ] **#09 `[控制台]` 人工删除 6 个已下线旧云函数** — `reminderRecord`、`family`、`migrateFamilyData`、`monthlyReport`、`expenseRecord`、`sendReminder`（仓库内已移除，云端仍可能存在）；删除前按需归档 `expense_records` 与迁移产生的历史记录，保留数据库历史 `family_id` 字段。来源：`docs/deployment-checklist.md:15-18`、2026-11-12 审计
 
 ## 阶段 2 · 外部服务与小程序平台配置
@@ -39,7 +42,7 @@
 
 ## 阶段 3 · 云函数、触发器与权限
 
-- [ ] **#16 `[控制台]` 逐个部署 15 个云函数** — aiChat、aiNotifications、aiReport、aiSettings、aiTasks、asrProxy、babyProfile、customRecord、diaryRecord、feedingRecord、growthRecord、homeCards、login、milestoneRecord、statistics；每个都选「上传并部署：云端安装依赖」，含各自 `lib/` 与 `package.json`；`_shared` 不作为云函数部署。**本轮改过 `statistics/index.js`（action 白名单），须重新部署该函数。** 来源：`docs/deployment-checklist.md:13,20`、提交 `72fe172`
+- [ ] **#16 `[控制台]` 逐个部署 15 个云函数** — aiChat、aiNotifications、aiReport、aiSettings、aiTasks、asrProxy、babyProfile、customRecord、diaryRecord、feedingRecord、growthRecord、homeCards、login、milestoneRecord、statistics；每个都选「上传并部署：云端安装依赖」，含各自 `lib/` 与 `package.json`；`_shared` 不作为云函数部署。**本轮改过 `statistics/index.js`（action 白名单），须重新部署该函数。** 来源：`docs/deployment-checklist.md:13,20`、提交 `72fe172`。**【登录硬前置】** 其中 `login` 未部署时 `app.js` 静默保持未登录态、全员无法进入（PRD §7.3）。
 - [ ] **#17 `[控制台]` 设置云函数超时** — `aiChat` ≥60 秒且内存 ≥256MB（含图片下载/编码、深度思考 45 秒应用层超时余量）；`aiReport` ≥60 秒。该值在控制台按函数设置，`config.json` 不承载。来源：`docs/deployment-checklist.md:22`（原 D5）、`:46`
 - [ ] **#18 `[控制台]` 上传 aiReport/config.json 触发器** — 确认 `aiReportTimer` 为 `0 */5 * * * * *`（每 5 分钟一次）。来源：`docs/deployment-checklist.md:24`（原 D7）
 - [ ] **#19 `[控制台]` 校验 aiReport 可信调度** — 仅接受无客户端 OPENID 且 `TriggerName=aiReportTimer` 的调用（`event.Type` 不作为唯一判据）；验证前端无法指定 openid 触发报告生成。来源：`docs/deployment-checklist.md:25`（原 D8）
@@ -58,14 +61,14 @@
 
 ## 阶段 5 · 真机功能验收（PRD §8，8 项）
 
-- [ ] **#29 `[真机]` 导航与入口** — 仅首页/小迈/我的三导航；小迈主页面范围卡片、详情页图表与问答入口可用。来源：`docs/prd/slownote-prd.md:65`
-- [ ] **#30 `[真机]` 日期与日历** — 周日跨月、闰月、月龄、今标记、记录点与选中日期正确；FAB 不遮内容/导航。来源：`docs/prd/slownote-prd.md:66`
-- [ ] **#31 `[真机]` 六类登记** — 进入正确表单，选中日期保存后可在首页查到；存量记录仍可读取。来源：`docs/prd/slownote-prd.md:67`
-- [ ] **#32 `[真机]` 长按整理与删除** — 首页当日卡片长按进入整理态、删除确认、删除后首页/统计刷新；iOS 与 Android 均能区分短按与长按。来源：`docs/prd/slownote-prd.md:68`
-- [ ] **#33 `[真机]` 边界状态** — 时间范围、家庭隔离、空/加载/失败/重试均正确。来源：`docs/prd/slownote-prd.md:69`
-- [ ] **#34 `[真机]` 6 套渐变主题** — 治愈蓝/樱粉/暖橙/薄荷绿/紫色/深色齐备；切换只改变配色与渐变、不改变布局几何；Canvas 配色随主题切换。来源：`docs/prd/slownote-prd.md:70`
-- [ ] **#35 `[真机]` AI 异常路径** — AI 未配置、超时、限流、同意/撤回同意、任务启停/删除、重复触发、模板缺失均可复现且表现符合预期。来源：`docs/prd/slownote-prd.md:71`
-- [ ] **#36 `[真机]` 可访问性与设备适配** — 44px 热区、安全区、软键盘、屏幕阅读器在开发者工具与真机均验收通过。来源：`docs/prd/slownote-prd.md:72`
+- [ ] **#29 `[真机]` 导航与入口** — 仅首页/小迈/我的三导航；小迈主页面范围卡片、详情页图表与问答入口可用。来源：`docs/prd/slownote-prd.md` §8 第 1 项
+- [ ] **#30 `[真机]` 日期与日历** — 周日跨月、闰月、月龄、今标记、记录点与选中日期正确；FAB 不遮内容/导航。来源：`docs/prd/slownote-prd.md` §8 第 2 项
+- [ ] **#31 `[真机]` 六类登记** — 进入正确表单，选中日期保存后可在首页查到；存量记录仍可读取。来源：`docs/prd/slownote-prd.md` §8 第 3 项
+- [ ] **#32 `[真机]` 长按整理与删除** — 首页当日卡片长按进入整理态、删除确认、删除后首页/统计刷新；iOS 与 Android 均能区分短按与长按。来源：`docs/prd/slownote-prd.md` §8 第 4 项
+- [ ] **#33 `[真机]` 边界状态** — 时间范围、家庭隔离、空/加载/失败/重试均正确。来源：`docs/prd/slownote-prd.md` §8 第 5 项
+- [ ] **#34 `[真机]` 6 套渐变主题** — 治愈蓝/樱粉/暖橙/薄荷绿/紫色/深色齐备；切换只改变配色与渐变、不改变布局几何；Canvas 配色随主题切换。来源：`docs/prd/slownote-prd.md` §8 第 6 项
+- [ ] **#35 `[真机]` AI 异常路径** — AI 未配置、超时、限流、同意/撤回同意、任务启停/删除、重复触发、模板缺失均可复现且表现符合预期。来源：`docs/prd/slownote-prd.md` §8 第 7 项
+- [ ] **#36 `[真机]` 可访问性与设备适配** — 44px 热区、安全区、软键盘、屏幕阅读器在开发者工具与真机均验收通过。来源：`docs/prd/slownote-prd.md` §8 第 8 项
 
 ## 阶段 6 · 上线后观察
 
@@ -76,12 +79,12 @@
 
 ## 覆盖对照（24 项原勾选项 → 本文编号）
 
-| 来源 | 原行 | 本文 |
+| 来源 | 原位置 | 本文 |
 |---|---|---|
 | deployment-checklist.md | 7 / 8 / 9 / 10 | #26 / #27 / #05 / #04 |
 | deployment-checklist.md | 22 / 23 / 24 / 25 / 26 | #17 / #24 / #18 / #19 / #21 |
 | deployment-checklist.md | 27 / 28 / 29 / 30 | #22 / #23 / #25 / #20 |
 | deployment-checklist.md | 89 / 91 / 92 | #13 / #14 / #15 |
-| prd/slownote-prd.md §8 | 65-72 | #29-#36 |
+| prd/slownote-prd.md §8 | 第 1-8 项 | #29-#36 |
 
 **执行状态**：截至 2026-11-12，仅 #02、#03 两项 `[本地]` 已完成（执行记录见上），其余 36 项尚未执行。本轮**未进行任何云端部署、控制台配置或真机验收**；`[控制台]` / `[真机]` / `[待确认]` 项均需人工完成，只读预检结果不代替勾选。
