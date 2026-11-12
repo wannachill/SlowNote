@@ -58,6 +58,7 @@ AI 参与一迈一记（SlowNote）的分析、实现与验证时，必须以已
 - 数据设计：`docs/database-design.md`
 - Git 工作流：`docs/rules/git-workflow.md`
 - 模型环境变量与云端部署检查：`docs/deployment-checklist.md`（§2 云函数与触发器、§3 环境变量、§4 集合/权限/索引、§5 平台配置；DeepSeek 与硅基流动的具体取值见 §3）
+- 上线执行清单：`docs/release-checklist.md`（把 PRD §8 与部署清单的 24 项验收按依赖顺序整理为可逐项勾选的执行清单，含来源行号与责任标记）
 - 视觉与交互细则：`DESIGN.md`
 
 ## 8. 交付格式
