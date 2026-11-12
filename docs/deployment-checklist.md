@@ -64,7 +64,7 @@ DeepSeek 思考模式由小迈页面的「深度思考」开关控制，默认�
 
 - ai_sessions（小迈对话历史）：安全规则建议仅本人可读写自己的会话（openid 匹配），客户端写入 upsert 依赖云环境登录态；建议索引 `openid + updatedAt`（列表倒序）、`openid + sessionId`（单会话查询）。客户端保存失败静默降级，不阻断对话。
 - ai_settings（小迈配置）：部署前确认集合已创建；小程序端不得直连读写，数据库客户端规则默认拒绝，只有云函数访问。文档 ID 为 `hash(openid)`，云函数基于可信登录 openid 读取并写入该用户配置。
-- ai_notifications（历史报告）：只经 `aiNotifications` 访问，提供 `list`（按 `created_at` 倒序取最近 50 条）、`read`、`remove`；`remove` 按 openid 校验归属（非本人 404 `NOTIFICATION_NOT_FOUND`）并以 `mutation_receipts` 幂等。**不提供 `unreadCount`**，底栏也不做未读数字角标。
+- ai_notifications（历史报告）：只经 `aiNotifications` 访问，提供 `list`（按 `created_at`/`_id` 倒序；接收 `startDate`/`endDate`（北京时间、含起止日）与 `offset`，每页 **20 条**，返回 `total`/`hasMore`）、`read`、`remove`；`remove` 按 openid 校验归属（非本人 404 `NOTIFICATION_NOT_FOUND`）并以 `mutation_receipts` 幂等。**不提供 `unreadCount`**，底栏也不做未读数字角标。
 
 **索引**（按各云函数实际 `where`/`orderBy` 建立；控制台提示缺索引时以提示为准）：
 
