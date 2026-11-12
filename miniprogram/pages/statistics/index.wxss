@@ -2,10 +2,9 @@
   padding-top: 0;
   padding-bottom: calc(var(--tab-height) + env(safe-area-inset-bottom) + var(--space-m));
 }
+/* 不设独立背景、不使用 sticky：整页由 --bg-mesh 主题渐变贯通，避免纯色块与渐变拼接出分割线。
+   页面级滚动与原生下拉刷新保留；安全区与 --tab-page-top 偏移仍写在头部 padding 内。 */
 .statistics-header {
-  position: sticky;
-  top: 0;
-  z-index: calc(var(--layer-tab) + 10);
   display: flex;
   flex-direction: column;
   align-items: stretch;
@@ -14,10 +13,7 @@
   box-sizing: border-box;
   height: calc(env(safe-area-inset-top) + var(--tab-page-top) + 176rpx);
   margin-top: 0;
-  margin-right: calc(var(--space-m) * -1);
-  margin-left: calc(var(--space-m) * -1);
-  padding: calc(env(safe-area-inset-top) + var(--tab-page-top) + 28rpx) var(--space-m) 0;
-  background: var(--color-bg);
+  padding: calc(env(safe-area-inset-top) + var(--tab-page-top) + 28rpx) 0 0;
 }
 .statistics-header .page-note { line-height: var(--line-body); }
 .range-picker { flex-shrink: 0; }

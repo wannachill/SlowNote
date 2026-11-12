@@ -44,21 +44,26 @@ test('home, Xiao Mai, and mine reserve matching top-heading height and start bel
   assert.match(statisticsStyle, /\.ask-entry\s*\{[^}]*margin:\s*0;/s)
 })
 
-test('three tab headings share one full-width opaque background edge', () => {
+test('three tab headings stay transparent so the theme gradient has no seam', () => {
   const app = fs.readFileSync('miniprogram/app.wxss', 'utf8')
   const rule = /\.page-top-heading\s*\{([^}]*)\}/.exec(app)
   assert.ok(rule, '全局 page-top-heading 规则应存在')
-  assert.match(rule[1], /background:\s*var\(--color-bg\)/)
-  assert.match(rule[1], /margin-right:\s*calc\(var\(--space-m\) \* -1\)/)
-  assert.match(rule[1], /margin-left:\s*calc\(var\(--space-m\) \* -1\)/)
-  assert.match(rule[1], /padding-right:\s*var\(--space-m\)/)
-  assert.match(rule[1], /padding-left:\s*var\(--space-m\)/)
+  assert.doesNotMatch(rule[1], /background\s*:/, '标题区不得再铺纯色背景，否则与主题渐变拼接出分割线')
+  assert.doesNotMatch(rule[1], /margin-(right|left)\s*:/, '无背景时不需要负 margin 外扩')
   assert.match(rule[1], /margin-bottom:\s*var\(--space-m\)/, '保留 32rpx 留白，首个内容块三页对齐')
-  assert(!/background:\s*(transparent|none)/s.test(rule[1]), '标题区背景不得改为透明')
-  for (const page of ['index', 'statistics', 'mine']) {
+  assert.match(app, /background-image:\s*var\(--bg-mesh\)/, '整页主题渐变仍需保留')
+  const headingSelectors = {
+    index: /\.baby-header\s*\{([^}]*)\}/s,
+    statistics: /\.statistics-header\s*\{([^}]*)\}/s,
+    mine: /\.mine-page > \.page-heading\s*\{([^}]*)\}/s
+  }
+  for (const [page, selector] of Object.entries(headingSelectors)) {
     const template = fs.readFileSync(`miniprogram/pages/${page}/index.wxml`, 'utf8')
     assert.match(template, /page-top-heading/, `${page} 应复用全局标题区规则`)
+    const style = fs.readFileSync(`miniprogram/pages/${page}/index.wxss`, 'utf8')
+    const body = selector.exec(style)?.[1] || ''
+    assert.ok(body, `${page} 标题区样式应存在`)
+    assert.doesNotMatch(body, /background\s*:/, `${page} 标题区不得有独立背景色`)
+    assert.doesNotMatch(body, /position:\s*sticky/, `${page} 标题区不得 sticky，否则透明时滚动内容会透出`)
   }
-  const statisticsStyle = fs.readFileSync('miniprogram/pages/statistics/index.wxss', 'utf8')
-  assert.match(statisticsStyle, /\.statistics-header\s*\{[^}]*background:\s*var\(--color-bg\)/s, 'sticky 标题栏背景须与全局同色，否则滚动内容会透出')
 })
