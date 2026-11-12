@@ -15,6 +15,8 @@
   margin-bottom: var(--space-s);
   border-radius: var(--radius);
   overflow: hidden;
+  background: var(--color-surface);
+  isolation: isolate;
 }
 .history-swipe.swipe-open .swipe-actions {
   visibility: visible;
@@ -56,7 +58,7 @@
   gap: var(--space-s);
   padding: var(--space-sm) var(--space-m);
   border: var(--border-width) solid transparent;
-  border-radius: var(--radius);
+  border-radius: 0;
   background: var(--color-surface);
   transition: transform var(--motion-feedback) var(--curve-spring);
 }

@@ -25,7 +25,7 @@ cloudfunctions/                 # 15 个可调用云函数 + _shared
 scripts/
   sync-cloud-runtime.js         # 同步共享源码到 14 个受管函数 lib/
   check-project.js              # 项目注册与一致性检查
-tests/                          # 41 个 *.test.cjs 文件 + helpers.cjs
+tests/                          # 42 个 *.test.cjs 文件 + helpers.cjs
   ai-chat-images.test.cjs ai-chat-snapshot.test.cjs ai-chat-voice.test.cjs ai-settings-cache.test.cjs ai-settings-questions.test.cjs
   baby-profile.test.cjs chart-bars.test.cjs chart-selection.test.cjs common-questions.test.cjs copy-terse.test.cjs
   custom-record-validation.test.cjs feature-retirement.test.cjs growth-multi-measurement.test.cjs
@@ -35,7 +35,7 @@ tests/                          # 41 个 *.test.cjs 文件 + helpers.cjs
   page-cache.test.cjs question-categories.test.cjs record-details.test.cjs record-mutations.test.cjs references.test.cjs
   registration.test.cjs report-history.test.cjs report-scope.test.cjs slownote.test.cjs
   statistics-action.test.cjs statistics-brief.test.cjs statistics-detail-core.test.cjs statistics-detail.test.cjs
-  statistics-insights.test.cjs
+  statistics-insights.test.cjs swipe-card-radius.test.cjs
 docs/
   CLAUDE.md database-design.md deployment-checklist.md
   prd/slownote-prd.md

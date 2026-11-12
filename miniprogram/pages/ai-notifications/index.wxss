@@ -28,6 +28,8 @@
   margin-top: var(--space-s);
   border-radius: var(--radius);
   overflow: hidden;
+  background: var(--color-surface);
+  isolation: isolate;
 }
 .report-swipe.swipe-open .swipe-actions {
   visibility: visible;
@@ -65,11 +67,14 @@
 }
 
 /* 卡片与「定时报告」同一套 task-main 语言：标题用正文号中等字重，发送时间与渠道作为 form-note，未读沿用 status-tag。 */
+/* 内层直角：圆角由 .report-swipe 统一裁切，左滑后卡片右缘才不会留下弧形缺口。 */
 .report-card {
   position: relative;
   z-index: 1;
   margin: 0;
   padding: var(--space-sm) var(--space-m);
+  border-radius: 0;
+  box-shadow: none;
   transition: transform var(--motion-feedback) var(--curve-spring);
 }
 .report-card .task-main {

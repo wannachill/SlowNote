@@ -52,7 +52,7 @@
   min-height: var(--row-height);
   padding: var(--space-sm) var(--space-m);
   background: var(--color-surface);
-  border-radius: var(--radius);
+  border-radius: 0;
   transition: transform var(--motion-quick) var(--curve-spring);
   will-change: transform;
 }
