@@ -5,6 +5,7 @@ const { front } = require('./helpers.cjs')
 const cases = [
   { page: 'ai-tasks', list: 'items', field: '_id', eventKey: 'id', start: 'onCardTouchStart', move: 'onCardTouchMove' },
   { page: 'ai-notifications', list: 'items', field: 'id', eventKey: 'id', start: 'onCardTouchStart', move: 'onCardTouchMove' },
+  { page: 'ai-history', list: 'list', field: 'sessionId', eventKey: 'id', start: 'onCardTouchStart', move: 'onCardTouchMove' },
   { page: 'baby', list: 'babies', field: 'baby_id', eventKey: 'id', start: 'onCardTouchStart', move: 'onCardTouchMove' },
   { page: 'ai-settings', list: 'questions', field: 'id', eventKey: 'id', start: 'onQuestionCardTouchStart', move: 'onQuestionCardTouchMove' },
   { page: 'milestone', list: 'visible', field: 'key', eventKey: 'key', start: 'onCardTouchStart', move: 'onCardTouchMove' }

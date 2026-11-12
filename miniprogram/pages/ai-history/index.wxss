@@ -10,16 +10,55 @@
   padding: var(--space-m) var(--space-m) calc(var(--space-m) + env(safe-area-inset-bottom));
   box-sizing: border-box;
 }
+.history-swipe {
+  position: relative;
+  margin-bottom: var(--space-s);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.history-swipe.swipe-open .swipe-actions {
+  visibility: visible;
+  pointer-events: auto;
+}
+.history-swipe .swipe-actions {
+  position: absolute;
+  z-index: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: stretch;
+  justify-content: flex-end;
+  width: calc(var(--swipe-action-width) / 2);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  overflow: hidden;
+  visibility: hidden;
+  pointer-events: none;
+}
+.history-swipe .swipe-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  min-width: 0;
+  padding: 0 var(--space-xs);
+  border-radius: 0;
+  color: var(--color-on-accent);
+  font-size: var(--font-caption);
+}
+.history-swipe .delete-action { background: var(--color-notice); }
 .history-item {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-s);
   padding: var(--space-sm) var(--space-m);
-  margin-bottom: var(--space-s);
   border: var(--border-width) solid transparent;
   border-radius: var(--radius);
   background: var(--color-surface);
+  transition: transform var(--motion-feedback) var(--curve-spring);
 }
 .history-item-main {
   flex: 1;
@@ -38,24 +77,6 @@
 .history-item-time {
   color: var(--color-text-2);
   font-size: var(--font-caption);
-}
-.history-remove {
-  width: var(--control-height);
-  height: var(--control-height);
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0;
-  padding: 0;
-  border: none;
-  background: transparent;
-  border-radius: var(--radius-small);
-  color: var(--color-text-3);
-  font-size: var(--font-title);
-}
-.history-remove::after {
-  border: none;
 }
 .history-state {
   flex: 1;

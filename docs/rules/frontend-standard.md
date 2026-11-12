@@ -64,7 +64,7 @@ theme.js 的偏好结构为 {color:'blue'|'pink'|'orange'|'mint'|'purple'|'dark'
 app.js 管理身份、宝宝资料缓存与主题；api.js 统一新页面云调用；date.js 统一日历/月龄；categories.js 定义面板映射；viewmodels.js 生成数值卡。现有登记页继续调用兼容云接口。
 保护页面先等待初始化，未登录跳转我的；退出后不自动登录。核心三页可展示未登录引导。
 敏感 API 如媒体选择、订阅授权仅由用户动作触发。聊天同意说明与任务分析同意分开，避免自动外发档案。
-对话自动保存至云集合 ai_sessions（openid 隔离、幂等 upsert、图片仅存 fileID、保存失败静默降级不阻断）；历史对话列表页倒序展示、可删除、点击载入会话继续提问；照片上传到本人 diary 路径，服务端校验 fileID 归属。密钥仅在云函数环境变量中。
+对话自动保存至云集合 ai_sessions（openid 隔离、幂等 upsert、图片仅存 fileID、保存失败静默降级不阻断）；历史对话列表页倒序展示，左滑露出「删除」（宽度 `calc(var(--swipe-action-width) / 2)`，与历史报告一致；二次确认沿用 `templates/motion-confirm.wxml`），点击载入会话继续提问；手势与局部 `setData` 复用 `utils/list-patch.js`，常显删除图标已移除（§4.1 少即是多）；照片上传到本人 diary 路径，服务端校验 fileID 归属。密钥仅在云函数环境变量中。
 - 宝宝生日与记录日期统一使用原生 `<picker mode="date">`（`end` 上限为今天）；历史 `components/wheel-date-picker` 三列滚轮组件已移除，空目录已清理且不再注册为自定义组件，勿在新页面或文档中引用。
 - Tab 页读取走 `utils/page-cache.js`：先渲染缓存再静默校验，同参 60 秒内复用、不重复请求云函数；记录新增/修改/删除与首页卡片删除经 `utils/home-refresh.invalidateRecords()` 失效 `home`、`statistics` 两个作用域，退出登录由 `app.logout()` 整体清空。静默刷新时不得清空 `cards` / `moduleCards`，否则整页骨架会闪；下拉刷新用 `load(true)` 跳过缓存但仍保留既有内容。新增写操作时必须同步接入失效，否则 60 秒内会读到旧数据。
 

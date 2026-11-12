@@ -4,9 +4,13 @@
   <view wx:elif="{{error}}" class="history-state" role="alert"><text class="history-empty-hint">{{error}}</text><button class="btn-secondary" bindtap="load" hover-class="tap-feedback">重试</button></view>
   <view wx:elif="{{!list.length}}" class="history-state"><text class="history-empty-title">还没有历史对话</text><text class="history-empty-hint">去小迈页提问，对话自动保存。</text></view>
   <scroll-view wx:else class="history-list" scroll-y enhanced show-scrollbar="{{false}}">
-    <view wx:for="{{list}}" wx:key="sessionId" class="history-item" data-id="{{item.sessionId}}" bindtap="onSelect" hover-class="tap-feedback" hover-stop-propagation="{{true}}" hover-start-time="20" hover-stay-time="60" role="button" aria-label="查看对话{{item.title}}">
-      <view class="history-item-main"><text class="history-item-title">{{item.title}}</text><text class="history-item-time">{{item.timeText}}</text></view>
-      <button class="history-remove" data-id="{{item.sessionId}}" catchtap="onRemove" hover-class="tap-feedback" hover-stop-propagation="{{true}}" hover-start-time="20" hover-stay-time="60" aria-label="删除对话{{item.title}}"><view class="record-delete-symbol" aria-hidden="true"></view></button>
+    <view wx:for="{{list}}" wx:key="sessionId" class="history-swipe {{item.swipeX ? 'swipe-open' : ''}}" data-id="{{item.sessionId}}">
+      <view class="swipe-actions">
+        <button class="swipe-action delete-action" data-id="{{item.sessionId}}" catchtap="onRemove" hover-class="tap-feedback" hover-stop-propagation="{{true}}" hover-start-time="20" hover-stay-time="60" aria-label="删除对话{{item.title}}">删除</button>
+      </view>
+      <view class="history-item" data-id="{{item.sessionId}}" style="transform: translate({{item.swipeX}}px, 0);" bindtap="onSelect" bindtouchstart="onCardTouchStart" bindtouchmove="onCardTouchMove" bindtouchend="onCardTouchEnd" bindtouchcancel="onCardTouchEnd" hover-class="tap-feedback" hover-stop-propagation="{{true}}" hover-start-time="20" hover-stay-time="60" role="button" aria-label="查看对话{{item.title}}">
+        <view class="history-item-main"><text class="history-item-title">{{item.title}}</text><text class="history-item-time">{{item.timeText}}</text></view>
+      </view>
     </view>
   </scroll-view>
   <include src="../../templates/motion-confirm.wxml" />
