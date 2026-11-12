@@ -62,7 +62,7 @@ test('年份与长期口语能识别到全部时间窗口', () => {
   }
 })
 
-test('自定义问题按账号隔离，旧共享数据只迁移一次', () => {
+test('自定义问题按账号隔离，无法确认归属的旧共享数据会丢弃', () => {
   const accountStorage = {
     [questions.STORAGE_KEY]: [{ id: 'old-user', text: '旧账号的问题', builtin: false }]
   }
@@ -76,8 +76,8 @@ test('自定义问题按账号隔离，旧共享数据只迁移一次', () => {
   })
 
   const firstAccount = accountQuestions('user-a')
-  assert.equal(firstAccount.loadAll().some(item => item.id === 'old-user'), true, '旧数据保留给首次迁移账号')
-  assert.equal(Object.hasOwn(accountStorage, questions.STORAGE_KEY), false, '迁移后移除共享键')
+  assert.equal(firstAccount.loadAll().some(item => item.id === 'old-user'), false, '未标记归属的旧数据不会转交给当前账号')
+  assert.equal(Object.hasOwn(accountStorage, questions.STORAGE_KEY), false, '旧共享键被清理')
 
   const secondAccount = accountQuestions('user-b')
   assert.equal(secondAccount.loadAll().some(item => item.id === 'old-user'), false, '后续账号不会读取旧账号问题')

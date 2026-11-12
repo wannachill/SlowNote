@@ -51,7 +51,7 @@ docs/
 
 `utils/page-cache.js` 是页面读缓存：内存 + 本地存储双层，键为「作用域 + 参数」，默认 60 秒可复用，超过 64KB 的结果只留在内存。记录类写操作经 `utils/home-refresh.js` 的 `invalidateRecords()` 按 `home` / `statistics` 作用域失效；退出登录由 `app.logout()` 整体清空。首页与小迈优先渲染缓存再静默校验，`load(true)` 或下拉刷新跳过缓存，但都不会清空已有内容闪骨架。
 
-`utils/list-patch.js` 用数组路径只更新列表行中变化的字段，供滑动等高频交互复用；用户编辑的常见问题存储按 openid 分桶。
+`utils/list-patch.js` 用数组路径只更新列表行中变化的字段，供滑动等高频交互复用；用户编辑的常见问题存储按 openid 分桶，无法确认账号归属的旧共享键会被清理。
 
 常见问题数据和端侧存储工具仍保留；管理入口已并入 `pages/ai-settings/`，没有单独的常见问题页面。`utils/common-questions.js` 同时定义常见问题的 6 档取数范围（今天/近 7 天/本周/本月/近 30 天/本年）与 7 类数据类型及内置默认类别——这 6 档是**提问时**的取数范围，与定时报告的 5 档 `range` 不是同一套枚举，不要互相套用；`utils/digest.js` 负责按所选类别生成记录快照。`confetti.js` 仍用于发育里程碑达成效果。
 

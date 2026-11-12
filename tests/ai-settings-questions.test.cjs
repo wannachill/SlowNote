@@ -3,7 +3,16 @@ const { front } = require('./helpers.cjs')
 const plain = value => JSON.parse(JSON.stringify(value))
 
 function settingsPage(storage = {}) {
-  const f = front('ai-settings', { storage })
+  const questionsKey = 'slownote_common_questions:test-user'
+  if (storage.slownote_common_questions) {
+    storage[questionsKey] = storage.slownote_common_questions
+    delete storage.slownote_common_questions
+  }
+  const f = front('ai-settings', {
+    storage,
+    app: { palette: null, globalData: { openid: 'test-user', loggedIn: true, initialized: true }, async init() {} }
+  })
+  f.questionsKey = questionsKey
   f.page.closeQuestionPanel = () => f.page.setData({ questionsPanel: false, questionsClosing: false })
   f.page.motionSettingChange = () => {}
   f.page.loadQuestions()
@@ -26,7 +35,7 @@ test('常见问题可编辑范围和固定状态，并通过左滑删除', () =>
   page.onQuestionRange({ detail: { value: '5' } })
   page.onQuestionPin({ detail: { value: true }, currentTarget: { dataset: { id: 'questionPin' } } })
   page.saveQuestion()
-  assert.deepEqual(JSON.parse(JSON.stringify(f.storage.slownote_common_questions)), [
+  assert.deepEqual(JSON.parse(JSON.stringify(f.storage[f.questionsKey])), [
     { id: 'q1', text: '修改后的问题', range: 'all', builtin: false, pinned: true,
       categories: ['feeding', 'excretion', 'solid', 'growth', 'diary', 'milestone', 'custom'] }
   ])
@@ -36,20 +45,20 @@ test('常见问题可编辑范围和固定状态，并通过左滑删除', () =>
   page.onQuestionRange({ detail: { value: '3' } })
   page.onQuestionPin({ detail: { value: false }, currentTarget: { dataset: { id: 'questionPin' } } })
   page.saveQuestion()
-  const added = f.storage.slownote_common_questions.find(item => item.text === '新问题')
+  const added = f.storage[f.questionsKey].find(item => item.text === '新问题')
   assert.equal(added.range, 'month')
   assert.equal(added.pinned, false)
 
   const id = added.id
   page.confirmDanger = options => options.success({ confirm: true })
   page.removeQuestion({ currentTarget: { dataset: { id } } })
-  assert.equal(f.storage.slownote_common_questions.some(item => item.id === id), false)
+  assert.equal(f.storage[f.questionsKey].some(item => item.id === id), false)
   assert.equal(page.data.questions.some(item => item.id === id), false)
 })
 
 test('数据类型支持多选、全选与取消全选，并随问题一起保存', () => {
   const f = settingsPage({
-    slownote_common_questions: [
+    'slownote_common_questions:test-user': [
       { id: 'd5', text: '最近的大便和消化情况正常吗', builtin: true, pinned: false }
     ]
   })
@@ -64,7 +73,7 @@ test('数据类型支持多选、全选与取消全选，并随问题一起保�
   page.onQuestionCategoryTap({ currentTarget: { dataset: { value: 'solid' } } })
   assert.deepEqual(plain(page.data.questionCategoryValues), ['excretion', 'solid'], '取消喂养并加入辅食')
   page.saveQuestion()
-  assert.deepEqual(plain(f.storage.slownote_common_questions[0].categories), ['excretion', 'solid'])
+  assert.deepEqual(plain(f.storage[f.questionsKey][0].categories), ['excretion', 'solid'])
   assert.equal(page.data.questions[0].categoriesLabel, '便便排尿·辅食')
 
   page.toggleAllQuestionCategories()
@@ -76,7 +85,7 @@ test('数据类型支持多选、全选与取消全选，并随问题一起保�
   assert.deepEqual(plain(page.data.questionCategoryValues), [])
   assert.match(page.data.questionCategoryHint, /不附带记录数据/)
   page.saveQuestion()
-  assert.deepEqual(plain(f.storage.slownote_common_questions[0].categories), [])
+  assert.deepEqual(plain(f.storage[f.questionsKey][0].categories), [])
 })
 
 test('常见问题卡片横向滑动只展开当前卡片，并在离页时复位', () => {

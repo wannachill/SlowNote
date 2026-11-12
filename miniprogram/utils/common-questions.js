@@ -38,11 +38,11 @@ const DEFAULT_POOL = [
 const STORAGE_KEY = 'slownote_common_questions'
 const LEGACY_KEY = 'slownote_common_custom'
 
-// User-authored questions are local account data; move the old shared key to the first active account once.
+// User-authored questions are local account data; legacy shared keys have no provable owner and are discarded.
 function storageKey() {
   let openid = ''
   try { openid = getApp().globalData.openid || '' } catch (error) {}
-  return openid ? `${STORAGE_KEY}:${openid}` : STORAGE_KEY
+  return `${STORAGE_KEY}:${openid || 'anonymous'}`
 }
 
 // 去掉非法/重复值并保留用户的选择顺序；空数组是合法选择（不附带记录）。
@@ -58,16 +58,10 @@ function loadAll() {
   const key = storageKey()
   let list = wx.getStorageSync(key)
   if (!Array.isArray(list) || !list.length) {
-    const shared = key === STORAGE_KEY ? null : wx.getStorageSync(STORAGE_KEY)
-    const legacy = wx.getStorageSync(LEGACY_KEY)
-    const customs = Array.isArray(legacy) ? legacy.filter(q => typeof q.text === 'string' && q.text.trim()) : []
-    list = Array.isArray(shared) && shared.length ? shared : DEFAULT_POOL.map((d, i) => ({ id: 'd' + (i + 1), text: d.text, builtin: true, pinned: false }))
-      .concat(customs.map(q => ({ id: q.id || 'q' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8), text: q.text.trim(), builtin: false, pinned: !!q.pinned })))
+    list = DEFAULT_POOL.map((d, i) => ({ id: 'd' + (i + 1), text: d.text, builtin: true, pinned: false }))
     wx.setStorageSync(key, list)
-    if (key !== STORAGE_KEY) {
-      wx.removeStorageSync(STORAGE_KEY)
-      wx.removeStorageSync(LEGACY_KEY)
-    }
+    wx.removeStorageSync(STORAGE_KEY)
+    wx.removeStorageSync(LEGACY_KEY)
   }
   const defaults = new Map(DEFAULT_POOL.map(item => [item.text, item.categories]))
   return list
