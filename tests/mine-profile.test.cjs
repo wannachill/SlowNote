@@ -43,3 +43,22 @@ test('home, Xiao Mai, and mine reserve matching top-heading height and start bel
   assert.match(mineStyle, /\.mine-page > \.page-heading\s*\{[^}]*justify-content:\s*flex-start;[^}]*padding-top:\s*28rpx;/s)
   assert.match(statisticsStyle, /\.ask-entry\s*\{[^}]*margin:\s*0;/s)
 })
+
+test('three tab headings share one full-width opaque background edge', () => {
+  const app = fs.readFileSync('miniprogram/app.wxss', 'utf8')
+  const rule = /\.page-top-heading\s*\{([^}]*)\}/.exec(app)
+  assert.ok(rule, '全局 page-top-heading 规则应存在')
+  assert.match(rule[1], /background:\s*var\(--color-bg\)/)
+  assert.match(rule[1], /margin-right:\s*calc\(var\(--space-m\) \* -1\)/)
+  assert.match(rule[1], /margin-left:\s*calc\(var\(--space-m\) \* -1\)/)
+  assert.match(rule[1], /padding-right:\s*var\(--space-m\)/)
+  assert.match(rule[1], /padding-left:\s*var\(--space-m\)/)
+  assert.match(rule[1], /margin-bottom:\s*var\(--space-m\)/, '保留 32rpx 留白，首个内容块三页对齐')
+  assert(!/background:\s*(transparent|none)/s.test(rule[1]), '标题区背景不得改为透明')
+  for (const page of ['index', 'statistics', 'mine']) {
+    const template = fs.readFileSync(`miniprogram/pages/${page}/index.wxml`, 'utf8')
+    assert.match(template, /page-top-heading/, `${page} 应复用全局标题区规则`)
+  }
+  const statisticsStyle = fs.readFileSync('miniprogram/pages/statistics/index.wxss', 'utf8')
+  assert.match(statisticsStyle, /\.statistics-header\s*\{[^}]*background:\s*var\(--color-bg\)/s, 'sticky 标题栏背景须与全局同色，否则滚动内容会透出')
+})

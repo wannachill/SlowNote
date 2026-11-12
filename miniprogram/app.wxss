@@ -277,8 +277,15 @@ input, textarea {
 .page-heading {
   margin-bottom: var(--space-l);
 }
+/* 三个 Tab 页共用同一层不透明标题区背景：下边缘形成固定水平线，切换 Tab 不跳变。
+   负 margin 抵消页面左右内边距使背景满宽，左右 padding 复位保证内容位置不变。 */
 .page-top-heading {
+  margin-right: calc(var(--space-m) * -1);
   margin-bottom: var(--space-m);
+  margin-left: calc(var(--space-m) * -1);
+  padding-right: var(--space-m);
+  padding-left: var(--space-m);
+  background: var(--color-bg);
 }
 .page-title {
   display: block;
