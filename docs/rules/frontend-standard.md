@@ -41,7 +41,7 @@ theme.js 的偏好结构为 {color:'blue'|'pink'|'orange'|'mint'|'purple'|'dark'
 - 主题按明确选择的颜色生效，不随系统外观变化；全部页面使用 custom 导航栏（无原生导航小标题）：三个 Tab 页无顶部标题、页内以 .page-title 大标题（heading 字号）；其余子页面用 .sub-nav 自绘大标题 + 返回按钮，标题字号与 Tab 页页内大标题一致（heading 44rpx）；均以动态状态栏高度（statusBarHeight，utils/page.js 统一注入）避让，标题与胶囊按钮同水平线上下居中；custom-tab-bar 独立同步。theme.json 保留 darkmode 的启动兜底。
 - 主题即 6 套渐变配色，不区分皮肤与背景色；主题设置使用圆点选择器切换 6 种主题色，不提供跟随系统模式。
 - 本地 slownote_theme_pref 即时生效（{color}）；users.theme_pref 云同步使用串行队列与修改版本，避免慢响应覆盖刚修改的主题；失败标记 slownote_theme_pending，登录/读取档案时重试。旧本地或云端仅含 mode（light/dark/system）的值在读取/写入时按 color 归一（dark→dark、light/system→blue）并写回，此后不随系统外观变化。
-- Canvas 使用 utils/chart.js 和主题调色板，不能在绘图函数散落固定颜色。`seriesChart()` 由 `pages/statistics-detail` 调用：各类型均为跳过缺失值的折线（`TYPES` 的 `kind` 均为 `line`）；通过顶部灰白胶囊标签 `.metric-switch` 完成指标选择。统计详情页不显示日历热力图，`utils/heatmap.js` 保留为独立纯函数工具。
+- Canvas 使用 utils/chart.js 和主题调色板，不能在绘图函数散落固定颜色。`seriesChart()` 由 `pages/statistics-detail` 调用：各类型均为跳过缺失值的折线（`TYPES` 的 `kind` 均为 `line`）；通过顶部灰白胶囊标签 `.metric-switch` 完成指标选择。统计详情页不显示日历热力图；原 `utils/heatmap.js` 及其测试 `tests/heatmap.test.cjs` 已在死文件清理中移除，不再保留。
 
 ## 4. 状态、交互与可访问性
 登录后所有功能均可使用；登录门禁用于引导登录，不承担数据权限判断。
