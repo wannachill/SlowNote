@@ -1,0 +1,87 @@
+# 一迈一记 · 上线执行清单
+
+> 创建日期：2026-11-12
+> 用途：把 `docs/prd/slownote-prd.md` §8（8 项）与 `docs/deployment-checklist.md`（16 项）中**全部 24 项未勾选项**，按依赖关系重排成可逐项勾选、可执行的动作清单；另补入两份文档正文中未勾选但必须完成的前置动作（集合/权限/索引/环境变量/15 个云函数部署），以及 2026-11-12 功能审计发现的 3 项遗留（云端旧函数清理、2 处合规 `[待补充]`）。
+> 本文**不修改**上述两份文档正文；勾选在本文进行，全部完成后再回填原文档对应项。
+> 状态：本清单仅为整理产物，**所有云端部署与真机验收均未执行**。
+
+## 用法
+
+- 标记含义：`[本地]` 可在命令行代做（命令已给出）｜`[控制台]` 需微信公众平台 / 云开发控制台人工操作｜`[真机]` 需微信开发者工具或真机人工验收｜`[待确认]` 需业务方先提供信息，属上线阻塞项。
+- 每项末尾的「来源」指向现有文档，动作与验收标准均以该处为准，本文不新增要求。
+- 阶段按依赖顺序排列：先有库与配置，再部署函数，最后编译与真机验收。
+
+---
+
+## 阶段 0 · 阻塞项与本地基线
+
+- [ ] **#01 `[待确认]` 补齐合规信息** — 确定 AI 服务商、隐私政策、数据保留与删除责任人；再补齐「敏感数据保留周期、账号/宝宝删除流程、备份恢复目标、AI 服务商数据政策及责任人」。完成后去掉两处 `[待补充：上线前确认]`。来源：`docs/prd/slownote-prd.md:62`、`docs/database-design.md:77`
+- [ ] **#02 `[本地]` 同步共享库** — 只要改过 `cloudfunctions/_shared/` 或任一 `lib/`，先执行 `node scripts/sync-cloud-runtime.js`，按输出确认已复制到 14 个函数目录。来源：`docs/deployment-checklist.md:14,20`
+- [ ] **#03 `[本地]` 本地回归基线** — 执行 `node --test tests/*.test.cjs`，当前基线 **286/286 通过**；`git status --short` 应干净。来源：2026-11-12 审计（当前提交 `72fe172`）
+
+## 阶段 1 · 云环境、数据库与旧函数清理
+
+- [ ] **#04 `[控制台]` 确认环境标识** — AppID `wx27a55616539c8020`、云环境 `cloud1-d6gil7n3u02d7414e` 与 `miniprogram/app.js` 的 `wx.cloud.init` 一致。来源：`docs/deployment-checklist.md:10`（原 D4）
+- [ ] **#05 `[控制台]` 测试不写生产数据** — 使用现有正确云环境，客户端与测试账号不得写入生产数据。来源：`docs/deployment-checklist.md:9`（原 D3）
+- [ ] **#06 `[控制台]` 创建 16 个集合** — `users`、`babies`、`family_members`、`feeding_records`、`custom_records`、`diary_records`、`growth_records`、`milestone_defs`、`milestone_records`、`ai_settings`、`ai_tasks`、`ai_notifications`、`ai_runs`、`ai_sessions`、`ai_rate_limits`、`mutation_receipts`；历史集合 `families`/`expense_records`/`reminder_items` 按现状保留，不新增、不读写。来源：`docs/deployment-checklist.md:61`
+- [ ] **#07 `[控制台]` 设置客户端权限** — 除 `ai_sessions` 外全部「所有用户不可读写」；`ai_sessions` 放行「仅本人读写本人记录」（`doc.openid == auth.openid`）；`ai_settings` 文档 ID 为 `hash(openid)`，仅云函数访问。来源：`docs/deployment-checklist.md:63,65,66`
+- [ ] **#08 `[控制台]` 建立索引** — 按 §4 索引表逐条建（`users.openid` 唯一、`ai_tasks: enabled + next_run_at + lease_until`、`ai_notifications: openid + created_at` 及 `delivery_status`、`ai_rate_limits.expires_at` 等）；控制台提示缺索引时以提示为准。来源：`docs/deployment-checklist.md:69-83`
+- [ ] **#09 `[控制台]` 人工删除 6 个已下线旧云函数** — `reminderRecord`、`family`、`migrateFamilyData`、`monthlyReport`、`expenseRecord`、`sendReminder`（仓库内已移除，云端仍可能存在）；删除前按需归档 `expense_records` 与迁移产生的历史记录，保留数据库历史 `family_id` 字段。来源：`docs/deployment-checklist.md:15-18`、2026-11-12 审计
+
+## 阶段 2 · 外部服务与小程序平台配置
+
+- [ ] **#10 `[控制台]` 配置 LLM 变量** — `aiChat`、`aiReport` 配 `LLM_API_URL` / `LLM_API_KEY` / `LLM_MODEL`；`aiChat` 另配 `LLM_VISION_MODEL`（图片分析）。密钥只放云环境变量，不进小程序包、数据库或文档。来源：`docs/deployment-checklist.md:35,36,43`
+- [ ] **#11 `[控制台]` 配置 ASR 变量** — `asrProxy` 配 `ASR_URL` / `ASR_KEY` / `ASR_MODEL`（`ASR_MODEL` 必配，代码默认 `whisper-1` 硅基流动不支持）；`ASR_URL` 为完整 HTTPS 转录地址。来源：`docs/deployment-checklist.md:37,51,58`
+- [ ] **#12 `[控制台]` 配置订阅模板变量** — `aiReport` 与 `aiTasks` 的 `AI_REPORT_TEMPLATE_ID` 必须同值（从公众平台「我的模板」复制，勿手抄）；`aiReport` 另配 `AI_REPORT_TITLE_FIELD=thing1`、`AI_REPORT_TIME_FIELD=time2`、`AI_REPORT_RESULT_FIELD=thing3`。变量名只能是 `AI_REPORT_TEMPLATE_ID`（误建 `REMINDER_TEMPLATE_ID` 会稳定返回 501）。来源：`docs/deployment-checklist.md:38,39,53,56,57`
+- [ ] **#13 `[控制台]` 确认订阅模板可用** — 「查看报告提醒」`IBU-7JzVwiyk0eD0pBoDLxZJg9l37V4gnsWMOKfNGE`，字段为 thing1/thing3/time2（以「我的模板」详情页为准，非固定 thing1/time13）；若无合适模板则从公共模板库选含 `thingN`+`timeN` 的一次性模板，新模板提审需 3-7 工作日。来源：`docs/deployment-checklist.md:89`（原 D14）、`:53`
+- [ ] **#14 `[控制台]` 服务器域名** — 云开发免配置；ASR 走云函数中转，无需小程序侧域名白名单，确认无需额外配置即可。来源：`docs/deployment-checklist.md:91`（原 D15）
+- [ ] **#15 `[控制台]` 隐私协议 / 用户隐私保护指引** — 补充声明「录音用于语音识别」，并覆盖宝宝记录、照片等实际收集范围（依赖 #01 的服务商与责任人信息）。来源：`docs/deployment-checklist.md:92`（原 D16）
+
+## 阶段 3 · 云函数、触发器与权限
+
+- [ ] **#16 `[控制台]` 逐个部署 15 个云函数** — aiChat、aiNotifications、aiReport、aiSettings、aiTasks、asrProxy、babyProfile、customRecord、diaryRecord、feedingRecord、growthRecord、homeCards、login、milestoneRecord、statistics；每个都选「上传并部署：云端安装依赖」，含各自 `lib/` 与 `package.json`；`_shared` 不作为云函数部署。**本轮改过 `statistics/index.js`（action 白名单），须重新部署该函数。** 来源：`docs/deployment-checklist.md:13,20`、提交 `72fe172`
+- [ ] **#17 `[控制台]` 设置云函数超时** — `aiChat` ≥60 秒且内存 ≥256MB（含图片下载/编码、深度思考 45 秒应用层超时余量）；`aiReport` ≥60 秒。该值在控制台按函数设置，`config.json` 不承载。来源：`docs/deployment-checklist.md:22`（原 D5）、`:46`
+- [ ] **#18 `[控制台]` 上传 aiReport/config.json 触发器** — 确认 `aiReportTimer` 为 `0 */5 * * * * *`（每 5 分钟一次）。来源：`docs/deployment-checklist.md:24`（原 D7）
+- [ ] **#19 `[控制台]` 校验 aiReport 可信调度** — 仅接受无客户端 OPENID 且 `TriggerName=aiReportTimer` 的调用（`event.Type` 不作为唯一判据）；验证前端无法指定 openid 触发报告生成。来源：`docs/deployment-checklist.md:25`（原 D8）
+- [ ] **#20 `[控制台]` 给 aiReport 开 openapi 权限** — 权限须含 `subscribeMessage.send`，否则推送恒定失败。来源：`docs/deployment-checklist.md:30`（原 D13）
+- [ ] **#21 `[真机]` 验证 aiTasks 的范围校验** — 保存/更新校验 7 类 `categories`（非法返回 400 `INVALID_CATEGORIES`）与 `range`（非法返回 400 `INVALID_RANGE`），`monthly` 归一为 `auto`；旧任务无 `range` 按 `auto` 处理，无需迁移。来源：`docs/deployment-checklist.md:26`（原 D9）
+- [ ] **#22 `[真机]` 验证 aiNotifications 三个动作** — 提供 `list` / `read` / `remove`；`remove` 是历史报告左滑删除唯一入口，未部署会返回 `UNKNOWN_ACTION`；不提供 `unreadCount`，旧版本若含该 action 一并覆盖。来源：`docs/deployment-checklist.md:27`（原 D10）
+- [ ] **#23 `[真机]` 验证历史报告筛选与索引** — `list` 接收 `startDate`/`endDate`（北京时间、含起止日）与 `offset`，每页 20 份、返回 `total`/`hasMore`；核对 `ai_notifications` 复合索引 `openid` 升序 + `created_at` 降序 + `_id` 降序；验证默认本月、跨月自定义起止、加载更多。**不能只更新前端而沿用旧版无筛选接口。** 来源：`docs/deployment-checklist.md:28`（原 D11）、`:67,79`
+- [ ] **#24 `[真机]` 验证 homeCards 删除边界** — 覆盖喂养细类、辅食、便便、成长、日记、自定义、里程碑删除；确认只删所选日期、所选宝宝、所选类别，且不影响其他家庭/宝宝数据。来源：`docs/deployment-checklist.md:23`（原 D6）
+- [ ] **#25 `[控制台]` 确认定时器容量口径** — 每轮最多 10 任务、并发 2；轮询与积压会造成延迟，产品不承诺分钟级准时送达。来源：`docs/deployment-checklist.md:29`（原 D12）
+
+## 阶段 4 · 开发者工具编译与端到端连通
+
+- [ ] **#26 `[真机]` 微信 IDE 完整编译运行** — 原生控件/组件隔离、真实软键盘、安全区、读屏、冷启动主题无闪烁。来源：`docs/deployment-checklist.md:7`（原 D1）
+- [ ] **#27 `[真机]` 真实云端链路连通** — 云数据库索引/事务、定时触发、模型服务、订阅推送均已部署并连接测试，**不以本地 mock 代替**。来源：`docs/deployment-checklist.md:8`（原 D2）
+- [ ] **#28 `[真机]` 真机验证语音输入** — 个人主体用 `RecorderManager → asrProxy` 一次性转写；按住说话、松开后文字进入输入框（主体变更为非个人后才可加回 WechatSI 实时预览）。来源：`docs/deployment-checklist.md:51,90`
+
+## 阶段 5 · 真机功能验收（PRD §8，8 项）
+
+- [ ] **#29 `[真机]` 导航与入口** — 仅首页/小迈/我的三导航；小迈主页面范围卡片、详情页图表与问答入口可用。来源：`docs/prd/slownote-prd.md:65`
+- [ ] **#30 `[真机]` 日期与日历** — 周日跨月、闰月、月龄、今标记、记录点与选中日期正确；FAB 不遮内容/导航。来源：`docs/prd/slownote-prd.md:66`
+- [ ] **#31 `[真机]` 六类登记** — 进入正确表单，选中日期保存后可在首页查到；存量记录仍可读取。来源：`docs/prd/slownote-prd.md:67`
+- [ ] **#32 `[真机]` 长按整理与删除** — 首页当日卡片长按进入整理态、删除确认、删除后首页/统计刷新；iOS 与 Android 均能区分短按与长按。来源：`docs/prd/slownote-prd.md:68`
+- [ ] **#33 `[真机]` 边界状态** — 时间范围、家庭隔离、空/加载/失败/重试均正确。来源：`docs/prd/slownote-prd.md:69`
+- [ ] **#34 `[真机]` 6 套渐变主题** — 治愈蓝/樱粉/暖橙/薄荷绿/紫色/深色齐备；切换只改变配色与渐变、不改变布局几何；Canvas 配色随主题切换。来源：`docs/prd/slownote-prd.md:70`
+- [ ] **#35 `[真机]` AI 异常路径** — AI 未配置、超时、限流、同意/撤回同意、任务启停/删除、重复触发、模板缺失均可复现且表现符合预期。来源：`docs/prd/slownote-prd.md:71`
+- [ ] **#36 `[真机]` 可访问性与设备适配** — 44px 热区、安全区、软键盘、屏幕阅读器在开发者工具与真机均验收通过。来源：`docs/prd/slownote-prd.md:72`
+
+## 阶段 6 · 上线后观察
+
+- [ ] **#37 `[控制台]` 到期数据运维口径** — `ai_runs` 至少保留 30 天（定时报告防重复凭据）；`ai_rate_limits.expires_at` 过期行与久远 `mutation_receipts` 定期清理；`ai_notifications` 由用户在历史报告页自行删除。来源：`docs/deployment-checklist.md:85`
+- [ ] **#38 `[本地]` 回填原始清单** — 全部勾完后，把 24 项同步勾选到 `docs/prd/slownote-prd.md` §8 与 `docs/deployment-checklist.md` 对应项，并记录本次上线的提交号与日期。来源：本文约定
+
+---
+
+## 覆盖对照（24 项原勾选项 → 本文编号）
+
+| 来源 | 原行 | 本文 |
+|---|---|---|
+| deployment-checklist.md | 7 / 8 / 9 / 10 | #26 / #27 / #05 / #04 |
+| deployment-checklist.md | 22 / 23 / 24 / 25 / 26 | #17 / #24 / #18 / #19 / #21 |
+| deployment-checklist.md | 27 / 28 / 29 / 30 | #22 / #23 / #25 / #20 |
+| deployment-checklist.md | 89 / 91 / 92 | #13 / #14 / #15 |
+| prd/slownote-prd.md §8 | 65-72 | #29-#36 |
+
+**未执行声明**：以上 38 项全部尚未执行；本轮只完成清单整理，未进行任何云端部署、控制台配置或真机验收。
