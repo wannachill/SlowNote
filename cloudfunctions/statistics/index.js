@@ -1,5 +1,8 @@
 const { endpoint, access, validDate, fail } = require('./lib/runtime')
 const { aggregate, range, recordDate, series } = require('./lib/aggregation')
+// 显式 action 白名单：省略 action 的旧调用仍走默认区间聚合，其余未知值必须报错，
+// 否则拼写错误会静默落到聚合分支，返回看似正常但语义不符的数据。
+const ACTIONS = ['trend', 'calendar', 'daily', 'range']
 function totals(summary) {
   const categories = summary.feeding.byCategory || {}
   const excretion = categories.excretion || {}
@@ -13,6 +16,7 @@ function totals(summary) {
   }
 }
 exports.main = endpoint(async ({ event, db, openid }) => {
+  if (event.action != null && event.action !== '' && !ACTIONS.includes(event.action)) fail(400, 'UNKNOWN_ACTION')
   const context = await access(db, openid)
   const babyId = typeof event.baby_id === 'string' && event.baby_id.length <= 64 ? event.baby_id : ''
   if (event.action === 'trend') {
@@ -66,6 +70,7 @@ exports.main = endpoint(async ({ event, db, openid }) => {
     putTime('custom', (selected.custom || []).filter(record => record.category === 'custom'))
     return { code: 0, date: event.date, marks: [...marks], summary: require('./lib/aggregation').summarize(selected), times }
   }
+  // 'range'（AI 问答的数字快照）与省略 action 的旧调用共用区间聚合。
   const dates = range(event.range || 'week')
   const { summary } = await aggregate(db, context, dates, babyId)
   return { code: 0, range: event.range || 'week', dates, summary }
