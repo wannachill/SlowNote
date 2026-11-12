@@ -37,7 +37,7 @@ feed payload：亲喂 durationMin，其他 amountMl；solid 当前写入 name/no
 | mutation_receipts | _id=hash(openid:操作:请求ID)；openid、operation、client_request_id、result、created_at；宝宝/主题、报告任务更新/删除、通知已读/删除事务回执 |
 
 AI 任务 categories 为 `feeding/excretion/solid/growth/diary/milestone/custom` 七项，与常见问题同一套语义（feeding/excretion/solid 同源于 `feeding_records`，但分别选择、分别进入提示词）。`range` 与 `frequency` 解耦：`range` 决定单份报告看多久，缺省 `auto` 跟随频率；`monthly` 任务由服务端归一为 `auto`（上月整月），即便客户端传了显式范围也不生效。非法 `range` 返回 `400 INVALID_RANGE`，非法类别返回 `400 INVALID_CATEGORIES`。本人最多十任务，界面列表最多50条。frequency 支持 daily/weekly/monthly。monthly 由每月 1 日调度，聚合上一个完整自然月，窗口左闭右开。通知仅本人，最多返回最近50条；不向家庭成员共享个人任务或通知。**微信推送为「单任务开关」**：`notify` 默认 false，用户在任务卡片上单独开启并授权后才尝试订阅消息；未开启则报告只落站内，不消耗一次性订阅额度；`enabled` 仅控制任务是否运行（如撤回数据同意会被置 false 并暂停）。
-小迈配置中的常见问题由端侧存储维护，不属于 `ai_settings` 集合；每条问题除文案、范围、固定状态外还持久化 `categories`（7 类数据类型多选，空数组表示不附带记录），内置问题按语义预设，旧数据缺该字段时回退全量兼容；`showThinking` 控制聊天页是否显示深度思考入口，实际逐次请求的 thinking 布尔值由聊天页开关传递。提示词自定义字段只存 style/vision/report；SAFETY 内容不可编辑，由服务端按场景组合。
+小迈配置中的常见问题由端侧存储维护，不属于 `ai_settings` 集合；每条问题除文案、范围、固定状态外还持久化 `categories`（7 类数据类型多选，空数组表示不附带记录），内置问题按语义预设，旧数据缺该字段时回退全量兼容；`showThinking` 控制聊天页是否显示深度思考入口，实际逐次请求的 thinking 布尔值由聊天页开关传递。提示词自定义字段只存 style/vision/report；SAFETY 内容不可编辑，由服务端按场景组合。`compose()` 是默认与兜底提示词的唯一来源；每次调整默认文案时把改动前整组三条追加进 `PREVIOUS_DEFAULTS`，`normalizePrompts()` / `customOf()` 据此把历史默认全文归一为当前默认，避免老用户停在旧提示词或被误标为自定义，无需迁移数据。
 云函数不持久化对话分析；对话历史由小程序端写入 ai_sessions（openid 隔离、幂等 upsert、失败静默降级）。AI 请求在用户主动附带记录或已同意的定时任务范围内，可包含服务端渲染的所选类别明细；日记正文、里程碑事项名、辅食/自定义备注会按白名单与长度预算发送，并经 `redact()` 脱敏。不发送 openid、家庭/宝宝标识、记录 ID、原始时间戳、昵称、精确生日或云文件 ID。分析文本与已附带的记录明细均为私有敏感数据。
 家庭管理与迁移入口/函数已下线；数据库中既有 `families`、`family_members` 与 `family_id` 数据继续保留用于兼容 scope，不代表家庭管理界面仍可用。旧药品/护理日常记录集合已退出当前数据模型。
 

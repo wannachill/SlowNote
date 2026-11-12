@@ -416,7 +416,7 @@ test('monthly schedule runs on the next China month boundary and report range co
 test('monthly AI report settings fill period and actual month length without changing safety copy',()=>{
   const {compose,SAFETY}=load('cloudfunctions/_shared/ai-settings.js')
   const result=compose({},'report',{days:29,period:'上个月'})
-  assert(result.includes('上个月的记录明细（共29天）'))
+  assert(result.includes('上个月（共29天）的成长报告'))
   assert(result.includes(SAFETY))
 })
 test('AI task saves monthly frequency and schedules the next first of month',async()=>{

@@ -18,7 +18,7 @@
 药品/护理日常记录功能已从仓库移除；云开发控制台需确认旧函数和专属集合已清理。里程碑记录（`milestoneRecord` / `milestone_records`）仍保留。
 函数下线不自动删除历史数据；`expense_records`、已有 `family_id` 与自定义记录 `outdoor` 历史行按现状保留。
 其余原函数按原流程保留。每个函数单独“上传并部署：云端安装依赖”，包括各自 `lib/` 和 `package.json`。`_shared` 不作为云函数部署；改共享源码后先执行 `node scripts/sync-cloud-runtime.js` 再分别部署。
-- 部署 `aiSettings` 时需确认云数据库已创建 `ai_settings` 集合；函数读取/写入深度思考入口显示状态与 style/vision/report 提示词，不读取 LLM 环境变量。集合客户端访问应默认拒绝，由云函数按 openid 派生文档 ID 访问。
+- 部署 `aiSettings` 时需确认云数据库已创建 `ai_settings` 集合；函数读取/写入深度思考入口显示状态与 style/vision/report 提示词，不读取 LLM 环境变量。集合客户端访问应默认拒绝，由云函数按 openid 派生文档 ID 访问。默认提示词由 `_shared/ai-settings.js` 的 `compose()` 单一来源提供（同步脚本复制到各 `lib/`）；`get` 返回的 `build` 标记为 `ai-settings-3`，可据此核对云端是否已部署最新版本；历史默认全文由 `PREVIOUS_DEFAULTS` 自动归一，无需迁移数据。
 - [ ] aiChat 超时至少 60 秒（内存至少 256MB，含图片下载/编码、深度思考开启时模型 45 秒应用层超时与清理余量）。
 - [ ] 部署 `homeCards` 后，使用已登录账号覆盖喂养细类、辅食、便便、成长、日记、自定义、里程碑删除；确认只删除所选日期、所选宝宝（若未选择宝宝则当前个人/家庭范围内全部宝宝）与类别的数据，并验证其他家庭/宝宝数据不会被删除。
 - [ ] 部署 aiReport/config.json，确认 aiReportTimer 为每五分钟一次：`0 */5 * * * * *`。
