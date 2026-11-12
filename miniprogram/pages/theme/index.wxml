@@ -1,0 +1,7 @@
+<import src="../../templates/theme-settings.wxml" />
+<view wx:if="{{themeBefore}}" class="theme-root {{themeBefore.themeClass}} page settings-page theme-previous" aria-hidden="true">
+  <template is="theme-settings" data="{{...themeBefore}}" />
+</view>
+<view class="theme-root {{themeClass}} page settings-page {{themeReveal ? 'theme-front' : ''}}" style="{{themeRevealStyle}}" bindtouchstart="captureThemeOrigin">
+  <template is="theme-settings" data="{{themeClass, themeAccent, statusBarHeight, colorId, themeColors, themeStatus, motionSetting}}" />
+</view>

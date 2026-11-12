@@ -1,0 +1,3 @@
+<view wx:if="{{visible}}" class="net-banner" role="status" aria-live="polite">
+  <text class="net-banner-message">{{message}}</text>
+</view>

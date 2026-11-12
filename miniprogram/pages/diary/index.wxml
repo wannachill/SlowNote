@@ -1,0 +1,91 @@
+<view wx:if="{{!panelMode && !entryPending}}" class="theme-root {{themeClass}} page">
+  <view class="sub-nav" style="height: calc({{statusBarHeight}}px + var(--nav-height)); padding-top: {{statusBarHeight}}px;"><button class="sub-nav-back" bindtap="goBack" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" aria-label="返回"></button><text class="sub-nav-title">成长日记</text><view class="sub-nav-spacer" aria-hidden="true"></view></view>
+  <net-banner />
+  <picker disabled="{{submitting || closing}}" mode="date" value="{{recordDate}}" end="{{today}}" bindchange="onDate" aria-label="日记记录日期"><view class="select-value diary-date-select pressable" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}"><text>{{recordDate}}</text><view class="chevron" aria-hidden="true"></view></view></picker>
+  <!-- 发布卡片 -->
+  <view wx:if="{{!cardEditMode}}" class="card compose">
+    <textarea disabled="{{submitting || closing}}"
+      class="compose-input"
+      placeholder="今天发生了什么？"
+      placeholder-class="input-placeholder"
+      value="{{content}}"
+      bindinput="onInput"
+      maxlength="500"
+      auto-height
+      aria-label="日记内容"
+    />
+    <view class="compose-actions">
+      <view class="image-preview">
+        <view wx:for="{{images}}" wx:key="index" class="thumb-wrap">
+          <image class="thumb" src="{{item}}" mode="aspectFill" />
+          <view class="thumb-remove pressable" aria-role="button" data-idx="{{index}}" bindtap="removeImage" aria-label="删除图片" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}">×</view>
+        </view>
+        <view wx:if="{{images.length < 9}}" class="thumb-add pressable" bindtap="chooseImages" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" aria-role="button" aria-label="添加图片">
+          <view class="thumb-add-plus" aria-hidden="true"></view>
+        </view>
+      </view>
+      <button class="btn-primary compose-btn motion-primary {{motionRippleId === 'motion-diary-1' ? 'ripple-' + motionRipplePhase : ''}}" bindtap="submit" loading="{{submitting}}" disabled="{{submitting || closing}}" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" id="motion-diary-1" bindtouchstart="motionPress" style="{{motionRippleId === 'motion-diary-1' ? motionRippleStyle : ''}}">{{submitting ? (editingId ? '更新中' : '发布中') : (editingId ? '更新' : '发布')}}</button>
+      <button wx:if="{{editingId}}" class="text-action compose-cancel" bindtap="cancelEdit" disabled="{{submitting}}" hover-class="tap-feedback">取消编辑</button>
+    </view>
+  </view>
+
+  <!-- 时光轴 -->
+  <view class="card section history-card">
+    <view class="section-heading"><text class="title">{{cardEditMode ? '选择要编辑的记录' : '历史记录'}}</text><text class="section-meta">{{records.length}} 天</text></view>
+    <view wx:if="{{loading && !records.length}}" class="skeleton-loading" role="status"><view class="skeleton-list"><view wx:for="{{[0,1,2]}}" wx:key="*this" class="skeleton-card"><view class="skeleton-line short"></view><view class="skeleton-line value"></view><view class="skeleton-line"></view></view></view></view>
+    <view wx:elif="{{loadError}}" class="status-block" role="alert"><text>{{loadError}}</text><button class="btn-secondary" bindtap="loadRecords" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}">重试</button></view>
+    <view wx:if="{{!records.length && !loading && !loadError}}" class="empty"><text class="empty-note">{{cardEditMode ? '当天暂无可编辑记录。' : '还没有日记记录。'}}</text></view>
+    <view wx:if="{{records.length}}" class="diary-timeline">
+    <view wx:for="{{records}}" wx:key="date" data-reveal-id="{{index}}" class="day reveal-target {{reveal[index] ? 'reveal-visible' : 'reveal'}}" style="{{reveal[index]}}">
+      <view class="day-heading">
+        <text class="day-date">{{item.date}}</text>
+        <view class="divider"></view>
+      </view>
+      <view wx:for="{{item.items}}" wx:for-item="row" wx:key="id" class="record diary-record pressable" data-id="{{row.id}}" bindtap="startEdit" hover-class="tap-feedback" aria-role="button" aria-label="编辑{{row.recordDate}}成长日记">
+        <text class="record-time">{{row.time}}</text>
+        <view class="record-desc diary-record-desc">
+          <text class="entry-content" wx:if="{{row.content}}">{{row.content}}</text>
+          <view class="entry-images pressable" wx:if="{{row.images.length}}" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}">
+            <image
+              wx:for="{{row.images}}"
+              wx:for-item="img"
+              wx:key="*this"
+              class="entry-image reveal-focus"
+              src="{{img}}"
+              mode="aspectFill"
+              lazy-load
+              data-src="{{img}}"
+              catchtap="preview"
+            />
+          </view>
+        </view>
+      </view>
+    </view>
+    </view>
+  </view>
+
+</view>
+<view wx:if="{{panelMode}}" class="theme-root {{themeClass}} mask registration-fullscreen {{closing ? 'closing' : ''}}" style="--registration-status-bar-height: {{statusBarHeight}}px;" bindtap="closePanel">
+  <view class="sheet {{closing ? 'closing' : ''}}">
+    <view class="sheet-heading"><text class="sheet-title">成长日记</text><button class="sheet-close" disabled="{{submitting || closing}}" bindtap="closePanel" aria-label="返回首页" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}">关闭</button></view>
+    <scroll-view class="sheet-scroll" scroll-y enhanced show-scrollbar="{{false}}" catchtap="noop">
+    <view class="sheet-content">
+      <net-banner wx:if="{{panelMode}}" />
+      <view wx:if="{{cardEditMode && loading}}" class="record-lookup-status" role="status">正在读取当天日记…</view>
+      <view wx:if="{{cardEditMode && loadError}}" class="record-lookup-error" role="alert"><text>{{loadError}}</text><button class="text-action" bindtap="loadRecords" hover-class="tap-feedback">重试</button></view>
+      <view class="field"><text class="field-label">记录日期</text><picker disabled="{{submitting || closing || (cardEditMode && loading)}}" mode="date" value="{{recordDate}}" end="{{today}}" bindchange="onDate" aria-label="日记记录日期"><view class="select-value pressable" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}"><text>{{recordDate}}</text><view class="chevron" aria-hidden="true"></view></view></picker></view>
+      <view class="card compose {{fieldErrors.content ? 'field-invalid' : ''}} {{fieldShake === 'content' ? 'field-shake' : ''}}">
+        <textarea disabled="{{submitting || closing || (cardEditMode && loading)}}" class="compose-input" placeholder="今天发生了什么？" placeholder-class="input-placeholder" value="{{content}}" bindinput="onInput" maxlength="500" auto-height aria-label="日记内容" />
+        <text wx:if="{{fieldErrors.content}}" class="field-error" role="alert">{{fieldErrors.content}}</text>
+        <view class="compose-actions">
+          <view class="image-preview">
+            <view wx:for="{{images}}" wx:key="index" class="thumb-wrap"><image class="thumb" src="{{item}}" mode="aspectFill" /><view class="thumb-remove pressable {{cardEditMode && loading ? 'is-disabled' : ''}}" aria-role="button" data-idx="{{index}}" bindtap="removeImage" aria-label="删除图片" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}">×</view></view>
+            <view wx:if="{{images.length < 9}}" class="thumb-add pressable {{cardEditMode && loading ? 'is-disabled' : ''}}" bindtap="chooseImages" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" aria-role="button" aria-label="添加图片"><view class="thumb-add-plus" aria-hidden="true"></view></view>
+          </view>
+          <button class="btn-primary compose-btn motion-primary {{motionRippleId === 'motion-diary-1' ? 'ripple-' + motionRipplePhase : ''}}" bindtap="submit" loading="{{submitting}}" disabled="{{submitting || closing || (cardEditMode && (loading || loadError))}}" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" id="motion-diary-1" bindtouchstart="motionPress" style="{{motionRippleId === 'motion-diary-1' ? motionRippleStyle : ''}}">{{submitting ? '更新中' : (editingId ? '更新' : '记录')}}</button>
+        </view>
+      </view>
+    </view>
+    </scroll-view>
+  </view>
+</view>

@@ -1,0 +1,8 @@
+.sheet-feed {
+  height: calc(var(--sheet-feed-height) + env(safe-area-inset-bottom));
+}
+.page {
+  padding-top: 0;
+}
+page { background: transparent; }
+

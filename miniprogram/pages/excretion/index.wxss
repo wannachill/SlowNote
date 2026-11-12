@@ -1,0 +1,8 @@
+.sheet-excretion {
+  height: calc(var(--sheet-excretion-height) + env(safe-area-inset-bottom));
+}
+.page {
+  padding-top: 0;
+}
+page { background: transparent; }
+

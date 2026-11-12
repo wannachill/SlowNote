@@ -1,0 +1,45 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/statistics/index",
+    "pages/statistics-detail/index",
+    "pages/feeding/index",
+    "pages/solid/index",
+    "pages/excretion/index",
+    "pages/growth/index",
+    "pages/milestone/index",
+    "pages/diary/index",
+    "pages/mine/index",
+    "pages/baby/index",
+    "pages/theme/index",
+    "pages/ai-settings/index",
+    "pages/ai-chat/index",
+    "pages/ai-history/index",
+    "pages/ai-tasks/index",
+    "pages/ai-notifications/index",
+    "pages/custom-record/index"
+  ],
+  "window": {
+    "navigationBarBackgroundColor": "@navigationBackground",
+    "navigationBarTextStyle": "@navigationText",
+    "navigationBarTitleText": "一迈一记",
+    "backgroundColor": "@pageBackground",
+    "backgroundTextStyle": "@backgroundText"
+  },
+  "darkmode": true,
+  "tabBar": {
+    "custom": true,
+    "color": "#5C7184",
+    "selectedColor": "#2E6DA6",
+    "backgroundColor": "#EDF4FB",
+    "borderStyle": "white",
+    "list": [
+      { "pagePath": "pages/index/index", "text": "首页" },
+      { "pagePath": "pages/statistics/index", "text": "小迈" },
+      { "pagePath": "pages/mine/index", "text": "我的" }
+    ]
+  },
+  "themeLocation": "theme.json",
+  "sitemapLocation": "sitemap.json",
+  "lazyCodeLoading": "requiredComponents"
+}

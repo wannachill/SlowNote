@@ -1,0 +1,6 @@
+{
+  "navigationStyle": "custom",
+  "usingComponents": {
+    "net-banner": "/components/net-banner/index"
+  }
+}

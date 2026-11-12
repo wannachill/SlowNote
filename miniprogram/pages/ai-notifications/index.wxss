@@ -1,0 +1,131 @@
+.page {
+  padding-top: 0;
+}
+
+.section-note {
+  display: block;
+  margin: var(--space-m) 0 var(--space-xs);
+  color: var(--color-text-2);
+  font-size: var(--font-caption);
+}
+
+.report-list {
+  padding-bottom: var(--space-m);
+}
+.report-filters { display: block; margin-bottom: var(--space-s); }
+.report-filters > .section-meta { display: block; margin-bottom: var(--space-xs); }
+.report-dates { display: flex; align-items: center; gap: var(--space-xs); }
+.report-dates picker { flex: 1 1 0; min-width: 0; }
+.report-date-value { color: var(--color-text-1); }
+.report-date-label { flex: 1 1 auto; min-width: 0; color: var(--color-text-1); font-size: var(--font-body); font-weight: var(--weight-medium); line-height: var(--line-tight); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.report-date-value .chevron { color: var(--color-text-3); }
+.report-date-connector { flex: 0 0 auto; color: var(--color-text-3); font-size: var(--font-caption); }
+.report-more { margin: var(--space-m) auto; }
+
+/* Card + swipe actions: same idiom as 定时报告 / 宝宝信息. */
+.report-swipe {
+  position: relative;
+  margin-top: var(--space-s);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.report-swipe.swipe-open .swipe-actions {
+  visibility: visible;
+  pointer-events: auto;
+}
+.swipe-actions {
+  position: absolute;
+  z-index: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: auto;
+  display: flex;
+  align-items: stretch;
+  justify-content: flex-end;
+  width: calc(var(--swipe-action-width) / 2);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  overflow: hidden;
+  visibility: hidden;
+  pointer-events: none;
+}
+.swipe-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  min-width: 0;
+  padding: 0 var(--space-xs);
+  border-radius: 0;
+  color: var(--color-on-accent);
+  font-size: var(--font-caption);
+}
+.delete-action {
+  background: var(--color-notice);
+}
+
+/* 卡片与「定时报告」同一套 task-main 语言：标题用正文号中等字重，发送时间与渠道作为 form-note，未读沿用 status-tag。 */
+.report-card {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  padding: var(--space-sm) var(--space-m);
+  transition: transform var(--motion-feedback) var(--curve-spring);
+}
+.report-card .task-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+.report-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-s);
+}
+.report-head { justify-content: space-between; }
+.report-head .title {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: var(--font-body);
+  font-weight: var(--weight-medium);
+  line-height: var(--line-body);
+  color: var(--color-text-1);
+  overflow-wrap: anywhere;
+}
+.report-date {
+  flex: 0 0 auto;
+  margin-top: 0;
+  text-align: right;
+  white-space: nowrap;
+}
+.report-foot { justify-content: space-between; }
+.status-unread { background: var(--color-accent-ink); color: var(--color-on-accent); }
+.status-sent { background: var(--color-accent-soft); color: var(--color-accent-ink); }
+.status-off { background: var(--color-field); color: var(--color-text-2); }
+.status-error { background: var(--color-notice-soft); color: var(--color-notice); }
+
+.report-sheet {
+  height: var(--sheet-max-height);
+}
+.report-scroll {
+  height: 0;
+  flex: 1 1 0%;
+  min-height: 0;
+}
+.report-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-xs);
+  flex-shrink: 0;
+  padding: 0 var(--space-m) var(--space-s);
+}
+/* 详情区的送达时间复用 .form-note，但基础样式带 margin-top 会把文字往下推、与标签不对齐，这里复位。 */
+.report-meta .form-note { margin-top: 0; }
+.report-content {
+  display: block;
+  font-size: var(--font-body);
+  line-height: var(--line-body);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

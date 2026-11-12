@@ -1,0 +1,15 @@
+# 依赖与构建产物
+node_modules/
+miniprogram_npm/
+cloudfunctions/**/node_modules/
+
+# 编辑器 / 系统
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.log
+
+# 临时文件
+*.tmp
+*.swp

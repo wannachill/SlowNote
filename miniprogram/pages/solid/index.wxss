@@ -1,0 +1,8 @@
+.sheet-solid {
+  height: calc(var(--sheet-form-height) + env(safe-area-inset-bottom));
+}
+.page {
+  padding-top: 0;
+}
+page { background: transparent; }
+

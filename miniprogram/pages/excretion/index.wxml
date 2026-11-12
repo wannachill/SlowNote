@@ -1,0 +1,67 @@
+<view class="theme-root {{themeClass}} motion-host {{panelMode ? 'panel-host' : ''}}">
+<view wx:if="{{!panelMode && !entryPending}}" class="motion-scene {{panel ? 'scene-mounted' : ''}} {{panel && !closing ? 'scene-recessed' : ''}} theme-root {{themeClass}} page">
+  <view class="sub-nav" style="height: calc({{statusBarHeight}}px + var(--nav-height)); padding-top: {{statusBarHeight}}px;"><button class="sub-nav-back" bindtap="goBack" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" aria-label="返回"></button><text class="sub-nav-title">便便记录</text><view class="sub-nav-spacer" aria-hidden="true"></view></view>
+  <view class="summary feeding-summary">
+    <text class="summary-count">{{todayRecords.length}}</text>
+    <text class="summary-label">当日记录</text>
+  </view>
+  <picker disabled="{{submitting || closing}}" mode="date" value="{{recordDate}}" end="{{today}}" bindchange="onDate" aria-label="便便记录日期"><view class="select-value record-date-select pressable" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}"><text>{{recordDate}}</text><view class="chevron" aria-hidden="true"></view></view></picker>
+  <view wx:if="{{!cardEditMode}}" class="quick">
+    <view class="quick-btn quick-primary pressable motion-primary {{motionRippleId === 'motion-excretion-1' ? 'ripple-' + motionRipplePhase : ''}}" data-panel="excretion" bindtap="openPanel" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" aria-role="button" aria-label="记录便便" id="motion-excretion-1" bindtouchstart="motionPress" style="{{motionRippleId === 'motion-excretion-1' ? motionRippleStyle : ''}}">
+      <text class="quick-name">便便</text>
+      <text class="quick-desc">大便 · 小便</text>
+    </view>
+  </view>
+
+  <view class="card section history-card">
+    <view class="section-heading"><text class="title">{{cardEditMode ? '选择要编辑的记录' : '历史记录'}}</text><text class="section-meta">{{todayRecords.length}} 条</text></view>
+    <view wx:if="{{loading && !todayRecords.length}}" class="skeleton-loading" role="status"><view class="skeleton-list"><view wx:for="{{[0,1,2]}}" wx:key="*this" class="skeleton-card"><view class="skeleton-line short"></view><view class="skeleton-line"></view></view></view></view>
+    <view wx:elif="{{loadError}}" class="status-block" role="alert"><text>{{loadError}}</text><button class="btn-secondary" bindtap="loadToday" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}">重试</button></view>
+    <view wx:if="{{!todayRecords.length && !loading && !loadError}}" class="empty">
+      <text class="empty-title">这一天的第一笔，从这里开始</text>
+      <text class="empty-note">{{cardEditMode ? '当天暂无可编辑记录。' : '点上方便便，记下刚刚的情况。'}}</text>
+    </view>
+    <view wx:for="{{todayRecords}}" wx:key="id" class="record pressable" data-id="{{item.id}}" bindtap="startEdit" hover-class="tap-feedback" aria-role="button" aria-label="编辑{{item.desc}}">
+      <text class="record-time">{{item.time}}</text>
+      <text class="record-desc">{{item.desc}}</text>
+    </view>
+  </view>
+
+</view>
+  <view wx:if="{{panel === 'excretion'}}" class="theme-root {{themeClass}} mask {{panelMode ? 'registration-fullscreen' : ''}} {{closing ? 'closing' : ''}}" style="--registration-status-bar-height: {{statusBarHeight}}px;" bindtap="closePanel">
+    <view class="sheet sheet-excretion {{closing ? 'closing' : ''}}">
+      <view class="sheet-heading">
+        <text class="sheet-title">便便记录</text>
+        <button class="sheet-close" disabled="{{submitting || closing}}" bindtap="closePanel" aria-label="{{panelMode ? '返回首页' : '关闭便便记录'}}" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}">关闭</button>
+      </view>
+      <scroll-view class="sheet-scroll" scroll-y enhanced show-scrollbar="{{false}}" catchtap="noop">
+      <view class="sheet-content">
+        <view wx:if="{{cardEditMode && loading}}" class="record-lookup-status" role="status">正在读取当天便便记录…</view>
+        <view wx:if="{{cardEditMode && loadError}}" class="record-lookup-error" role="alert"><text>{{loadError}}</text><button class="text-action" bindtap="loadToday" hover-class="tap-feedback">重试</button></view>
+        <view wx:if="{{panelMode}}" class="field"><text class="field-label">记录日期</text><picker disabled="{{submitting || closing}}" mode="date" value="{{recordDate}}" end="{{today}}" bindchange="onDate" aria-label="便便记录日期"><view class="select-value pressable" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}"><text>{{recordDate}}</text><view class="chevron" aria-hidden="true"></view></view></picker></view>
+        <view class="field">
+          <text class="field-label">类型</text>
+          <view class="type-row">
+            <view wx:for="{{exKinds}}" wx:key="key" class="type-btn {{exKind === item.key ? 'active' : ''}} pressable {{motionChoiceGroup === 'ex-kind' ? (index === motionChoiceIndex ? 'choice-pop' : index < motionChoiceIndex ? 'choice-left' : 'choice-right') : ''}}" data-kind="{{item.key}}" data-motion-group="ex-kind" data-motion-index="{{index}}" bindtouchstart="motionChoose" bindtap="selectExKind" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" aria-role="button" aria-label="{{item.name}}{{exKind === item.key ? '，已选中' : ''}}">{{item.name}}</view>
+          </view>
+        </view>
+        <text class="sheet-note">{{exKind === 'stool' ? '大便记次数和状态。' : '小便记次数。'}}</text>
+        <view class="field {{fieldErrors.exCount ? 'field-invalid' : ''}} {{fieldShake === 'exCount' ? 'field-shake' : ''}}">
+          <text class="field-label">{{exKind === 'stool' ? '排便次数' : '排尿次数'}}</text>
+          <input disabled="{{submitting || closing || (cardEditMode && loading)}}" class="input full" type="digit" data-field="exCount" placeholder="{{exKind === 'stool' ? '必填' : '选填'}}" placeholder-class="input-placeholder" value="{{exCount}}" bindinput="onInput" aria-label="{{exKind === 'stool' ? '排便次数' : '排尿次数'}}" />
+          <text wx:if="{{refHint}}" class="field-hint">{{refHint}}</text>
+          <text wx:if="{{fieldErrors.exCount}}" class="field-error" role="alert">{{fieldErrors.exCount}}</text>
+        </view>
+        <view wx:if="{{exKind === 'stool'}}" class="field {{fieldErrors.exShape ? 'field-invalid' : ''}} {{fieldShake === 'exShape' ? 'field-shake' : ''}}">
+          <text class="field-label">便便状态</text>
+          <view class="type-row">
+            <view wx:for="{{shapes}}" wx:key="*this" class="type-btn {{exShape === item ? 'active' : ''}} pressable {{motionChoiceGroup === 'shape' ? (index === motionChoiceIndex ? 'choice-pop' : index < motionChoiceIndex ? 'choice-left' : 'choice-right') : ''}}" data-shape="{{item}}" data-motion-group="shape" data-motion-index="{{index}}" bindtouchstart="motionChoose" bindtap="selectShape" hover-class="{{cardEditMode && loading ? 'none' : 'tap-feedback'}}" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" aria-role="button" aria-label="{{item}}{{exShape === item ? '，已选中' : ''}}">{{item}}</view>
+          </view>
+          <text wx:if="{{fieldErrors.exShape}}" class="field-error" role="alert">{{fieldErrors.exShape}}</text>
+        </view>
+        <button class="btn-primary motion-primary {{motionRippleId === 'motion-excretion-2' ? 'ripple-' + motionRipplePhase : ''}}" bindtap="submitExcretion" loading="{{submitting}}" disabled="{{submitting || closing || (cardEditMode && (loading || loadError))}}" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" id="motion-excretion-2" bindtouchstart="motionPress" style="{{motionRippleId === 'motion-excretion-2' ? motionRippleStyle : ''}}">{{submitting ? (editingId ? '更新中' : '记录中') : (editingId ? '更新' : '记录')}}</button>
+      </view>
+      </scroll-view>
+    </view>
+  </view>
+</view>

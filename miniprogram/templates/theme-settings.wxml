@@ -1,0 +1,10 @@
+<template name="theme-settings">
+  <view class="sub-nav" style="height: calc({{statusBarHeight}}px + var(--nav-height)); padding-top: {{statusBarHeight}}px;"><button class="sub-nav-back" bindtap="goBack" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" aria-label="返回"></button><text class="sub-nav-title">主题设置</text><view class="sub-nav-spacer" aria-hidden="true"></view></view>
+  <view class="card setting-card {{motionSetting ? 'setting-flash' : ''}}">
+    <text class="title">主题设置</text>
+    <view class="setting-row theme-color-row"><text class="setting-name">主题色</text><view class="theme-color-switch" role="group" aria-label="选择主题色">
+      <button wx:for="{{themeColors}}" wx:key="id" class="theme-color-dot {{colorId === item.id ? 'active' : ''}}" data-color="{{item.id}}" bindtap="onColor" style="background:{{item.dot}}" aria-pressed="{{colorId === item.id}}" aria-label="{{item.name}}"></button>
+    </view></view>
+    <text wx:if="{{themeStatus}}" class="form-note">{{themeStatus}}</text>
+  </view>
+</template>

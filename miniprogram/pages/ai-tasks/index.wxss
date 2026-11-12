@@ -1,0 +1,120 @@
+/* 提示语与「常见问题」同一蓝色样式：accent-soft 底 + accent-ink 左侧竖条。 */
+.page-tip {
+  margin: var(--space-s) 0 0;
+  padding: var(--space-m);
+  border-radius: var(--radius);
+  background: var(--color-accent-soft);
+  border-left: var(--hint-bar-width) solid var(--color-accent-ink);
+  box-shadow: var(--shadow-card);
+  color: var(--color-text-2);
+  font-size: var(--font-caption);
+  line-height: var(--line-body);
+}
+.task-field {
+  margin-top: var(--space-m);
+}
+.task-categories {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+}
+/* 数据类型选择与「新增常见问题」页保持一致：标题行 + 全选/取消全选 + 三列标签。 */
+.task-category-heading { display: flex; align-items: center; justify-content: space-between; }
+.task-category-heading .field-label { margin-bottom: var(--space-s); }
+.task-all-action { padding: 0; margin-bottom: var(--space-s); color: var(--color-accent-ink); font-size: var(--font-caption); line-height: var(--line-body); }
+.task-category-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-xs); }
+/* 数据范围是单选且选项短，压成一行等宽，避免把弹窗顶到必须滚动。 */
+.range-chips .type-btn {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: var(--space-xs) 0;
+  font-size: var(--font-caption);
+  white-space: nowrap;
+}
+.range-hint {
+  display: block;
+  margin-top: var(--space-xs);
+}
+.task-swipe {
+  position: relative;
+  width: 100%;
+  margin-bottom: var(--space-s);
+  overflow: hidden;
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  isolation: isolate;
+}
+.swipe-actions { position: absolute; z-index: 0; top: 0; right: 0; bottom: 0; left: auto; display: flex; align-items: stretch; justify-content: flex-end; width: var(--swipe-action-width); border-radius: 0 var(--radius) var(--radius) 0; overflow: hidden; visibility: hidden; pointer-events: none; }
+.task-swipe.swipe-open .swipe-actions { visibility: visible; pointer-events: auto; }
+.swipe-action { display: flex; align-items: center; justify-content: center; flex: 1; min-width: 0; padding: 0 var(--space-xs); border-radius: 0; color: var(--color-on-accent); font-size: var(--font-caption); }
+.edit-action { background: var(--color-accent-ink); }
+.delete-action { background: var(--color-notice); }
+.task-item {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-xs) var(--space-sm);
+  min-height: var(--row-height);
+  padding: var(--space-sm) var(--space-m);
+  margin-bottom: 0;
+  border-radius: 0;
+  background: var(--color-surface);
+  transition: transform var(--motion-card-shift) var(--curve-spring);
+  will-change: transform;
+}
+.task-main {
+  flex: 1 1 var(--entry-height);
+  min-width: 0;
+}
+/* Keep report task rows aligned with the other list pages: body-sized title, compact line gaps. */
+.task-main .title {
+  display: block;
+  min-width: 0;
+  color: var(--color-text-1);
+  font-size: var(--font-body);
+  font-weight: var(--weight-medium);
+  overflow-wrap: anywhere;
+}
+.task-main .form-note {
+  margin-top: var(--space-xs);
+}
+.task-main > .status-tag { margin-top: var(--space-xs); }
+.status-warn {
+  background: var(--color-accent-soft);
+  color: var(--color-accent-ink);
+}
+.status-pause {
+  background: var(--color-notice-soft);
+  color: var(--color-notice);
+}
+.task-actions {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+}
+.notify-control {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-xs);
+}
+.notify-label {
+  color: var(--color-text-2);
+  font-size: var(--font-caption);
+}
+.notify-control switch {
+  min-width: var(--control-height);
+  min-height: var(--control-height);
+  display: flex;
+  align-items: center;
+}
+.sheet {
+  height: calc(var(--sheet-ai-tasks-height) + env(safe-area-inset-bottom));
+}
+
+.page {
+  padding-top: 0;
+}

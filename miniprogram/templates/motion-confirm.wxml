@@ -1,0 +1,8 @@
+<view wx:if="{{motionConfirm}}" class="confirm-mask {{motionConfirm.closing ? 'closing' : ''}}" catchtap="motionBlock" catchtouchmove="motionBlock" aria-role="dialog" aria-label="{{motionConfirm.title}}">
+  <view class="confirm-dialog {{motionConfirm.closing ? 'closing' : ''}}" catchtap="motionBlock">
+    <text class="confirm-title">{{motionConfirm.title}}</text>
+    <text wx:if="{{motionConfirm.object}}" class="confirm-object">{{motionConfirm.object}}</text>
+    <text class="confirm-copy">{{motionConfirm.content}}</text>
+    <view class="confirm-actions"><button class="btn-secondary" bindtap="cancelDanger" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}">取消</button><button class="btn-primary" bindtap="acceptDanger" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}">{{motionConfirm.confirmText}}</button></view>
+  </view>
+</view>

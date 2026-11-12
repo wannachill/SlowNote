@@ -1,0 +1,44 @@
+<view class="theme-root {{themeClass}} page tab-page statistics-page">
+  <net-banner />
+  <view class="toolbar statistics-header page-top-heading">
+    <text class="page-title">小迈</text>
+    <text class="page-note">问一句，一眼看懂宝宝的成长。</text>
+  </view>
+  <view wx:if="{{loading && !moduleCards.length}}" class="status-block skeleton-loading" role="status"><text class="loading-copy">正在整理记录…</text><view class="skeleton-list"><view wx:for="{{[0,1]}}" wx:key="*this" class="skeleton-card"><view class="skeleton-line short"></view><view class="skeleton-line"></view></view></view></view>
+  <view wx:elif="{{error}}" class="status-block" role="alert"><text>{{error}}</text><button class="btn-secondary" bindtap="load" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}">重试</button></view>
+  <block wx:else>
+    <button class="ask-entry" bindtap="askXiaoMai" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" aria-label="问问小迈，宝宝发育、喂养、睡眠都可以问">
+      <view class="ask-mark" aria-hidden="true"><view class="ask-logo"></view></view>
+      <text class="ask-placeholder">宝宝发育、喂养、睡眠……都可以问我</text>
+      <view class="ask-go" aria-hidden="true"><view class="chevron ask-chevron"></view></view>
+    </button>
+    <view wx:if="{{!hasInsightData}}" class="card empty-guide">
+      <view class="ask-logo empty-guide-sprout" aria-hidden="true"></view>
+      <text class="empty-guide-title">开始记录宝宝的成长</text>
+      <text class="empty-guide-copy">去首页记下宝宝的第一笔记录，小迈就能开始帮你看懂成长。</text>
+      <view class="empty-guide-actions"><button class="btn-primary" bindtap="goHome" hover-class="tap-feedback">去首页记一笔</button></view>
+    </view>
+    <view wx:if="{{hasInsightData}}" class="section overview-section">
+      <view class="section-heading"><text class="title">宝宝概况</text><picker class="range-picker" mode="selector" range="{{ranges}}" value="{{rangeIndex}}" bindchange="onRange" aria-label="时间范围"><view class="range-chip" hover-class="tap-feedback"><text>{{ranges[rangeIndex]}}</text><view class="chevron range-chevron" aria-hidden="true"></view></view></picker></view>
+      <view class="module-grid">
+        <button wx:for="{{moduleCards}}" wx:key="key" class="module-card {{item.empty ? 'is-empty' : ''}}" data-type="{{item.key}}" bindtap="openDetail" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" aria-label="{{item.name}}，{{item.empty ? '暂无记录' : (item.multi ? '查看' + item.metrics.length + '项指标' : item.primary + item.unit)}}">
+          <view class="module-card-head">
+            <text class="module-name">{{item.name}}</text>
+          </view>
+          <view wx:if="{{item.empty}}" class="module-empty">暂无记录</view>
+          <view wx:elif="{{item.multi}}" class="module-metrics">
+            <view wx:for="{{item.metrics}}" wx:for-item="metric" wx:key="label" class="module-metric-row">
+              <text class="module-metric-label">{{metric.label}}</text>
+              <view class="module-metric-reading"><text class="module-metric-number">{{metric.hasData ? metric.value : '—'}}</text><text wx:if="{{metric.hasData}}" class="module-metric-unit">{{metric.unit}}</text></view>
+              <text class="module-metric-delta {{metric.deltaDir}}">{{metric.deltaText ? metric.deltaArrow + metric.deltaText : ''}}</text>
+            </view>
+          </view>
+          <view wx:else class="module-data">
+            <view class="module-value-row"><text class="module-primary">{{item.primary}}</text><text class="module-unit">{{item.unit}}</text></view>
+            <view wx:if="{{item.deltaText}}" class="module-trend-line {{item.deltaDir}}"><text>{{compareNote}}</text><text>{{item.deltaArrow}}{{item.deltaText}}</text></view>
+          </view>
+        </button>
+      </view>
+    </view>
+  </block>
+</view>

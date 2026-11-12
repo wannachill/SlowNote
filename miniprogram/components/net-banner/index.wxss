@@ -1,0 +1,23 @@
+.net-banner {
+  display: flex;
+  align-items: center;
+  min-height: var(--control-height);
+  margin-bottom: var(--space-s);
+  padding: var(--space-s) var(--space-m);
+  border-radius: var(--radius-small);
+  background: var(--color-accent-soft);
+  color: var(--color-accent-ink);
+  animation: net-banner-enter var(--motion-setting) var(--curve-spring) both;
+}
+.net-banner-message {
+  display: block;
+  font-size: var(--font-caption);
+  line-height: var(--line-body);
+}
+@keyframes net-banner-enter {
+  from { opacity: 0; transform: translateY(calc(var(--space-s) * -1)); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .net-banner { animation: none; }
+}

@@ -1,0 +1,54 @@
+.entry-card {
+  margin-top: var(--space-m);
+}
+.entry-card .section-heading {
+  margin-bottom: var(--space-m);
+}
+.row {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-s);
+  margin-bottom: var(--space-s);
+}
+.cell {
+  flex: 1 1 0%;
+  min-width: 0;
+  padding: var(--space-s);
+  border-radius: var(--radius-small);
+  background: var(--color-field);
+}
+.cell-label {
+  display: block;
+  color: var(--color-text-2);
+  font-size: var(--font-caption);
+}
+.cell-unit {
+  font-size: var(--font-caption);
+}
+.cell-input {
+  width: 100%;
+  height: var(--control-height);
+  font-size: var(--font-title);
+  font-weight: var(--weight-medium);
+}
+.record-lookup-status {
+  display: block;
+  margin-bottom: var(--space-s);
+  color: var(--color-text-2);
+  font-size: var(--font-caption);
+  line-height: var(--line-body);
+}
+.record-lookup-error {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-s);
+  margin-bottom: var(--space-s);
+  color: var(--color-notice);
+  font-size: var(--font-caption);
+  line-height: var(--line-body);
+}
+.page {
+  padding-top: 0;
+}
+page { background: transparent; }

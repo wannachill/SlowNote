@@ -1,0 +1,67 @@
+<view class="theme-root {{themeClass}} page">
+  <view class="sub-nav" style="height: calc({{statusBarHeight}}px + var(--nav-height)); padding-top: {{statusBarHeight}}px;"><button class="sub-nav-back" bindtap="goBack" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" aria-label="返回"></button><text class="sub-nav-title">定时报告</text><view class="sub-nav-spacer" aria-hidden="true"></view></view>
+
+  <!-- 一句话说明：与「常见问题」页同一风格，描述本页用途与可操作项 -->
+  <view class="page-tip">这些报告任务会按你设定的频率生成宝宝成长报告，先保存在站内通知，可按卡片单独开启微信推送。可添加、编辑或删除。</view>
+
+  <!-- 报告任务 -->
+  <view class="section">
+    <view class="section-heading">
+      <text class="title">报告任务</text>
+      <button class="link-btn" bindtap="openPanel" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}">＋ 添加</button>
+    </view>
+    <view wx:if="{{loading && !items.length}}" class="status-block skeleton-loading" role="status"><text class="loading-copy">正在读取报告任务…</text><view class="skeleton-list"><view wx:for="{{[0,1]}}" wx:key="*this" class="skeleton-card"><view class="skeleton-line short"></view><view class="skeleton-line"></view></view></view></view>
+    <view wx:elif="{{error}}" class="status-block">{{error}}<button class="btn-secondary" bindtap="load" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}">重试</button></view>
+    <view wx:elif="{{!items.length}}" class="empty"><text class="empty-title">还没有报告任务</text><text class="empty-note">点右上方添加，选择数据类型、数据范围与报告频率。</text></view>
+    <view wx:for="{{items}}" wx:key="_id" class="task-swipe {{item.swipeX ? 'swipe-open' : ''}}" data-id="{{item._id}}">
+      <view class="swipe-actions">
+        <button class="swipe-action edit-action" data-id="{{item._id}}" catchtap="startEdit" hover-class="tap-feedback" aria-label="编辑报告任务">编辑</button>
+        <button class="swipe-action delete-action" data-id="{{item._id}}" catchtap="remove" hover-class="tap-feedback" aria-label="删除报告任务">删除</button>
+      </view>
+      <view class="task-item {{motionSetting && motionSettingKey === item._id ? 'setting-flash' : ''}}" data-id="{{item._id}}" style="transform: translate({{item.swipeX}}px, 0);" bindtap="onCardTap" bindtouchstart="onCardTouchStart" bindtouchmove="onCardTouchMove" bindtouchend="onCardTouchEnd" bindtouchcancel="onCardTouchEnd" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}">
+        <view class="task-main">
+          <text class="title">{{item.headline}}</text>
+          <text class="form-note">{{item.scheduleText}}</text>
+          <text wx:if="{{item.statusTag}}" class="status-tag {{item.statusClass}}">{{item.statusTag}}</text>
+        </view>
+        <view class="task-actions" data-no-swipe="{{true}}">
+          <view class="notify-control">
+            <text class="notify-label">微信通知</text>
+            <switch checked="{{item.notify}}" data-id="{{item._id}}" data-no-swipe="{{true}}" catchtouchmove="noop" bindchange="onNotifyChange" color="{{themeAccent}}" aria-label="{{item.headline}}，微信通知{{item.notify ? '已开启' : '未开启'}}" />
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 新增 / 编辑报告任务面板 -->
+  <view wx:if="{{panel}}" class="mask {{closing ? 'closing' : ''}}" bindtap="closePanel">
+    <view class="sheet {{closing ? 'closing' : ''}}" catchtap="noop">
+      <view class="sheet-heading">
+        <text class="sheet-title">{{editingId ? '编辑报告任务' : '添加报告任务'}}</text>
+        <button class="sheet-close" bindtap="closePanel" aria-label="关闭" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}">关闭</button>
+      </view>
+      <scroll-view class="sheet-scroll" scroll-y enhanced show-scrollbar="{{false}}" catchtap="noop">
+        <view class="sheet-content">
+          <view class="field"><text class="field-label">报告标题</text><input class="input" value="{{reportTitle}}" maxlength="20" placeholder="推送通知里展示，最多 20 字" bindinput="onReportTitle" aria-label="报告标题" /></view>
+          <view class="field task-field">
+            <view class="task-category-heading"><text class="field-label">数据类型</text><button class="text-action task-all-action" bindtap="toggleAllCategories" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" aria-label="全选或取消全选数据类型">{{allSelected ? '取消全选' : '全选'}}</button></view>
+            <view class="task-category-grid"><button wx:for="{{categories}}" wx:key="key" class="type-btn choice-chip {{item.selected ? 'active' : ''}}" data-key="{{item.key}}" bindtap="selectCategory" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" aria-label="{{item.name}}{{item.selected ? '，已选中' : ''}}">{{item.name}}</button></view>
+          </view>
+          <view wx:if="{{frequencyIndex !== 2}}" class="field">
+            <text class="field-label">数据范围</text>
+            <view class="task-categories range-chips"><button wx:for="{{ranges}}" wx:key="key" class="type-btn {{range === item.key ? 'active' : ''}}" data-key="{{item.key}}" bindtap="selectRange" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" aria-label="数据范围{{item.name}}{{range === item.key ? '，已选中' : ''}}">{{item.name}}</button></view>
+            <text class="form-note range-hint">{{rangeHint}}</text>
+          </view>
+          <view class="field"><text class="field-label">频率</text><picker range="{{frequencies}}" value="{{frequencyIndex}}" bindchange="onFrequency" aria-label="报告频率"><view class="select-value pressable" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}">{{frequencies[frequencyIndex]}}<view class="chevron select-arrow" aria-hidden="true"></view></view></picker></view>
+          <view wx:if="{{frequencyIndex === 1}}" class="field"><text class="field-label">星期</text><picker range="{{weekdays}}" value="{{weekday}}" bindchange="onWeekday" aria-label="每周报告日"><view class="select-value pressable" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}">{{weekdays[weekday]}}<view class="chevron select-arrow" aria-hidden="true"></view></view></picker></view>
+          <text wx:if="{{frequencyIndex === 2}}" class="form-note monthly-task-note">每月 1 日生成上月简报，数据范围固定为上月整月</text>
+          <view class="field"><text class="field-label">时间</text><picker mode="time" value="{{time}}" bindchange="onTime" aria-label="报告时间"><view class="select-value pressable" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}">{{time}}<view class="chevron" aria-hidden="true"></view></view></picker></view>
+          <view class="consent"><switch checked="{{consent}}" color="{{themeAccent}}" bindchange="onConsent" aria-label="同意仅将所选数据类型的数值汇总发送给AI" /><text>同意将所选数据类型的数值汇总发送给 AI 服务。不包含姓名、生日、日记正文、照片或身份标识。AI 生成，仅供参考。</text></view>
+          <button class="btn-primary motion-primary {{motionRippleId === 'motion-ai-tasks-2' ? 'ripple-' + motionRipplePhase : ''}}" bindtap="save" loading="{{saving}}" disabled="{{saving}}" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" id="motion-ai-tasks-2" bindtouchstart="motionPress" style="{{motionRippleId === 'motion-ai-tasks-2' ? motionRippleStyle : ''}}">{{saving ? '保存中' : (editingId ? '保存修改' : '保存任务')}}</button>
+        </view>
+      </scroll-view>
+    </view>
+  </view>
+  <include src="../../templates/motion-confirm.wxml" />
+</view>

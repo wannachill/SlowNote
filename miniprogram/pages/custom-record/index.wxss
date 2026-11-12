@@ -1,0 +1,12 @@
+.custom-entry {
+  margin-top: var(--space-s);
+  padding: var(--space-sm) var(--space-m);
+  background: var(--color-surface);
+  border-radius: var(--radius);
+  overflow-wrap: anywhere;
+}
+
+.page {
+  padding-top: 0;
+}
+page { background: transparent; }

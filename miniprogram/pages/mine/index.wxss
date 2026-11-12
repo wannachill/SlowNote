@@ -1,0 +1,91 @@
+.profile-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-m);
+  background: var(--color-surface);
+  border-color: transparent;
+}
+.profile-baby-card { width: 100%; color: var(--color-text-1); text-align: left; }
+.profile-baby-card::after { border: 0; }
+.profile-login-card { color: var(--color-text-1); }
+.tab-page {
+  padding-top: calc(env(safe-area-inset-top) + var(--tab-page-top));
+}
+.mine-page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  min-height: 0;
+  box-sizing: border-box;
+  padding-bottom: calc(var(--tab-height) + env(safe-area-inset-bottom));
+}
+.mine-page > .page-heading {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  height: 176rpx;
+  padding-top: 28rpx;
+}
+.mine-page .page-note { line-height: var(--line-body); }
+.mine-scroll {
+  flex: 1;
+  width: 100%;
+  height: 0;
+  min-height: 0;
+  padding-bottom: var(--space-s);
+}
+.profile-logo {
+  flex-shrink: 0;
+  width: var(--avatar-logo-size);
+  height: var(--avatar-logo-size);
+  border-radius: var(--radius-round);
+  background: currentColor;
+  color: var(--color-accent-ink);
+  -webkit-mask: url("data:image/svg+xml;base64,PHN2ZyBoZWlnaHQ9IjI0IiB2aWV3Qm94PSIwIDAgMjQgMjQiIHdpZHRoPSIyNCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayI+PGcgZmlsbD0ibm9uZSIgc3Ryb2tlPSJjdXJyZW50Q29sb3IiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgc3Ryb2tlLXdpZHRoPSIyIj48cGF0aCBkPSJNMTIuMDE0IDIxLjUxNHYtMy43NU01LjkzIDkuNTA0bC0uNDMgMS42MDRhNC45ODYgNC45ODYgMCAwIDAgMy41MjQgNi4xMDVxMS40OTUuNDAyIDIuOTkuODAxdi0zLjQ0YTQuOTggNC45OCAwIDAgMC0zLjY3Ni00LjQyNnoiPjwvcGF0aD48cGF0aCBkPSJNMTMuNzQ0IDExLjE2NGE0LjkgNC45IDAgMCAwIDEuNDMzLTMuNDZhNC44OCA0Ljg4IDAgMCAwLTEuNDMzLTMuNDZsLTEuNzMtMS43M2wtMS43MyAxLjczYTQuOSA0LjkgMCAwIDAtMS40MzMgMy40NmE0LjkgNC45IDAgMCAwIDEuNDMzIDMuNDYiPjwvcGF0aD48cGF0aCBkPSJtMTguMDk5IDkuNTA0bC40MyAxLjYwNGE0Ljk4NiA0Ljk4NiAwIDAgMS0zLjUyNSA2LjEwNWwtMi45OS44MDF2LTMuNDRhNC45OCA0Ljk4IDAgMCAxIDMuNjc3LTQuNDI2eiI+PC9wYXRoPjwvZz48L3N2Zz4=") no-repeat center / contain;
+  mask: url("data:image/svg+xml;base64,PHN2ZyBoZWlnaHQ9IjI0IiB2aWV3Qm94PSIwIDAgMjQgMjQiIHdpZHRoPSIyNCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayI+PGcgZmlsbD0ibm9uZSIgc3Ryb2tlPSJjdXJyZW50Q29sb3IiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgc3Ryb2tlLXdpZHRoPSIyIj48cGF0aCBkPSJNMTIuMDE0IDIxLjUxNHYtMy43NU01LjkzIDkuNTA0bC0uNDMgMS42MDRhNC45ODYgNC45ODYgMCAwIDAgMy41MjQgNi4xMDVxMS40OTUuNDAyIDIuOTkuODAxdi0zLjQ0YTQuOTggNC45OCAwIDAgMC0zLjY3Ni00LjQyNnoiPjwvcGF0aD48cGF0aCBkPSJNMTMuNzQ0IDExLjE2NGE0LjkgNC45IDAgMCAwIDEuNDMzLTMuNDZhNC44OCA0Ljg4IDAgMCAwLTEuNDMzLTMuNDZsLTEuNzMtMS43M2wtMS43MyAxLjczYTQuOSA0LjkgMCAwIDAtMS40MzMgMy40NmE0LjkgNC45IDAgMCAwIDEuNDMzIDMuNDYiPjwvcGF0aD48cGF0aCBkPSJtMTguMDk5IDkuNTA0bC40MyAxLjYwNGE0Ljk4NiA0Ljk4NiAwIDAgMS0zLjUyNSA2LjEwNWwtMi45OS44MDF2LTMuNDRhNC45OCA0Ljk4IDAgMCAxIDMuNjc3LTQuNDI2eiI+PC9wYXRoPjwvZz48L3N2Zz4=") no-repeat center / contain;
+}
+.profile-avatar {
+  flex-shrink: 0;
+  width: var(--avatar-logo-size);
+  height: var(--avatar-logo-size);
+  border-radius: var(--radius-round);
+  background: var(--color-bg-soft);
+}
+.profile-text {
+  flex: 1;
+  min-width: 0;
+}
+.profile-status {
+  display: block;
+  font-size: var(--font-title);
+  font-weight: var(--weight-semibold);
+}
+.profile-note {
+  overflow-wrap: anywhere;
+  display: block;
+  margin-top: var(--space-s);
+  color: var(--color-text-2);
+  font-size: var(--font-caption);
+}
+.settings-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: var(--input-height);
+  padding: var(--space-sm) 0;
+  border-bottom: var(--border-width) solid var(--color-divider);
+  background: transparent;
+  color: var(--color-text-1);
+  font-size: var(--font-body);
+  text-align: left;
+}
+.logout {
+  margin-top: var(--space-l);
+}
+.setting-card {
+  padding-top: var(--space-xs);
+  padding-bottom: var(--space-xs);
+}
+.settings-link .chevron { color: var(--color-text-2); }

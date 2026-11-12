@@ -1,0 +1,58 @@
+<view class="theme-root {{themeClass}} page statistics-detail-page {{hasData ? 'detail-fixed' : ''}}">
+  <net-banner />
+  <view class="sub-nav" style="height: calc({{statusBarHeight}}px + var(--nav-height)); padding-top: {{statusBarHeight}}px;">
+    <button class="sub-nav-back" bindtap="goBack" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" aria-label="返回"></button>
+    <text class="sub-nav-title">{{title}}</text>
+    <view class="sub-nav-spacer" aria-hidden="true"></view>
+  </view>
+  <view wx:if="{{loading && !hasData}}" class="status-block skeleton-loading" role="status">
+    <text class="loading-copy">正在整理记录…</text>
+    <view class="skeleton-list"><view wx:for="{{[0,1]}}" wx:key="*this" class="skeleton-card"><view class="skeleton-line short"></view><view class="skeleton-line"></view></view></view>
+  </view>
+  <view wx:elif="{{error}}" class="status-block" role="alert"><text>{{error}}</text><button class="btn-secondary" bindtap="load" hover-class="tap-feedback">重试</button></view>
+  <block wx:else>
+    <view wx:if="{{hasData}}" class="statistics-chart">
+      <view class="chart-topline">
+        <view wx:if="{{metrics.length > 1}}" class="metric-switch" aria-label="切换图表指标">
+          <button wx:for="{{metrics}}" wx:key="key" class="metric-switch-option {{item.active ? 'active' : ''}}" data-key="{{item.key}}" bindtap="onMetric" disabled="{{!item.hasData || loading}}" hover-class="tap-feedback" aria-label="查看{{item.name}}">{{item.name}}</button>
+        </view>
+        <text wx:if="{{activeUnit}}" class="chart-unit-hint">单位：{{activeUnit}}</text>
+      </view>
+      <view wx:if="{{legend.length > 1}}" class="chart-legend">
+        <view wx:for="{{legend}}" wx:key="name" class="legend-item"><view class="legend-dot" style="background: {{item.color}}" aria-hidden="true"></view><text>{{item.name}}{{item.unit ? ' ' + item.unit : ''}}</text></view>
+      </view>
+      <view class="chart-motion-probe" aria-hidden="true"></view>
+      <view class="chart-body">
+        <view class="chart-plot-viewport" bindtap="onChartTap">
+          <canvas type="2d" id="statisticsDetailChart" class="chart chart-panes-{{chartPaneCount}}"></canvas>
+          <scroll-view class="chart-scroll" scroll-x scroll-left="{{chartScrollLeft}}" bindscroll="onChartScroll" show-scrollbar="{{false}}" enhanced>
+            <view class="chart-scroll-spacer" style="width: {{chartWidth}}px" aria-hidden="true"></view>
+          </scroll-view>
+          <view class="chart-axis-fade-left" aria-hidden="true"></view>
+        </view>
+        <view class="y-axis-fixed" style="width: {{axisOverlayWidth}}px" aria-hidden="true">
+          <text wx:for="{{yAxisLabels}}" wx:key="key" style="top: {{item.y}}px">{{item.text}}</text>
+        </view>
+      </view>
+    </view>
+    <scroll-view wx:if="{{hasData}}" class="detail-scroll" scroll-y enhanced show-scrollbar="{{false}}">
+      <view class="selected-day-section">
+        <view class="selected-day-heading"><text class="title">{{selectedDate}}</text><text class="section-meta">{{typeName}}记录</text></view>
+        <view wx:if="{{dayLoading && !dayCards.length}}" class="day-loading" role="status">正在读取当天记录…</view>
+        <view wx:elif="{{dayError}}" class="day-error" role="alert">{{dayError}}</view>
+        <view wx:elif="{{dayCards.length}}" class="detail-day-timeline">
+          <view wx:for="{{dayCards}}" wx:key="key" class="detail-day-slot">
+            <view class="metric-rail-line" aria-hidden="true"></view><view class="metric-rail-node" aria-hidden="true"></view>
+            <text class="metric-rail-time">{{item.time}}</text>
+            <view class="detail-day-card">
+              <view class="line-icon record-icon detail-day-icon icon-category-{{item.icon}}" aria-hidden="true"><view class="category-icon-part category-icon-primary"></view><view class="category-icon-part category-icon-secondary"></view><view class="category-icon-part category-icon-detail"></view></view>
+              <view class="detail-day-body"><view class="detail-day-title"><text class="metric-name">{{item.name}}</text><view class="metric-hero"><text class="metric-number">{{item.value}}</text><text class="metric-unit">{{item.unit}}</text></view></view><view class="metric-items"><view wx:for="{{item.items}}" wx:for-item="it" wx:key="key" class="metric-item"><text class="metric-item-label">{{it.label}}</text><text class="metric-item-value">{{it.value}}</text></view></view></view>
+            </view>
+          </view>
+        </view>
+        <view wx:elif="{{!dayLoading}}" class="day-empty">这一天还没有{{typeName}}记录</view>
+      </view>
+    </scroll-view>
+    <view wx:if="{{!hasData}}" class="empty detail-empty"><text class="empty-title">{{emptyTitle}}</text><text class="empty-note">{{emptyNote}}</text></view>
+  </block>
+</view>

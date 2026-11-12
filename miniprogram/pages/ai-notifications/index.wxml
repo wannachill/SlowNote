@@ -1,0 +1,55 @@
+<view class="theme-root {{themeClass}} page">
+  <view class="sub-nav" style="height: calc({{statusBarHeight}}px + var(--nav-height)); padding-top: {{statusBarHeight}}px;"><button class="sub-nav-back" bindtap="goBack" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" aria-label="返回"></button><text class="sub-nav-title">历史报告</text><view class="sub-nav-spacer" aria-hidden="true"></view></view>
+
+  <view class="report-filters">
+    <text class="section-meta">报告日期</text>
+    <view class="report-dates">
+      <picker mode="date" value="{{startDate}}" end="{{today}}" bindchange="onStartDate" aria-label="开始日期"><view class="select-value report-date-value" hover-class="tap-feedback"><text class="report-date-label">{{startDateLabel}}</text><view class="chevron" aria-hidden="true"></view></view></picker>
+      <text class="report-date-connector">至</text>
+      <picker mode="date" value="{{endDate}}" start="{{startDate}}" end="{{today}}" bindchange="onEndDate" aria-label="结束日期"><view class="select-value report-date-value" hover-class="tap-feedback"><text class="report-date-label">{{endDateLabel}}</text><view class="chevron" aria-hidden="true"></view></view></picker>
+    </view>
+  </view>
+  <view wx:if="{{loading && !items.length}}" class="status-block skeleton-loading" role="status"><text class="loading-copy">正在读取报告…</text><view class="skeleton-list"><view wx:for="{{[0,1,2]}}" wx:key="*this" class="skeleton-card"><view class="skeleton-line short"></view><view class="skeleton-line"></view></view></view></view>
+  <view wx:elif="{{error}}" class="status-block" role="alert">{{error}}<button class="btn-secondary" bindtap="load" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}">重试</button></view>
+  <view wx:elif="{{!items.length}}" class="empty-illustration"><view class="empty-book" aria-hidden="true"></view><text class="empty-title">所选时间内没有报告</text><text class="empty-note">可以调整起止日期，或设置定时报告任务。</text><button class="text-action" bindtap="goTasks" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}">去设置定时报告</button></view>
+
+  <view wx:else class="report-list">
+    <text class="section-note">共 {{total}} 份报告，左滑可删除。</text>
+    <view wx:for="{{items}}" wx:key="id" class="report-swipe {{item.swipeX ? 'swipe-open' : ''}}" data-id="{{item.id}}">
+      <view class="swipe-actions">
+        <button class="swipe-action delete-action" data-id="{{item.id}}" catchtap="remove" hover-class="tap-feedback" aria-label="删除{{item.dateText}}的报告">删除</button>
+      </view>
+      <view class="card report-card" data-id="{{item.id}}" style="transform: translate({{item.swipeX}}px, 0);" bindtap="onCardTap" bindtouchstart="onCardTouchStart" bindtouchmove="onCardTouchMove" bindtouchend="onCardTouchEnd" bindtouchcancel="onCardTouchEnd" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}">
+        <view class="task-main">
+          <view class="report-row report-head">
+            <text class="title">{{item.title}}</text>
+            <text class="form-note report-date">{{item.dateText}}</text>
+          </view>
+          <view class="report-row report-foot">
+            <text wx:if="{{item.wechatText}}" class="status-tag {{item.wechatClass}}">{{item.wechatText}}</text>
+            <text wx:if="{{!item.read}}" class="status-tag status-unread" aria-label="未读报告">未读</text>
+          </view>
+        </view>
+      </view>
+    </view>
+    <button wx:if="{{hasMore}}" class="text-action report-more" bindtap="loadMore" loading="{{loading}}" disabled="{{loading}}" hover-class="tap-feedback">加载更多</button>
+  </view>
+
+  <!-- 报告详情 -->
+  <view wx:if="{{panel}}" class="mask {{closing ? 'closing' : ''}}" bindtap="closePanel">
+    <view class="sheet report-sheet {{closing ? 'closing' : ''}}" catchtap="noop">
+      <view class="sheet-heading">
+        <text class="sheet-title">{{current.title}}</text>
+        <button class="sheet-close" bindtap="closePanel" aria-label="关闭" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}">关闭</button>
+      </view>
+      <view class="report-meta">
+        <text class="form-note">{{current.dateText}}</text>
+        <text wx:if="{{current.wechatText}}" class="status-tag {{current.wechatClass}}">{{current.wechatText}}</text>
+      </view>
+      <scroll-view class="sheet-scroll report-scroll" scroll-y enhanced show-scrollbar="{{true}}" catchtap="noop">
+        <view class="sheet-content"><text class="report-content" selectable>{{current.content}}</text></view>
+      </scroll-view>
+    </view>
+  </view>
+  <include src="../../templates/motion-confirm.wxml" />
+</view>

@@ -1,0 +1,49 @@
+<view wx:if="{{!panelMode && !entryPending}}" class="theme-root {{themeClass}} page">
+  <view class="sub-nav" style="height: calc({{statusBarHeight}}px + var(--nav-height)); padding-top: {{statusBarHeight}}px;"><button class="sub-nav-back" bindtap="goBack" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" aria-label="返回"></button><text class="sub-nav-title">成长发育</text><view class="sub-nav-spacer" aria-hidden="true"></view></view>
+  <button class="milestone-entry" bindtap="goMilestone" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" aria-label="{{milestoneEntry.label}}"><text class="milestone-entry-label">{{milestoneEntry.label}}</text><view class="chevron" aria-hidden="true"></view></button>
+
+  <view class="card entry-card">
+    <view class="section-heading"><text class="title">记一次成长</text><text class="section-meta">至少填写一项</text></view>
+    <view class="field"><text class="field-label">记录日期</text><picker disabled="{{submitting || closing || lookupLoading}}" mode="date" value="{{recordDate}}" end="{{today}}" bindchange="onDate" aria-label="记录日期"><view class="select-value pressable" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}"><text>{{recordDate}}</text><view class="chevron" aria-hidden="true"></view></view></picker></view>
+    <view wx:if="{{lookupLoading}}" class="record-lookup-status" role="status">正在读取当天记录…</view>
+    <view wx:if="{{lookupError}}" class="record-lookup-error" role="alert"><text>{{lookupError}}</text><button class="text-action" bindtap="loadSelectedDateRecord" hover-class="tap-feedback">重试</button></view>
+    <view class="row">
+      <view class="cell {{fieldShake === 'height' ? 'field-shake' : ''}}">
+        <text class="cell-label">身高 <text class="cell-unit">cm</text></text>
+        <input disabled="{{submitting || closing || lookupLoading}}" class="cell-input" type="digit" data-field="height" placeholder="选填" placeholder-class="input-placeholder" value="{{height}}" bindinput="onInput" aria-label="身高，厘米" />
+        <text wx:if="{{fieldErrors.height}}" class="field-error" role="alert">{{fieldErrors.height}}</text>
+      </view>
+      <view class="cell {{fieldShake === 'weight' ? 'field-shake' : ''}}">
+        <text class="cell-label">体重 <text class="cell-unit">kg</text></text>
+        <input disabled="{{submitting || closing || lookupLoading}}" class="cell-input" type="digit" data-field="weight" placeholder="选填" placeholder-class="input-placeholder" value="{{weight}}" bindinput="onInput" aria-label="体重，千克" />
+        <text wx:if="{{fieldErrors.weight}}" class="field-error" role="alert">{{fieldErrors.weight}}</text>
+      </view>
+      <view class="cell {{fieldShake === 'head' ? 'field-shake' : ''}}">
+        <text class="cell-label">头围 <text class="cell-unit">cm</text></text>
+        <input disabled="{{submitting || closing || lookupLoading}}" class="cell-input" type="digit" data-field="head" placeholder="选填" placeholder-class="input-placeholder" value="{{head}}" bindinput="onInput" aria-label="头围，厘米" />
+        <text wx:if="{{fieldErrors.head}}" class="field-error" role="alert">{{fieldErrors.head}}</text>
+      </view>
+    </view>
+    <text wx:if="{{refHint}}" class="field-hint growth-reference-hint">{{refHint}}</text>
+    <button class="btn-primary motion-primary {{motionRippleId === 'motion-growth-1' ? 'ripple-' + motionRipplePhase : ''}}" bindtap="submit" loading="{{submitting}}" disabled="{{submitting || closing || lookupLoading}}" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" id="motion-growth-1" bindtouchstart="motionPress" style="{{motionRippleId === 'motion-growth-1' ? motionRippleStyle : ''}}">{{submitting ? (editingId ? '更新中' : '保存中') : (panelMode ? '记录' : (editingId ? '更新' : '保存'))}}</button>
+  </view>
+</view>
+<view wx:if="{{panelMode}}" class="theme-root {{themeClass}} mask registration-fullscreen {{closing ? 'closing' : ''}}" style="--registration-status-bar-height: {{statusBarHeight}}px;" bindtap="closePanel">
+  <view class="sheet {{closing ? 'closing' : ''}}">
+    <view class="sheet-heading"><text class="sheet-title">成长记录</text><button class="sheet-close" disabled="{{submitting || closing}}" bindtap="closePanel" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" aria-label="返回首页">关闭</button></view>
+    <scroll-view class="sheet-scroll" scroll-y enhanced show-scrollbar="{{false}}" catchtap="noop">
+      <view class="sheet-content">
+        <view class="field"><text class="field-label">记录日期</text><picker disabled="{{submitting || closing || lookupLoading}}" mode="date" value="{{recordDate}}" end="{{today}}" bindchange="onDate" aria-label="记录日期"><view class="select-value pressable" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}"><text>{{recordDate}}</text><view class="chevron" aria-hidden="true"></view></view></picker></view>
+        <view wx:if="{{lookupLoading}}" class="record-lookup-status" role="status">正在读取当天记录…</view>
+        <view wx:if="{{lookupError}}" class="record-lookup-error" role="alert"><text>{{lookupError}}</text><button class="text-action" bindtap="loadSelectedDateRecord" hover-class="tap-feedback">重试</button></view>
+        <view class="row">
+          <view class="cell {{fieldShake === 'height' ? 'field-shake' : ''}}"><text class="cell-label">身高 <text class="cell-unit">cm</text></text><input disabled="{{submitting || closing || lookupLoading}}" class="cell-input" type="digit" data-field="height" placeholder="选填" placeholder-class="input-placeholder" value="{{height}}" bindinput="onInput" aria-label="身高，厘米" /><text wx:if="{{fieldErrors.height}}" class="field-error" role="alert">{{fieldErrors.height}}</text></view>
+          <view class="cell {{fieldShake === 'weight' ? 'field-shake' : ''}}"><text class="cell-label">体重 <text class="cell-unit">kg</text></text><input disabled="{{submitting || closing || lookupLoading}}" class="cell-input" type="digit" data-field="weight" placeholder="选填" placeholder-class="input-placeholder" value="{{weight}}" bindinput="onInput" aria-label="体重，千克" /><text wx:if="{{fieldErrors.weight}}" class="field-error" role="alert">{{fieldErrors.weight}}</text></view>
+          <view class="cell {{fieldShake === 'head' ? 'field-shake' : ''}}"><text class="cell-label">头围 <text class="cell-unit">cm</text></text><input disabled="{{submitting || closing || lookupLoading}}" class="cell-input" type="digit" data-field="head" placeholder="选填" placeholder-class="input-placeholder" value="{{head}}" bindinput="onInput" aria-label="头围，厘米" /><text wx:if="{{fieldErrors.head}}" class="field-error" role="alert">{{fieldErrors.head}}</text></view>
+        </view>
+        <text wx:if="{{refHint}}" class="field-hint growth-reference-hint">{{refHint}}</text>
+        <button class="btn-primary motion-primary {{motionRippleId === 'motion-growth-1' ? 'ripple-' + motionRipplePhase : ''}}" bindtap="submit" loading="{{submitting}}" disabled="{{submitting || closing || lookupLoading || lookupError}}" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" id="motion-growth-1" bindtouchstart="motionPress" style="{{motionRippleId === 'motion-growth-1' ? motionRippleStyle : ''}}">{{submitting ? (editingId ? '更新中' : '保存中') : (editingId ? '更新' : '记录')}}</button>
+      </view>
+    </scroll-view>
+  </view>
+</view>

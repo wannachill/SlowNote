@@ -1,0 +1,44 @@
+<view class="theme-root {{themeClass}} page">
+  <view class="sub-nav" style="height: calc({{statusBarHeight}}px + var(--nav-height)); padding-top: {{statusBarHeight}}px;">
+    <button class="sub-nav-back" bindtap="goBack" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" aria-label="返回"></button>
+    <text class="sub-nav-title">成长里程碑</text>
+    <view class="sub-nav-spacer" aria-hidden="true"></view>
+  </view>
+  <scroll-view class="month-scroll" scroll-x enable-flex show-scrollbar="{{false}}" scroll-into-view="{{monthScrollInto}}">
+    <view class="month-row">
+      <view wx:for="{{months}}" wx:key="*this" id="month-{{item}}" class="month-pill {{activeMonth === item ? 'active' : ''}} pressable" data-month="{{item}}" bindtap="onMonth" aria-role="button" aria-label="{{item}} 月龄" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}">{{item}}月</view>
+    </view>
+  </scroll-view>
+  <view class="section" bindtouchstart="onMonthSwipeStart" bindtouchend="onMonthSwipeEnd" bindtouchcancel="onMonthSwipeEnd">
+    <view class="section-heading">
+      <text class="title">{{activeMonth}} 月龄</text>
+      <view class="heading-actions"><button class="link-btn" bindtap="startAdd" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}">＋ 添加</button></view>
+    </view>
+    <text wx:if="{{actionError}}" class="action-error" role="alert">{{actionError}}</text>
+    <view wx:if="{{loading && !visible.length}}" class="skeleton-loading" role="status"><view class="skeleton-list"><view wx:for="{{[0,1,2]}}" wx:key="*this" class="skeleton-card"><view class="skeleton-line short"></view><view class="skeleton-line"></view></view></view></view>
+    <view wx:elif="{{loadError}}" class="status-block" role="alert"><text>{{loadError}}</text><button class="btn-secondary" bindtap="load" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}">重试</button></view>
+    <view wx:if="{{!loading && !loadError && !visible.length}}" class="empty"><text class="empty-note">当前月龄暂无成长里程碑，添加一项符合宝宝情况的观察目标。</text></view>
+    <view wx:for="{{visible}}" wx:key="key" class="milestone-swipe {{item.swipeX ? 'swipe-open' : ''}} {{draggingKey === item.key ? 'dragging' : ''}} {{dropIndex === index && draggingKey !== item.key ? 'drop-target' : ''}}" data-key="{{item.key}}">
+      <view class="swipe-actions"><button class="swipe-action edit-action" data-key="{{item.key}}" catchtap="startEdit" hover-class="tap-feedback" aria-label="编辑">编辑</button><button class="swipe-action delete-action" data-key="{{item.key}}" catchtap="confirmRemoveDefinition" hover-class="tap-feedback" aria-label="删除">删除</button></view>
+      <view class="milestone pressable" data-key="{{item.key}}" data-card-gesture="true" style="transform: translate({{item.swipeX}}px, {{item.dragY}}px);" bindtap="toggleDone" bindtouchstart="onCardTouchStart" bindtouchmove="onCardTouchMove" bindtouchend="onCardTouchEnd" bindtouchcancel="onCardTouchEnd" bindlongpress="beginDrag" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}">
+        <view class="milestone-main milestone-wiggle" data-card-gesture="true"><text class="milestone-name" data-card-gesture="true">{{item.name}}</text><text class="milestone-domain" data-card-gesture="true">{{item.domain}}</text></view>
+        <view wx:if="{{item.done}}" class="milestone-done" data-card-gesture="true"><text class="done-date" data-card-gesture="true">{{item.recordDate}}</text><button class="done-check completed" data-key="{{item.key}}" catchtap="uncheck" disabled="{{busy && operatingKey === item.key}}" hover-class="tap-feedback" aria-label="取消达成"><view class="done-check-mark" aria-hidden="true"></view></button></view>
+        <view wx:else class="milestone-undo" data-card-gesture="true"><button class="done-check pending" data-key="{{item.key}}" catchtap="check" disabled="{{busy && operatingKey === item.key}}" hover-class="tap-feedback" aria-label="标记达成"><view class="done-check-mark" aria-hidden="true"></view></button></view>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{definition}}" class="mask" catchtap="closeDefinition">
+    <view class="sheet definition-sheet" catchtap="noop">
+      <view class="sheet-heading"><text class="sheet-title">{{definition.key ? '编辑里程碑' : '添加里程碑'}}</text><button class="sheet-close" bindtap="closeDefinition" disabled="{{savingDef}}" aria-label="关闭">关闭</button></view>
+      <scroll-view class="sheet-scroll definition-scroll" scroll-y enhanced show-scrollbar="{{false}}" catchtap="noop"><view class="sheet-content">
+        <text class="field-label">名称</text><input class="input definition-input" maxlength="120" value="{{formName}}" bindinput="onName" placeholder="记录一个发育观察目标" />
+        <text class="field-label">领域</text><picker range="{{domains}}" value="{{domainIndex}}" bindchange="onDomain"><view class="select-value pressable">{{domains[domainIndex]}}<view class="chevron" aria-hidden="true"></view></view></picker>
+        <text class="field-label">建议月龄</text><picker range="{{months}}" value="{{formMonth - 1}}" bindchange="onFormMonth"><view class="select-value pressable">{{formMonth}} 月龄<view class="chevron" aria-hidden="true"></view></view></picker>
+        <button class="btn-primary" bindtap="saveDefinition" loading="{{savingDef}}" disabled="{{savingDef}}" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}">保存</button>
+      </view></scroll-view>
+    </view>
+  </view>
+
+  <canvas type="2d" id="milestone-confetti" class="confetti-canvas" aria-hidden="true"></canvas><view class="confetti-measure" id="milestone-confetti-measure" aria-hidden="true"></view>
+</view>

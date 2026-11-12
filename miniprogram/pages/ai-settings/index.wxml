@@ -1,0 +1,129 @@
+<view class="theme-root {{themeClass}} page settings-page">
+  <view class="sub-nav" style="height: calc({{statusBarHeight}}px + var(--nav-height)); padding-top: {{statusBarHeight}}px;"><button class="sub-nav-back" bindtap="onBack" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" aria-label="返回"></button><text class="sub-nav-title">{{navTitle}}</text><view class="sub-nav-spacer" aria-hidden="true"></view></view>
+  <view wx:if="{{error}}" class="settings-error" role="alert">{{error}}</view>
+  <view wx:if="{{!ready && loading}}" class="settings-loading status-block skeleton-loading" role="status"><text class="loading-copy">正在读取小迈设置…</text><view class="skeleton-list"><view wx:for="{{[0,1,2]}}" wx:key="*this" class="skeleton-card"><view class="skeleton-line short"></view><view class="skeleton-line"></view></view></view></view>
+  <view wx:if="{{!ready && !loading}}" class="card setting-card"><button class="btn-secondary" bindtap="refreshSettings" hover-class="tap-feedback">重新加载</button></view>
+  <view wx:if="{{ready}}" class="settings-content">
+    <view wx:if="{{view === 'list'}}" class="settings-list">
+      <view wx:for="{{sections}}" wx:for-item="group" wx:key="name" class="settings-group">
+        <text class="settings-group-title">{{group.name}}</text>
+        <view class="card setting-card settings-section-card">
+          <button wx:for="{{group.items}}" wx:for-item="entry" wx:key="view" class="setting-row settings-entry" data-view="{{entry.view}}" bindtap="openSection" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" aria-label="{{entry.name}}，{{values[entry.view]}}">
+            <view class="settings-entry-copy"><text class="settings-entry-name">{{entry.name}}</text><text class="settings-entry-note">{{entry.note}}</text></view>
+            <text class="settings-entry-value">{{values[entry.view]}}</text><view class="chevron" aria-hidden="true"></view>
+          </button>
+        </view>
+      </view>
+    </view>
+
+    <view wx:elif="{{view === 'thinking'}}" class="settings-detail">
+      <view class="card setting-card">
+        <text class="title">深度思考</text>
+        <text class="form-note">控制小迈聊天页是否显示深度思考入口；关闭后不会自动开启。</text>
+        <view class="ai-setting-row"><view class="ai-setting-copy"><text class="ai-setting-name">显示深度思考按钮</text><text class="ai-setting-note">开启后可在小迈聊天页手动切换。</text></view><switch checked="{{showThinking}}" disabled="{{saving}}" color="{{themeAccent}}" bindchange="onThinkingToggle" aria-label="显示深度思考按钮" /></view>
+      </view>
+    </view>
+
+    <view wx:elif="{{view === 'style'}}" class="settings-detail">
+      <view class="card setting-card">
+        <text class="title">回答风格</text>
+        <text class="form-note">决定小迈怎么组织和表达回答，不影响固定安全规则。留空将使用服务端默认提示词。小迈不能联网或查询外部资料。</text>
+        <view class="prompt-field">
+          <view class="prompt-label"><text>回答风格与结构</text><text wx:if="{{custom.style}}" class="prompt-custom">已自定义</text></view>
+          <textarea class="prompt-editor" fixed="{{true}}" auto-height maxlength="{{limits.style}}" disabled="{{saving}}" value="{{prompts.style}}" data-key="style" bindinput="onPromptInput" aria-label="回答风格提示词" />
+          <text class="prompt-count">{{prompts.style.length}} / {{limits.style}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view wx:elif="{{view === 'vision'}}" class="settings-detail">
+      <view class="card setting-card">
+        <text class="title">图片分析</text>
+        <text class="form-note">看照片时补充的观察要求。留空将使用服务端默认提示词。</text>
+        <view class="prompt-field">
+          <view class="prompt-label"><text>图片分析补充说明</text><text wx:if="{{custom.vision}}" class="prompt-custom">已自定义</text></view>
+          <textarea class="prompt-editor" fixed="{{true}}" auto-height maxlength="{{limits.vision}}" disabled="{{saving}}" value="{{prompts.vision}}" data-key="vision" bindinput="onPromptInput" aria-label="图片分析提示词" />
+          <text class="prompt-count">{{prompts.vision.length}} / {{limits.vision}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view wx:elif="{{view === 'report'}}" class="settings-detail">
+      <view class="card setting-card">
+        <text class="title">定时报告</text>
+        <text class="form-note">定时报告使用的指令，按任务频率（每日/每周/每月）生成。留空将使用服务端默认提示词。</text>
+        <view class="prompt-field">
+          <view class="prompt-label"><text>报告内容指令</text><text wx:if="{{custom.report}}" class="prompt-custom">已自定义</text></view>
+          <text class="prompt-help">可用 {days} 表示覆盖天数、{period} 表示覆盖周期（今天/最近一周/上个月）；小迈不能联网或查询外部资料。</text>
+          <textarea class="prompt-editor" fixed="{{true}}" auto-height maxlength="{{limits.report}}" disabled="{{saving}}" value="{{prompts.report}}" data-key="report" bindinput="onPromptInput" aria-label="定时报告提示词" />
+          <text class="prompt-count">{{prompts.report.length}} / {{limits.report}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view wx:elif="{{view === 'questions'}}" class="settings-detail">
+      <view class="card subscribe-card questions-hint">
+        <view class="subscribe-main">
+          <text class="subscribe-title">常见问题</text>
+          <text class="subscribe-note">这些问题会展示在小迈聊天页，方便你一键提问。可添加、编辑或删除；点「恢复默认」可还原系统内置问题（你的自定义问题会保留）。</text>
+        </view>
+        <button class="btn-primary subscribe-btn" bindtap="onRestoreQuestions" disabled="{{saving}}" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}">恢复默认</button>
+      </view>
+      <view class="section-heading">
+        <text class="title">常见问题</text>
+        <button class="link-btn" bindtap="openQuestionPanel" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}">＋ 添加</button>
+      </view>
+      <view wx:if="{{!questions.length}}" class="empty question-empty"><text class="empty-note">暂无问题，先添加一条吧</text></view>
+      <view wx:for="{{questions}}" wx:key="id" class="question-swipe {{item.swipeX ? 'swipe-open' : ''}}" data-id="{{item.id}}">
+        <view class="question-swipe-actions">
+          <button class="question-swipe-action question-edit-action" data-id="{{item.id}}" catchtap="startEditQuestion" hover-class="tap-feedback" aria-label="编辑问题">编辑</button>
+          <button class="question-swipe-action question-delete-action" data-id="{{item.id}}" catchtap="removeQuestion" hover-class="tap-feedback" aria-label="删除问题">删除</button>
+        </view>
+        <view class="question-item" data-id="{{item.id}}" style="transform: translate({{item.swipeX}}px, 0);" bindtap="onQuestionCardTap" bindtouchstart="onQuestionCardTouchStart" bindtouchmove="onQuestionCardTouchMove" bindtouchend="onQuestionCardTouchEnd" bindtouchcancel="onQuestionCardTouchEnd" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}">
+          <view class="question-main">
+            <view class="question-heading"><text class="question-text">{{item.text}}</text><text wx:if="{{item.builtin}}" class="question-tag">默认</text></view>
+            <text class="form-note question-range">{{item.rangeLabel}} · {{item.categoriesLabel}}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view wx:elif="{{view === 'safety'}}" class="settings-detail">
+      <view class="card setting-card">
+        <view class="safety-heading"><text class="title">固定安全规则</text></view>
+        <text class="safety-note">这部分不可修改</text>
+        <text class="safety-content">{{safety}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{questionsPanel}}" class="mask {{questionsClosing ? 'closing' : ''}}" bindtap="closeQuestionPanel">
+    <view class="sheet question-sheet {{questionsClosing ? 'closing' : ''}}" catchtap="noop">
+      <view class="sheet-heading">
+        <text class="sheet-title">{{editingQuestionId ? '编辑常见问题' : '添加常见问题'}}</text>
+        <button class="sheet-close" bindtap="closeQuestionPanel" disabled="{{questionSaving}}" aria-label="关闭" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}">关闭</button>
+      </view>
+      <scroll-view class="sheet-scroll question-sheet-scroll" scroll-y enhanced show-scrollbar="{{false}}" catchtap="noop">
+        <view class="sheet-content">
+          <view class="field"><text class="field-label">问题内容</text><textarea class="prompt-editor question-editor" fixed="{{true}}" auto-height maxlength="40" value="{{questionText}}" bindinput="onQuestionInput" placeholder="输入推荐问题" placeholder-class="input-placeholder" aria-label="问题内容" /></view>
+          <view class="field"><text class="field-label">数据范围</text><picker range="{{questionRanges}}" value="{{questionRangeIndex}}" bindchange="onQuestionRange" aria-label="选择数据范围"><view class="select-value pressable" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}"><text>{{questionRanges[questionRangeIndex]}}</text><view class="chevron select-arrow" aria-hidden="true"></view></view></picker></view>
+          <view class="field question-categories-field">
+            <view class="question-category-heading"><text class="field-label">数据类型</text><button class="text-action question-all-action" bindtap="toggleAllQuestionCategories" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" aria-label="全选或取消全选数据类型">{{questionAllSelected ? '取消全选' : '全选'}}</button></view>
+            <view class="question-category-grid">
+              <view wx:for="{{questionCategories}}" wx:key="value" class="type-btn choice-chip {{item.selected ? 'active' : ''}}" data-value="{{item.value}}" bindtap="onQuestionCategoryTap" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" role="button" aria-label="{{item.label}}{{item.selected ? '，已选中' : ''}}">{{item.label}}</view>
+            </view>
+            <text class="form-note question-category-hint">{{questionCategoryHint}}</text>
+          </view>
+          <view class="ai-setting-row question-pin-row {{motionSetting && motionSettingKey === 'questionPin' ? 'setting-flash' : ''}}"><view class="ai-setting-copy"><text class="ai-setting-name">固定展示</text></view><switch checked="{{questionPinned}}" disabled="{{questionSaving}}" data-id="questionPin" bindchange="onQuestionPin" color="{{themeAccent}}" aria-label="固定展示该问题" /></view>
+          <button class="btn-primary" bindtap="saveQuestion" loading="{{questionSaving}}" disabled="{{questionSaving}}" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}">{{questionSaving ? '保存中' : (editingQuestionId ? '保存修改' : '保存问题')}}</button>
+        </view>
+      </scroll-view>
+    </view>
+  </view>
+
+  <view wx:if="{{ready && view !== 'questions' && view !== 'safety'}}" class="settings-dock">
+    <button class="btn-secondary" bindtap="restoreDefaults" disabled="{{saving}}" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}">恢复默认</button>
+    <button class="btn-primary" bindtap="save" loading="{{saving}}" disabled="{{saving || !dirty}}" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}">保存设置</button>
+  </view>
+  <include src="../../templates/motion-confirm.wxml" />
+</view>

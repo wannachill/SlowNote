@@ -1,0 +1,95 @@
+.tab-shell.theme-root {
+  /* theme-root 显式接收 app.wxss 令牌，兼容组件位于 page 外的场景。 */
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: var(--layer-tab);
+  display: block;
+  min-height: 0;
+  padding: 0 var(--space-s) env(safe-area-inset-bottom);
+}
+.tab-track {
+  position: relative;
+  display: flex;
+  width: 100%;
+  min-height: var(--tab-height);
+  align-items: stretch;
+}
+.tab-item {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--space-xs) / 2);
+  min-height: var(--control-height);
+  background: transparent;
+  color: var(--color-text-2);
+  font-size: var(--font-caption);
+  border-radius: var(--radius);
+  min-width: var(--control-height);
+  line-height: var(--line-tight);
+  font-family: var(--font-family);
+  transition: transform var(--motion-press) var(--curve-spring), background-color var(--motion-press) var(--curve-spring);
+}
+.tab-track-ready .tab-item { transition: transform var(--motion-press) var(--curve-spring), background-color var(--motion-press) var(--curve-spring), color var(--motion-sheet) var(--curve-spring); }
+.tab-item.tap-feedback {
+  transform: scale(var(--press-scale));
+  border-radius: var(--radius);
+  color: var(--color-accent-ink);
+}
+@media (prefers-reduced-motion: reduce) {
+  .tab-item { transition: none; }
+  .tab-track-ready .tab-item { transition: none; }
+  .tab-item.tap-feedback { transform: none; }
+  .tab-icon-arrive { animation: none; }
+}
+.tab-item.is-current {
+  color: var(--color-accent-ink);
+  font-weight: var(--weight-medium);
+}
+.tab-icon-wrap {
+  position: relative;
+  display: flex;
+  flex: 0 0 var(--icon-size);
+  width: var(--icon-size);
+  height: var(--icon-size);
+  align-items: center;
+  justify-content: center;
+}
+.tab-icon-arrive {
+  animation: tab-icon-select var(--motion-sheet) var(--curve-spring) both;
+  transform-origin: center;
+}
+@keyframes tab-icon-select {
+  0% { transform: scale(var(--press-scale-primary)); }
+  65% { transform: scale(var(--choice-scale)); }
+  100% { transform: scale(1); }
+}
+
+/* SVG 图标：Lucide 24×24 描边图形，通过 mask 蒙版以 currentColor 着色，
+   颜色随 .tab-item（text-2 / 选中 accent-ink），深色模式自动适配。 */
+.tab-icon {
+  position: relative;
+  display: block;
+  width: var(--icon-size);
+  height: var(--icon-size);
+  flex-shrink: 0;
+  box-sizing: border-box;
+  background: currentColor;
+}
+.icon-home {
+  -webkit-mask: url("data:image/svg+xml;base64,PHN2ZyBoZWlnaHQ9IjI0IiB2aWV3Qm94PSIwIDAgMjQgMjQiIHdpZHRoPSIyNCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayI+PGcgZmlsbD0ibm9uZSIgc3Ryb2tlPSJjdXJyZW50Q29sb3IiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgc3Ryb2tlLXdpZHRoPSIyIj48cGF0aCBkPSJNMTUgMjF2LThhMSAxIDAgMCAwLTEtMWgtNGExIDEgMCAwIDAtMSAxdjgiPjwvcGF0aD48cGF0aCBkPSJNMyAxMGEyIDIgMCAwIDEgLjcwOS0xLjUyOGw3LTZhMiAyIDAgMCAxIDIuNTgyIDBsNyA2QTIgMiAwIDAgMSAyMSAxMHY5YTIgMiAwIDAgMS0yIDJINWEyIDIgMCAwIDEtMi0yeiI+PC9wYXRoPjwvZz48L3N2Zz4=") no-repeat center / contain;
+  mask: url("data:image/svg+xml;base64,PHN2ZyBoZWlnaHQ9IjI0IiB2aWV3Qm94PSIwIDAgMjQgMjQiIHdpZHRoPSIyNCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayI+PGcgZmlsbD0ibm9uZSIgc3Ryb2tlPSJjdXJyZW50Q29sb3IiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgc3Ryb2tlLXdpZHRoPSIyIj48cGF0aCBkPSJNMTUgMjF2LThhMSAxIDAgMCAwLTEtMWgtNGExIDEgMCAwIDAtMSAxdjgiPjwvcGF0aD48cGF0aCBkPSJNMyAxMGEyIDIgMCAwIDEgLjcwOS0xLjUyOGw3LTZhMiAyIDAgMCAxIDIuNTgyIDBsNyA2QTIgMiAwIDAgMSAyMSAxMHY5YTIgMiAwIDAgMS0yIDJINWEyIDIgMCAwIDEtMi0yeiI+PC9wYXRoPjwvZz48L3N2Zz4=") no-repeat center / contain;
+}
+.icon-logo {
+  -webkit-mask: url("data:image/svg+xml;base64,PHN2ZyBoZWlnaHQ9IjI0IiB2aWV3Qm94PSIwIDAgMjQgMjQiIHdpZHRoPSIyNCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayI+PGcgZmlsbD0ibm9uZSIgc3Ryb2tlPSJjdXJyZW50Q29sb3IiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgc3Ryb2tlLXdpZHRoPSIyIj48cGF0aCBkPSJNMTIuMDE0IDIxLjUxNHYtMy43NU01LjkzIDkuNTA0bC0uNDMgMS42MDRhNC45ODYgNC45ODYgMCAwIDAgMy41MjQgNi4xMDVxMS40OTUuNDAyIDIuOTkuODAxdi0zLjQ0YTQuOTggNC45OCAwIDAgMC0zLjY3Ni00LjQyNnoiPjwvcGF0aD48cGF0aCBkPSJNMTMuNzQ0IDExLjE2NGE0LjkgNC45IDAgMCAwIDEuNDMzLTMuNDZhNC44OCA0Ljg4IDAgMCAwLTEuNDMzLTMuNDZsLTEuNzMtMS43M2wtMS43MyAxLjczYTQuOSA0LjkgMCAwIDAtMS40MzMgMy40NmE0LjkgNC45IDAgMCAwIDEuNDMzIDMuNDYiPjwvcGF0aD48cGF0aCBkPSJtMTguMDk5IDkuNTA0bC40MyAxLjYwNGE0Ljk4NiA0Ljk4NiAwIDAgMS0zLjUyNSA2LjEwNWwtMi45OS44MDF2LTMuNDRhNC45OCA0Ljk4IDAgMCAxIDMuNjc3LTQuNDI2eiI+PC9wYXRoPjwvZz48L3N2Zz4=") no-repeat center / contain;
+  mask: url("data:image/svg+xml;base64,PHN2ZyBoZWlnaHQ9IjI0IiB2aWV3Qm94PSIwIDAgMjQgMjQiIHdpZHRoPSIyNCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayI+PGcgZmlsbD0ibm9uZSIgc3Ryb2tlPSJjdXJyZW50Q29sb3IiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgc3Ryb2tlLXdpZHRoPSIyIj48cGF0aCBkPSJNMTIuMDE0IDIxLjUxNHYtMy43NU01LjkzIDkuNTA0bC0uNDMgMS42MDRhNC45ODYgNC45ODYgMCAwIDAgMy41MjQgNi4xMDVxMS40OTUuNDAyIDIuOTkuODAxdi0zLjQ0YTQuOTggNC45OCAwIDAgMC0zLjY3Ni00LjQyNnoiPjwvcGF0aD48cGF0aCBkPSJNMTMuNzQ0IDExLjE2NGE0LjkgNC45IDAgMCAwIDEuNDMzLTMuNDZhNC44OCA0Ljg4IDAgMCAwLTEuNDMzLTMuNDZsLTEuNzMtMS43M2wtMS43MyAxLjczYTQuOSA0LjkgMCAwIDAtMS40MzMgMy40NmE0LjkgNC45IDAgMCAwIDEuNDMzIDMuNDYiPjwvcGF0aD48cGF0aCBkPSJtMTguMDk5IDkuNTA0bC40MyAxLjYwNGE0Ljk4NiA0Ljk4NiAwIDAgMS0zLjUyNSA2LjEwNWwtMi45OS44MDF2LTMuNDRhNC45OCA0Ljk4IDAgMCAxIDMuNjc3LTQuNDI2eiI+PC9wYXRoPjwvZz48L3N2Zz4=") no-repeat center / contain;
+}
+.icon-mine {
+  -webkit-mask: url("data:image/svg+xml;base64,PHN2ZyBoZWlnaHQ9IjI0IiB2aWV3Qm94PSIwIDAgMjQgMjQiIHdpZHRoPSIyNCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayI+PGcgZmlsbD0ibm9uZSIgc3Ryb2tlPSJjdXJyZW50Q29sb3IiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgc3Ryb2tlLXdpZHRoPSIyIj48Y2lyY2xlIGN4PSIxMiIgY3k9IjgiIHI9IjUiPjwvY2lyY2xlPjxwYXRoIGQ9Ik0yMCAyMWE4IDggMCAwIDAtMTYgMCI+PC9wYXRoPjwvZz48L3N2Zz4=") no-repeat center / contain;
+  mask: url("data:image/svg+xml;base64,PHN2ZyBoZWlnaHQ9IjI0IiB2aWV3Qm94PSIwIDAgMjQgMjQiIHdpZHRoPSIyNCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayI+PGcgZmlsbD0ibm9uZSIgc3Ryb2tlPSJjdXJyZW50Q29sb3IiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgc3Ryb2tlLXdpZHRoPSIyIj48Y2lyY2xlIGN4PSIxMiIgY3k9IjgiIHI9IjUiPjwvY2lyY2xlPjxwYXRoIGQ9Ik0yMCAyMWE4IDggMCAwIDAtMTYgMCI+PC9wYXRoPjwvZz48L3N2Zz4=") no-repeat center / contain;
+}

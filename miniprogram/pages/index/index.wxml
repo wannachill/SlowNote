@@ -1,0 +1,72 @@
+<view class="theme-root {{themeClass}} motion-host">
+<view class="motion-scene {{panel ? 'scene-mounted' : ''}} {{panel && !closing ? 'scene-recessed' : ''}} theme-root {{themeClass}} page tab-page home">
+  <net-banner />
+  <view class="baby-header page-top-heading">
+    <view class="baby-main">
+      <image class="baby-logo" src="{{avatarSrc}}" mode="aspectFill" aria-hidden="true"></image>
+      <view class="baby-identity"><text class="baby-name">{{nickname}}</text><text class="baby-age">{{age}}</text></view>
+    </view>
+  </view>
+  <view class="calendar">
+    <view class="calendar-toolbar">
+      <button class="text-action calendar-step" data-offset="-1" bindtap="moveWeek" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" aria-label="{{calendarExpanded ? '上个月' : '上一周'}}"><view class="chevron previous" aria-hidden="true"></view></button>
+      <button class="text-action calendar-month" bindtap="toggleCalendar" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" aria-label="{{monthLabel}}{{calendarExpanded ? '，收起月历' : '，展开月历'}}">{{monthLabel}}<view class="chevron select-arrow {{calendarExpanded ? 'up' : ''}}" aria-hidden="true"></view></button>
+      <button class="text-action calendar-step" data-offset="1" bindtap="moveWeek" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" aria-label="{{calendarExpanded ? '下个月' : '下一周'}}"><view class="chevron" aria-hidden="true"></view></button>
+    </view>
+    <view class="week-strip">
+      <button wx:for="{{week}}" wx:key="date" class="calendar-day {{item.date === selectedDate ? 'selected' : ''}} {{item.today ? 'today' : ''}} {{item.recorded ? 'has-record' : ''}}" data-date="{{item.date}}" bindtap="selectDate" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" aria-label="{{item.date}}{{item.today ? '，今天' : ''}}{{item.recorded ? '，有记录' : ''}}{{item.date === selectedDate ? '，已选中' : ''}}">
+        <text class="weekday">{{item.label}}</text><view class="calendar-number"><text>{{item.today ? '今' : item.day}}</text><view wx:if="{{item.recorded}}" class="record-dot" aria-hidden="true"></view></view>
+      </button>
+    </view>
+    <view wx:if="{{calendarExpanded}}" class="month-grid">
+      <button wx:for="{{monthDays}}" wx:key="date" class="month-day {{item.muted ? 'muted' : ''}} {{item.date === selectedDate ? 'selected' : ''}} {{item.today ? 'today' : ''}} {{item.recorded ? 'has-record' : ''}}" data-date="{{item.date}}" bindtap="selectDate" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" aria-label="{{item.date}}{{item.today ? '，今天' : ''}}{{item.recorded ? '，有记录' : ''}}"><view class="calendar-number"><text>{{item.today ? '今' : item.day}}</text><view wx:if="{{item.recorded}}" class="record-dot" aria-hidden="true"></view></view></button>
+    </view>
+    <button wx:if="{{selectedDate !== today}}" class="text-action back-today" bindtap="goToday" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}">回到今天</button>
+  </view>
+  <view class="toolbar day-toolbar"><text class="title">{{dateLabel}}的记录</text><button wx:if="{{cardEditing}}" class="text-action" bindtap="finishCardEdit" disabled="{{cardBusy || cardSettling || cardDeletingKey}}" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" aria-label="完成卡片整理">完成</button></view>
+  <button wx:if="{{loggedIn}}" class="milestone-entry home-milestone-entry" bindtap="openMilestones" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" aria-label="{{milestoneEntry.label}}"><text class="milestone-entry-label">{{milestoneEntry.label}}</text><view class="chevron" aria-hidden="true"></view></button>
+  <scroll-view class="home-results" scroll-y="{{!cardEditing}}" enhanced show-scrollbar="{{false}}" refresher-enabled="{{true}}" refresher-triggered="{{refreshing}}" bindrefresherrefresh="onScrollRefresh">
+  <view wx:if="{{!loggedIn}}" class="status-block"><text>登录后，把宝宝的每一天安心记下。</text><button class="btn-secondary" bindtap="goMine" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}">前往登录</button></view>
+  <view wx:elif="{{loading && !cards.length}}" class="status-block skeleton-loading" role="status"><text class="loading-copy">正在找这一天的记录…</text><view class="skeleton-grid" aria-hidden="true"><view wx:for="{{[0,1,2,3]}}" wx:key="*this" class="skeleton-card"><view class="skeleton-line short"></view><view class="skeleton-line value"></view><view class="skeleton-line"></view></view></view></view>
+  <view wx:elif="{{error}}" class="status-block"><text>{{error}}</text><button class="btn-secondary" bindtap="load" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}">重试</button></view>
+  <view wx:elif="{{cards.length}}" class="daily-results content-arrived">
+  <view class="daily-summary" aria-label="{{dateLabel}}记录汇总">
+  <scroll-view class="daily-summary-tags" scroll-x="{{true}}" enable-flex="{{true}}" show-scrollbar="{{false}}" aria-label="今日记录汇总，可左右滑动查看更多">
+    <view class="daily-summary-tags-row">
+    <view wx:for="{{summaryTags}}" wx:key="key" class="daily-summary-tag {{item.active ? 'is-active' : (item.dimmed ? 'is-dimmed' : '')}}" data-key="{{item.key}}" bindtap="toggleTag" aria-role="button" aria-checked="{{item.active}}" aria-label="按{{item.label}}筛选"><text class="daily-summary-label">{{item.label}}</text><text class="daily-summary-value">{{item.value}}</text></view>
+    </view>
+  </scroll-view>
+  </view>
+  <view class="metric-grid {{cardEditing ? 'cards-editing' : ''}}">
+    <view wx:for="{{cards}}" wx:key="key" class="metric-slot {{cardDeletingKey === item.key ? 'card-removing' : ''}}" data-key="{{item.key}}" bindlongpress="beginCardEdit">
+      <view class="metric-rail-line" aria-hidden="true"></view>
+      <view class="metric-rail-node" aria-hidden="true"></view>
+      <text class="metric-rail-time">{{item.time}}</text>
+      <view class="metric-lift"><view class="metric-wiggle" style="{{item.wiggleStyle}}">
+        <button class="metric-card" data-key="{{item.key}}" data-url="{{item.url}}" bindtap="openCard" hover-class="{{cardEditing ? 'none' : 'tap-feedback'}}" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" aria-label="{{item.name}}，{{item.value}}{{item.unit}}，{{item.detail}}{{cardEditing ? '，可删除' : ''}}">
+          <view class="line-icon record-icon metric-record-icon icon-category-{{item.key === 'excretion' ? 'diaper' : item.module === 'feeding' && item.key !== 'solid' && item.key !== 'excretion' ? 'feeding' : item.key === 'milestone' ? 'growth' : item.key}}" aria-hidden="true"><view class="category-icon-part category-icon-primary"></view><view class="category-icon-part category-icon-secondary"></view><view class="category-icon-part category-icon-detail"></view></view>
+          <view class="metric-body">
+            <view class="metric-title-row"><text class="metric-name">{{item.name}}</text><view class="metric-hero"><text class="metric-number">{{item.value}}</text><text class="metric-unit">{{item.unit}}</text></view></view>
+            <view class="metric-items">
+              <view wx:for="{{item.items}}" wx:for-item="it" wx:key="key" class="metric-item"><text class="metric-item-label">{{it.label}}</text><text class="metric-item-value">{{it.value}}</text></view>
+            </view>
+          </view>
+        </button>
+      </view></view>
+      <button wx:if="{{cardEditing}}" class="card-remove" data-key="{{item.key}}" bindtap="removeCard" disabled="{{cardBusy || cardSettling || cardDeletingKey}}" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" aria-label="删除{{selectedDate}}全部{{item.name}}登记"><view class="card-remove-mark" aria-hidden="true"></view></button>
+    </view>
+  </view>
+  </view>
+  <view wx:elif="{{activeTags.length}}" class="empty-illustration"><view class="empty-book" aria-hidden="true"></view><text class="empty-title">没有该类型的记录</text><text class="empty-note">点上方已选中的标签取消筛选</text></view>
+  <view wx:else class="empty-illustration"><view class="empty-book" aria-hidden="true"></view><text class="empty-title">这一天，还没有记录</text></view>
+  </scroll-view>
+  <button class="record-fab motion-primary {{motionRippleId === 'motion-index-1' ? 'ripple-' + motionRipplePhase : ''}}" bindtap="openPanel" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" aria-label="添加记录" id="motion-index-1" bindtouchstart="motionPress" style="{{motionRippleId === 'motion-index-1' ? motionRippleStyle : ''}}"><view class="fab-plus" aria-hidden="true"></view></button>
+</view>
+  <view wx:if="{{panel}}" class="mask {{closing ? 'closing' : ''}}" bindtap="closePanel">
+    <scroll-view class="sheet category-sheet {{closing ? 'closing' : ''}}" scroll-y enhanced show-scrollbar="{{false}}" catchtap="noop">
+      <view class="sheet-content"><view class="sheet-heading"><view><text class="sheet-title">记下这一刻</text><text class="subtitle">{{selectedDate}}</text></view><button class="sheet-close" bindtap="closePanel" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" aria-label="关闭记录类目">关闭</button></view>
+        <view class="category-grid"><button wx:for="{{categories}}" wx:key="key" class="category-item" data-key="{{item.key}}" bindtap="chooseCategory" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" aria-label="{{item.name}}"><view class="category-icon icon-category-{{item.icon}}" aria-hidden="true"><view class="category-icon-part category-icon-primary"></view><view class="category-icon-part category-icon-secondary"></view><view class="category-icon-part category-icon-detail"></view></view><text>{{item.name}}</text></button></view>
+      </view>
+    </scroll-view>
+  </view>
+</view>

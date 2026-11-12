@@ -1,0 +1,9 @@
+{
+  "name": "asrProxy",
+  "version": "1.0.0",
+  "description": "语音转写代理：下载云存储录音，转发到 OpenAI 兼容 /audio/transcriptions 端点",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

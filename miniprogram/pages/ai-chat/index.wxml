@@ -1,0 +1,91 @@
+<view class="theme-root {{themeClass}} chat-page {{keyboardHeight ? 'keyboard-open' : ''}}" style="height: calc(100vh - {{keyboardHeight}}px);">
+  <view class="sub-nav" style="height: calc({{statusBarHeight}}px + var(--nav-height)); padding-top: {{statusBarHeight}}px;"><button class="sub-nav-back" bindtap="goBack" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" aria-label="返回"></button><text class="sub-nav-title">小迈</text><view class="sub-nav-spacer" aria-hidden="true"></view></view>
+  <scroll-view class="chat-list" scroll-y enhanced scroll-into-view="{{scrollInto}}" show-scrollbar="{{false}}" bindscroll="onChatScroll">
+    <view wx:if="{{!messages.length}}" class="chat-welcome">
+      <text class="welcome-hint">随时提问，也可以添加照片、语音或记录一起分析。</text>
+      <view class="common-bubbles">
+        <view class="common-bubbles-head"><text class="common-label">常问问题</text><button class="text-action" bindtap="refreshCommon" hover-class="tap-feedback" hover-stop-propagation="{{true}}" hover-start-time="20" hover-stay-time="60" aria-label="换一批常见问题">换一批</button></view>
+        <button wx:for="{{commonList}}" wx:key="text" class="common-bubble" data-s="{{item}}" bindtap="onSuggest" disabled="{{sending || selecting || attaching}}" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" aria-label="{{item.text}}">{{item.text}}</button>
+      </view>
+    </view>
+    <view wx:for="{{messageViews}}" wx:key="id" id="{{item.id}}" class="message-row {{item.role === 'user' ? 'from-user' : ''}} {{pickMode ? 'pick-active' : ''}} {{item.pickSelected ? 'pair-picked' : ''}}" bindtap="onMessageTap" data-i="{{index}}">
+      <view wx:if="{{pickMode && item.pickUser}}" class="pair-check {{item.pickSelected ? 'checked' : ''}}" aria-hidden="true"><text>✓</text></view>
+      <view class="message-bubble" wx:if="{{item.role === 'user'}}" bindlongpress="onQuestionLongPress" data-i="{{index}}">
+        <view wx:if="{{item.quoted}}" class="message-quote"><text class="message-quote-label">追问{{item.quoted.role === 'user' ? '提问' : '回答'}}</text><text class="message-quote-text">{{item.quoted.text}}</text></view>
+        <text wx:if="{{item.status}}" class="message-status">{{item.status}}</text>
+        <view wx:if="{{item.images.length}}" class="message-images"><button wx:for="{{item.images}}" wx:for-item="photo" wx:key="id" class="photo-preview-button" data-src="{{photo.path}}" bindtap="previewPhoto" hover-class="tap-feedback" hover-stop-propagation="{{true}}" hover-start-time="20" hover-stay-time="60" aria-label="查看发送的照片"><image class="message-image" src="{{photo.path}}" mode="aspectFill" /></button></view>
+        <text class="message-content">{{item.content}}</text>
+        <view wx:if="{{item.snapshot}}" class="message-snapshot"><text class="snapshot-label">已附带记录数据</text><text class="snapshot-text" selectable>{{item.snapshot}}</text></view>
+      </view>
+      <view class="message-bubble" wx:else>
+        <text wx:if="{{item.status}}" class="message-status">{{item.status}}</text>
+        <view wx:if="{{item.thinkLabel}}" class="think-box">
+          <view wx:if="{{item.reasoningPlaying}}" class="think-head think-disabled"><text>{{item.thinkLabel}}</text></view>
+          <view wx:elif="{{item.reasoning}}" class="think-head" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" bindtap="toggleThink" data-id="{{item.id}}" aria-label="{{item.thinkLabel}}，点击展开或收起思考过程"><text>{{item.thinkLabel}}</text><text class="think-arrow {{thinkOpen[item.id] ? 'open' : ''}}">›</text></view>
+          <view wx:else class="think-head think-disabled"><text>{{item.thinkLabel}}</text></view>
+          <view wx:if="{{item.reasoningPlaying || thinkOpen[item.id]}}" class="think-body"><rich-text class="think-rich" nodes="{{item.reasonNodes}}" /></view>
+        </view>
+        <rich-text wx:if="{{item.role !== 'user'}}" class="message-rich" nodes="{{item.nodes}}" />
+        <view wx:if="{{item.snapshot}}" class="message-snapshot"><text class="snapshot-label">已附带记录数据</text><text class="snapshot-text" selectable>{{item.snapshot}}</text></view>
+        <text wx:if="{{item.failed}}" class="message-status">未发送成功，内容已保留</text>
+        <view wx:if="{{!pickMode && !item.failed && typingMessageId !== item.id}}" class="answer-tools">
+          <button class="answer-tool" bindtap="copyMessage" data-i="{{index}}" hover-class="tap-feedback" aria-label="复制回答"><view class="copy-symbol" aria-hidden="true"></view></button>
+          <button class="answer-tool" bindtap="quoteMessage" data-i="{{index}}" disabled="{{sending}}" hover-class="tap-feedback" aria-label="追问这条回答"><view class="quote-symbol" aria-hidden="true"></view></button>
+          <button class="answer-tool answer-tool-repeat" bindtap="askAgain" data-i="{{index}}" disabled="{{sending}}" hover-class="tap-feedback" aria-label="重新提问"><view class="refresh-symbol" aria-hidden="true"></view></button>
+        </view>
+      </view>
+    </view>
+    <view wx:if="{{attaching}}" class="chat-pending">{{attachLabel}}</view>
+    <view wx:elif="{{sending && !typingMessageId}}" class="chat-pending">{{thinking ? '小迈正在深入思考…' : '小迈正在想一想…'}}</view>
+    <view id="chat-bottom-a" class="chat-anchor"></view>
+    <view id="chat-bottom-b" class="chat-anchor"></view>
+  </scroll-view>
+  <view class="jump-layer">
+    <button wx:if="{{showJumpBottom}}" class="jump-bottom" bindtap="jumpToBottom" hover-class="tap-feedback" aria-label="回到最新内容"><view class="chevron-symbol" aria-hidden="true"></view></button>
+  </view>
+  <view wx:if="{{activeMessageId}}" class="mask" catchtap="dismissMessageActions" catchtouchmove="motionBlock">
+    <view class="sheet message-action-sheet" catchtap="noop" catchtouchmove="motionBlock">
+      <view class="sheet-content">
+        <view class="sheet-heading message-action-heading">
+          <text class="message-action-summary">该问题：{{activeQuestionSummary}}</text>
+          <button class="sheet-close" bindtap="dismissMessageActions" hover-class="tap-feedback" aria-label="关闭提问操作菜单">关闭</button>
+        </view>
+        <view class="message-action-grid">
+          <button class="message-action-choice" bindtap="copyMessage" data-i="{{activeMessageIndex}}" hover-class="tap-feedback" aria-label="复制问题"><view class="copy-symbol" aria-hidden="true"></view><text>复制</text></button>
+          <button class="message-action-choice" bindtap="editMessage" data-i="{{activeMessageIndex}}" hover-class="tap-feedback" aria-label="修改问题"><view class="pencil-symbol" aria-hidden="true"></view><text>修改</text></button>
+          <button class="message-action-choice" bindtap="quoteMessage" data-i="{{activeMessageIndex}}" hover-class="tap-feedback" aria-label="追问问题"><view class="quote-symbol" aria-hidden="true"></view><text>追问</text></button>
+          <button class="message-action-choice" bindtap="beginPickMode" data-i="{{activeMessageIndex}}" hover-class="tap-feedback" aria-label="删除这组问答"><view class="trash-symbol" aria-hidden="true"></view><text>删除</text></button>
+        </view>
+      </view>
+    </view>
+  </view>
+  <view wx:if="{{pickMode}}" class="pick-bar"><text>已选 {{pickedCount}} 对</text><view class="pick-actions"><button class="btn-danger" bindtap="deletePicked" disabled="{{!pickedCount}}" hover-class="tap-feedback">删除</button><button class="btn-secondary" bindtap="cancelPickMode" hover-class="tap-feedback">取消</button></view></view>
+  <view wx:else class="chat-composer" bindtap="dismissMessageActions">
+    <text wx:if="{{error}}" class="chat-error" role="alert">{{error}}</text>
+    <view wx:if="{{editing}}" class="edit-bar"><text>正在修改这条提问</text><button class="text-action" bindtap="cancelEditing" hover-class="tap-feedback" aria-label="取消修改">取消</button></view>
+    <view wx:if="{{quote}}" class="quote-bar"><view class="quote-bar-line"></view><view class="quote-bar-copy"><text class="quote-bar-label">追问{{quote.role === 'user' ? '提问' : '回答'}}</text><text class="quote-bar-text">{{quote.text}}</text></view><button class="quote-bar-close" bindtap="clearQuote" hover-class="tap-feedback" aria-label="取消引用">×</button></view>
+    <view wx:if="{{recording}}" class="recording-tip" role="status" aria-live="polite"><text wx:if="{{liveTranscript}}" class="voice-live-text">{{liveTranscript}}</text><text wx:else class="voice-live-placeholder">正在录音…松开后自动转写</text><text class="voice-live-placeholder">松开结束</text></view>
+    <view class="compose-tools">
+      <button wx:if="{{thinkingSettingsReady && showThinking}}" class="compose-tool {{thinking ? 'active' : ''}}" bindtap="onThinkingChange" data-next="{{!thinking}}" disabled="{{sending || attaching}}" hover-class="tap-feedback" hover-stop-propagation="{{true}}" hover-start-time="20" hover-stay-time="60" aria-label="{{thinking ? '深度思考已开启' : '深度思考已关闭'}}"><view class="sparkles-symbol" aria-hidden="true"></view><text class="compose-tool-label">深度思考</text></button>
+      <view class="compose-spacer" aria-hidden="true"></view>
+      <button class="compose-tool" bindtap="newSession" disabled="{{sending || attaching}}" hover-class="tap-feedback" hover-stop-propagation="{{true}}" hover-start-time="20" hover-stay-time="60" aria-label="新建对话"><view class="new-symbol" aria-hidden="true"></view><text class="compose-tool-label">新建</text></button>
+      <button class="compose-tool" bindtap="openHistory" disabled="{{sending || attaching}}" hover-class="tap-feedback" hover-stop-propagation="{{true}}" hover-start-time="20" hover-stay-time="60" aria-label="历史对话"><view class="history-symbol" aria-hidden="true"></view><text class="compose-tool-label">历史</text></button>
+    </view>
+    <view class="compose-box">
+      <scroll-view wx:if="{{images.length}}" class="compose-attachments has-photos" scroll-y enhanced show-scrollbar="{{false}}">
+      <view wx:if="{{images.length}}" class="photo-attachments">
+        <view wx:for="{{images}}" wx:key="id" class="photo-attachment">
+          <button class="photo-preview-button" data-src="{{item.path}}" bindtap="previewPhoto" hover-class="tap-feedback" hover-stop-propagation="{{true}}" hover-start-time="20" hover-stay-time="60" aria-label="查看第{{index + 1}}张待分析照片"><image class="photo-preview" src="{{item.path}}" mode="aspectFill" /></button>
+          <button class="photo-remove" data-id="{{item.id}}" bindtap="removePhoto" disabled="{{sending}}" hover-class="tap-feedback" hover-stop-propagation="{{true}}" hover-start-time="20" hover-stay-time="60" aria-label="移除第{{index + 1}}张照片">×</button>
+        </view>
+      </view>
+      </scroll-view>
+      <view class="chat-input-row">
+        <button class="input-tool" bindtap="choosePhotos" disabled="{{sending || selecting || attaching || images.length >= 3}}" hover-class="tap-feedback" hover-stop-propagation="{{true}}" hover-start-time="20" hover-stay-time="60" aria-label="添加照片"><view class="photo-symbol" aria-hidden="true"></view><text wx:if="{{images.length}}" class="input-tool-count">{{images.length}}/3</text></button>
+        <textarea class="chat-input" value="{{question}}" focus="{{focusInput}}" bindinput="onInput" bindkeyboardheightchange="onKeyboardHeight" maxlength="2000" placeholder="{{images.length ? '想了解照片中的什么？' : '发消息或按住说话…'}}" placeholder-class="input-placeholder" aria-label="向小迈提问" auto-height adjust-position="{{false}}" disabled="{{sending || attaching}}" />
+        <button class="voice-button {{recording ? 'recording' : ''}}" bindtouchstart="startVoice" bindtouchend="stopVoice" bindtouchcancel="stopVoice" disabled="{{sending || selecting || attaching}}" hover-class="tap-feedback" hover-stop-propagation="{{true}}" hover-start-time="20" hover-stay-time="60" aria-label="{{recording ? '录音中，松开结束' : '按住说话'}}"><view class="voice-symbol" aria-hidden="true"></view></button>
+        <button class="btn-primary send-button motion-primary {{motionRippleId === 'motion-ai-chat-1' ? 'ripple-' + motionRipplePhase : ''}}" bindtap="send" loading="{{sending}}" disabled="{{sending || selecting || attaching || (!question && !images.length)}}" hover-class="tap-feedback" hover-stop-propagation="{{true}}" hover-start-time="20" hover-stay-time="60" aria-label="{{sending ? '正在分析' : '发送提问'}}" id="motion-ai-chat-1" bindtouchstart="motionPress" style="{{motionRippleId === 'motion-ai-chat-1' ? motionRippleStyle : ''}}"><view wx:if="{{!sending}}" class="send-arrow" aria-hidden="true"></view></button>
+      </view>
+    </view>
+  </view>
+</view>

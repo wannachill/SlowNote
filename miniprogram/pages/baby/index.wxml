@@ -1,0 +1,53 @@
+<view class="theme-root {{themeClass}} page settings-page">
+  <view class="sub-nav" style="height: calc({{statusBarHeight}}px + var(--nav-height)); padding-top: {{statusBarHeight}}px;"><button class="sub-nav-back" bindtap="goBack" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" aria-label="返回"></button><text class="sub-nav-title">宝宝信息</text><view class="sub-nav-spacer" aria-hidden="true"></view></view>
+  <view class="card baby-hint">
+    <view class="baby-hint-body">
+      <text class="baby-hint-title">使用提示</text>
+      <text class="baby-hint-text">可维护多个宝宝，切换后各功能按当前宝宝记录与查看。点卡片切换当前宝宝，左滑可编辑或删除。</text>
+    </view>
+  </view>
+
+  <view class="card setting-card">
+    <view class="section-heading">
+      <text class="title">宝宝档案</text>
+      <button class="link-btn" bindtap="openPanel" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}">＋ 添加</button>
+    </view>
+
+    <view wx:if="{{!babies.length}}" class="empty">
+      <text class="empty-title">还没有宝宝档案</text>
+      <text class="empty-note">点右上方添加，完善宝宝的昵称、生日与性别。</text>
+    </view>
+
+    <view wx:for="{{babies}}" wx:key="baby_id" class="baby-swipe {{item.swipeX ? 'swipe-open' : ''}}" data-id="{{item.baby_id}}">
+      <view class="swipe-actions">
+        <button class="swipe-action edit-action" data-id="{{item.baby_id}}" catchtap="startEdit" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" aria-label="编辑宝宝">编辑</button>
+        <button class="swipe-action delete-action" data-id="{{item.baby_id}}" catchtap="deleteBaby" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" aria-label="删除宝宝">删除</button>
+      </view>
+      <view class="baby-row {{item.active ? 'active' : ''}}" data-id="{{item.baby_id}}" style="transform: translate({{item.swipeX}}px, 0);" bindtap="onCardTap" bindtouchstart="onCardTouchStart" bindtouchmove="onCardTouchMove" bindtouchend="onCardTouchEnd" bindtouchcancel="onCardTouchEnd" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}">
+        <image class="baby-row-img" src="{{item.avatar}}" mode="aspectFill" aria-hidden="true"></image>
+        <view class="baby-row-text"><text class="baby-row-name">{{item.nickname}}</text><text class="baby-row-meta">{{item.gender === 'female' ? '女宝' : item.gender === 'male' ? '男宝' : '未填性别'}}{{item.birthday ? ' · ' + item.birthday : ''}}</text></view>
+        <text wx:if="{{item.active}}" class="baby-row-tag">当前</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 新增 / 编辑宝宝面板 -->
+  <view wx:if="{{panel}}" class="mask {{closing ? 'closing' : ''}}" bindtap="closePanel">
+    <view class="sheet {{closing ? 'closing' : ''}}" catchtap="noop">
+      <view class="sheet-heading">
+        <text class="sheet-title">{{editingBabyId ? '编辑宝宝' : '添加宝宝'}}</text>
+        <button class="sheet-close" bindtap="closePanel" aria-label="关闭" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}">关闭</button>
+      </view>
+      <scroll-view class="sheet-scroll" scroll-y enhanced show-scrollbar="{{false}}" catchtap="noop">
+        <view class="sheet-content">
+          <view class="avatar-field"><button class="avatar-btn" bindtap="changeAvatar" disabled="{{saving || uploading}}" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" aria-label="更换宝宝头像"><image class="avatar-img" src="{{avatarSrc}}" mode="aspectFill" aria-hidden="true"></image><text class="avatar-hint">{{baby.avatar ? '更换照片' : '上传照片'}}</text></button></view>
+          <view class="field baby-field {{fieldErrors.nickname ? 'field-invalid' : ''}} {{fieldShake === 'nickname' ? 'field-shake' : ''}}"><text class="field-label">昵称</text><input disabled="{{saving}}" class="input" value="{{baby.nickname}}" maxlength="24" bindinput="onBabyInput" placeholder="怎么称呼宝宝？" placeholder-class="input-placeholder" aria-label="宝宝昵称" /><text wx:if="{{fieldErrors.nickname}}" class="field-error" role="alert">{{fieldErrors.nickname}}</text></view>
+          <view class="field {{fieldErrors.birthday ? 'field-invalid' : ''}} {{fieldShake === 'birthday' ? 'field-shake' : ''}}"><text class="field-label">生日</text><picker mode="date" value="{{baby.birthday}}" end="{{today}}" disabled="{{saving}}" bindchange="onBirthday" aria-label="宝宝生日"><view class="select-value date-row pressable" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}"><text>{{baby.birthday}}</text><view class="chevron select-arrow" aria-hidden="true"></view></view></picker><text wx:if="{{fieldErrors.birthday}}" class="field-error" role="alert">{{fieldErrors.birthday}}</text></view>
+          <view class="field {{fieldErrors.gender ? 'field-invalid' : ''}} {{fieldShake === 'gender' ? 'field-shake' : ''}}"><text class="field-label">性别</text><picker disabled="{{saving}}" range="{{genders}}" value="{{genderIndex}}" bindchange="onGender" aria-label="宝宝性别"><view class="select-value pressable" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}">{{genders[genderIndex]}}<view class="chevron select-arrow" aria-hidden="true"></view></view></picker><text wx:if="{{fieldErrors.gender}}" class="field-error" role="alert">{{fieldErrors.gender}}</text></view>
+          <button class="btn-primary motion-primary {{motionRippleId === 'motion-baby-1' ? 'ripple-' + motionRipplePhase : ''}}" bindtap="saveBaby" loading="{{saving}}" disabled="{{saving}}" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" id="motion-baby-1" bindtouchstart="motionPress" style="{{motionRippleId === 'motion-baby-1' ? motionRippleStyle : ''}}">{{saving ? '保存中' : (editingBabyId ? '保存修改' : '保存宝宝')}}</button>
+        </view>
+      </scroll-view>
+    </view>
+  </view>
+  <include src="../../templates/motion-confirm.wxml" />
+</view>

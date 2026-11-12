@@ -1,0 +1,66 @@
+/* Compositor-only presentation. All geometry/colour values use app tokens. */
+.motion-host { min-height: 100vh; }
+.motion-scene { transform-origin: 50% 0; transition: transform var(--motion-sheet) var(--curve-spring), border-radius var(--motion-sheet) var(--curve-spring); }
+.scene-mounted { overflow: hidden; }
+.scene-recessed { transform: scale(var(--scene-scale)); border-radius: var(--radius-sheet); }
+.scene-mounted .record-fab { visibility: hidden; }
+.motion-primary { position: relative; overflow: hidden; }
+.motion-primary::after { content: ''; position: absolute; pointer-events: none; left: var(--ripple-x, 50%); top: var(--ripple-y, 50%); width: var(--ripple-size, 100%); height: var(--ripple-size, 100%); margin: 0; padding: 0; border: 0; border-radius: var(--radius-round); background: currentColor; opacity: 0; transform: translate(-50%, -50%) scale(0); }
+.ripple-a::after { animation: touch-ripple-a var(--motion-feedback) var(--curve-spring) both; }
+.ripple-b::after { animation: touch-ripple-b var(--motion-feedback) var(--curve-spring) both; }
+.record-fab.ripple-a .fab-plus, .record-fab.ripple-b .fab-plus { animation: plus-settle var(--motion-feedback) var(--curve-spring) both; }
+@keyframes touch-ripple-a { 0% { opacity: var(--ripple-opacity); transform: translate(-50%, -50%) scale(0); } 60% { opacity: var(--ripple-opacity); } 100% { opacity: 0; transform: translate(-50%, -50%) scale(1); } }
+@keyframes touch-ripple-b { 0% { opacity: var(--ripple-opacity); transform: translate(-50%, -50%) scale(0); } 60% { opacity: var(--ripple-opacity); } 100% { opacity: 0; transform: translate(-50%, -50%) scale(1); } }
+@keyframes plus-settle { 0%, 100% { transform: scale(1); } 35% { transform: scale(var(--scene-scale)); } 75% { transform: scale(var(--choice-scale)); } }
+.skeleton-loading { position: relative; overflow: hidden; }
+.skeleton-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-s); }
+.skeleton-list { display: flex; flex-direction: column; gap: var(--space-s); }
+.skeleton-card { background: var(--color-surface); border-radius: var(--radius); padding: var(--space-m); }
+.skeleton-line { height: var(--font-body); margin-bottom: var(--space-s); border-radius: var(--radius-small); background: var(--color-field); }
+.skeleton-line.short { width: 60%; }
+.skeleton-line.value { width: 45%; height: var(--font-data); }
+.skeleton-line:last-child { margin-bottom: 0; }
+.loading-copy { display: block; margin-bottom: var(--space-s); font-size: var(--font-caption); color: var(--color-text-2); }
+.content-arrived { animation: content-arrive var(--motion-feedback) var(--curve-spring) both; }
+@keyframes content-arrive { from { opacity: 0; } to { opacity: 1; } }
+.reveal { opacity: 0; }
+.reveal-visible { animation: reveal-rise var(--motion-feedback) var(--curve-spring) both; animation-delay: var(--reveal-delay, 0ms); }
+@keyframes reveal-rise { from { opacity: 0; transform: translate3d(0, var(--reveal-shift), 0); } to { opacity: 1; transform: translate3d(0, 0, 0); } }
+.reveal-visible .reveal-focus { animation: reveal-focus var(--motion-sheet) ease-out both; animation-delay: calc(var(--reveal-delay, 0ms) + 120ms); }
+@keyframes reveal-focus { from { opacity: .35; filter: blur(var(--reveal-blur)); } to { opacity: 1; filter: blur(0); } }
+@media (prefers-reduced-motion: reduce) {
+  .reveal { opacity: 1; }
+  .reveal-visible, .reveal-visible .reveal-focus { animation: none; }
+}
+.field-hint { display: block; margin-top: var(--space-xs); color: var(--color-text-3); font-size: var(--font-caption); line-height: var(--line-body); }
+.field-error { display: block; margin-top: var(--space-xs); color: var(--color-error); font-size: var(--font-caption); line-height: var(--line-body); }
+.field-invalid .input, .field-invalid .field-input { outline: var(--stroke-width) solid var(--color-error); outline-offset: 0; }
+.field-invalid .field-input .input { outline: 0; }
+.field-shake { animation: field-shake var(--motion-error) var(--curve-spring) both; }
+@keyframes field-shake { 0%, 100% { transform: translateX(0); } 25%, 65% { transform: translateX(calc(var(--error-shift) * -1)); } 45%, 85% { transform: translateX(var(--error-shift)); } }
+.setting-flash { position: relative; }
+.setting-flash::after { content: ''; position: absolute; top: 0; right: 0; bottom: 0; left: 0; border-radius: inherit; background: var(--color-accent-soft); opacity: 0; pointer-events: none; animation: setting-flash var(--motion-setting) var(--curve-spring) both; }
+@keyframes setting-flash { 0%, 100% { opacity: 0; } 35% { opacity: 1; } }
+.choice-pop { animation: choice-pop var(--motion-feedback) var(--curve-spring) both; position: relative; z-index: 1; }
+.choice-left { animation: choice-left var(--motion-feedback) var(--curve-spring) both; }
+.choice-right { animation: choice-right var(--motion-feedback) var(--curve-spring) both; }
+@keyframes choice-pop { 0%, 100% { transform: scale(1); } 40% { transform: scale(var(--choice-scale)); } }
+@keyframes choice-left { 0%, 100% { transform: translateX(0); } 40% { transform: translateX(calc(var(--choice-shift) * -1)); } }
+@keyframes choice-right { 0%, 100% { transform: translateX(0); } 40% { transform: translateX(var(--choice-shift)); } }
+.theme-previous { position: fixed; top: 0; right: 0; bottom: 0; left: 0; overflow: hidden; pointer-events: none; z-index: var(--layer-tab); }
+.theme-front { position: relative; z-index: calc(var(--layer-tab) + 1); animation: content-arrive var(--motion-sheet) var(--curve-spring) both; }
+@supports (clip-path: circle(0 at 0 0)) {
+  .theme-front { animation: theme-reveal var(--motion-sheet) var(--curve-spring) both; }
+}
+@keyframes theme-reveal { from { clip-path: circle(0 at var(--reveal-x) var(--reveal-y)); } to { clip-path: circle(var(--reveal-radius) at var(--reveal-x) var(--reveal-y)); } }
+.confirm-mask { position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: calc(var(--layer-sheet) + 1); display: flex; align-items: center; justify-content: center; padding: var(--space-m); background: var(--color-mask); animation: overlay-reveal var(--motion-sheet) var(--curve-spring) both; }
+.confirm-dialog { width: 100%; max-width: calc(var(--sheet-detail-height) + var(--space-m)); padding: var(--space-m); border-radius: var(--radius); background: var(--color-surface); animation: confirm-in var(--motion-sheet) var(--curve-spring) both; }
+.confirm-title { display: block; color: var(--color-text-1); font-size: var(--font-title); font-weight: var(--weight-semibold); }
+.confirm-object, .confirm-copy { display: block; margin-top: var(--space-s); color: var(--color-text-2); font-size: var(--font-body); line-height: var(--line-body); overflow-wrap: anywhere; }
+.confirm-object { color: var(--color-text-1); font-weight: var(--weight-medium); }
+.confirm-actions { display: flex; gap: var(--space-s); margin-top: var(--space-m); }
+.confirm-actions button { flex: 1; width: 0; }
+.confirm-mask.closing { animation: overlay-out var(--motion-sheet) var(--curve-spring) both; }
+.confirm-dialog.closing { animation: confirm-out var(--motion-sheet) var(--curve-spring) both; }
+@keyframes confirm-in { from { opacity: 0; transform: scale(var(--scene-scale)); } to { opacity: 1; transform: scale(1); } }
+@keyframes confirm-out { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(var(--scene-scale)); } }
