@@ -62,6 +62,29 @@ test('年份与长期口语能识别到全部时间窗口', () => {
   }
 })
 
+test('自定义问题按账号隔离，旧共享数据只迁移一次', () => {
+  const accountStorage = {
+    [questions.STORAGE_KEY]: [{ id: 'old-user', text: '旧账号的问题', builtin: false }]
+  }
+  const accountQuestions = openid => load('miniprogram/utils/common-questions.js', {
+    getApp: () => ({ globalData: { openid } }),
+    wx: {
+      getStorageSync: key => accountStorage[key],
+      setStorageSync: (key, value) => { accountStorage[key] = value },
+      removeStorageSync: key => { delete accountStorage[key] }
+    }
+  })
+
+  const firstAccount = accountQuestions('user-a')
+  assert.equal(firstAccount.loadAll().some(item => item.id === 'old-user'), true, '旧数据保留给首次迁移账号')
+  assert.equal(Object.hasOwn(accountStorage, questions.STORAGE_KEY), false, '迁移后移除共享键')
+
+  const secondAccount = accountQuestions('user-b')
+  assert.equal(secondAccount.loadAll().some(item => item.id === 'old-user'), false, '后续账号不会读取旧账号问题')
+  assert.ok(accountStorage[`${questions.STORAGE_KEY}:user-a`])
+  assert.ok(accountStorage[`${questions.STORAGE_KEY}:user-b`])
+})
+
 test('恢复默认后问题对象不含 range 字段，且数量与默认库一致', () => {
   const restored = questions.DEFAULT_POOL.map((q, i) => ({ id: 'd' + (i + 1), text: q.text, builtin: true, pinned: false }))
   assert.equal(restored.length, questions.DEFAULT_POOL.length)

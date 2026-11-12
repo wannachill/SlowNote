@@ -2,6 +2,7 @@
 // 报告内容始终先落在 ai_notifications；微信订阅消息仅在有可用授权时尽力发送。
 const page = require('../../utils/page'), { call, requestId, toastError } = require('../../utils/api')
 const { tap } = require('../../utils/haptics')
+const { setListItemFields, setListFields } = require('../../utils/list-patch')
 // 数据类型与常见问题页保持一致：feeding / excretion / solid 同源于喂养记录，但可分别选择。
 const ALL = [
   { key: 'feeding', name: '喂养' },
@@ -104,7 +105,8 @@ page({
     if (gesture.axis !== 'horizontal') return
     if (dx < -8 && this._openSwipeKey && this._openSwipeKey !== gesture.id) this.closeSwipe()
     const offset = Math.max(-this.actionWidth(), Math.min(0, gesture.startOffset + dx))
-    this.setData({ items: this.data.items.map(item => ({ ...item, swipeX: item._id === gesture.id ? offset : item.swipeX })) })
+    const index = this.data.items.findIndex(item => item._id === gesture.id)
+    setListItemFields(this, 'items', index, { swipeX: offset })
     if (Math.abs(dx) > 12) this._ignoreCardTapUntil = Date.now() + 450
   },
   onCardTouchEnd() {
@@ -119,12 +121,15 @@ page({
   },
   closeSwipe() {
     this._openSwipeKey = ''
-    this.setData({ items: this.data.items.map(item => ({ ...item, swipeX: 0 })) })
+    setListFields(this, 'items', item => item.swipeX ? { swipeX: 0 } : null)
   },
   openSwipe(id) {
     this._openSwipeKey = id
     const offset = -this.actionWidth()
-    this.setData({ items: this.data.items.map(item => ({ ...item, swipeX: item._id === id ? offset : 0 })) })
+    setListFields(this, 'items', item => {
+      const swipeX = item._id === id ? offset : 0
+      return item.swipeX === swipeX ? null : { swipeX }
+    })
     this._ignoreCardTapUntil = Date.now() + 450
   },
   onCardTap(event) {
@@ -135,8 +140,7 @@ page({
     this._cardGesture = null
     this._openSwipeKey = ''
     this._ignoreCardTapUntil = 0
-    const items = this.data.items || []
-    if (items.some(item => item.swipeX)) this.setData({ items: items.map(item => ({ ...item, swipeX: 0 })) })
+    setListFields(this, 'items', item => item.swipeX ? { swipeX: 0 } : null)
   },
 
   resetForm() {
@@ -239,10 +243,12 @@ page({
   },
   _setNotify(id, notify) {
     // 乐观更新：立即反映开关状态，不等云端往返；云端失败再回退该卡片，全程不刷新列表。
-    this.setData({ items: this.data.items.map(item => item._id === id ? { ...item, notify } : item) })
+    const index = this.data.items.findIndex(item => item._id === id)
+    setListItemFields(this, 'items', index, { notify })
     call('aiTasks', { action: 'setNotify', id, notify, clientRequestId: requestId() })
       .catch(error => {
-        this.setData({ items: this.data.items.map(item => item._id === id ? { ...item, notify: !notify } : item) })
+        const currentIndex = this.data.items.findIndex(item => item._id === id)
+        setListItemFields(this, 'items', currentIndex, { notify: !notify })
         toastError(error)
       })
   }

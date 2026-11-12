@@ -10,7 +10,7 @@ miniprogram/
   components/
     net-banner/                 # 断网与网络异常横幅
   custom-tab-bar/               # 首页 / 小迈 / 我的
-  utils/                        # 30 个前端工具模块，清单见下
+  utils/                        # 31 个前端工具模块，清单见下
   pages/
     index/ statistics/ mine/    # 三个底部 Tab
     statistics-detail/          # 分类趋势详情（二级页）
@@ -25,7 +25,7 @@ cloudfunctions/                 # 15 个可调用云函数 + _shared
 scripts/
   sync-cloud-runtime.js         # 同步共享源码到 14 个受管函数 lib/
   check-project.js              # 项目注册与一致性检查
-tests/                          # 36 个 *.test.cjs 文件 + helpers.cjs
+tests/                          # 37 个 *.test.cjs 文件 + helpers.cjs
   ai-chat-images.test.cjs ai-chat-voice.test.cjs ai-settings-cache.test.cjs ai-settings-questions.test.cjs
   baby-profile.test.cjs chart-bars.test.cjs chart-selection.test.cjs common-questions.test.cjs
   custom-record-validation.test.cjs feature-retirement.test.cjs growth-multi-measurement.test.cjs
@@ -45,11 +45,13 @@ docs/
 ~~~
 
 ## 前端工具模块
-`miniprogram/utils/` 当前有 30 个 JavaScript 文件：`ai-photos.js`、`ai-sessions.js`、`ai-settings.js`、`api.js`、`avatar.js`、`categories.js`、`chart.js`、`common-questions.js`、`confetti.js`、`date.js`、`digest.js`、`format-number.js`、`haptics.js`、`heatmap.js`、`home-cards.js`、`home-refresh.js`、`markdown.js`、`milestone-overview.js`、`motion.js`、`net.js`、`page-cache.js`、`page.js`、`record-scope.js`、`references.js`、`registration.js`、`reveal.js`、`statistics-detail-core.js`、`statistics-insights.js`、`theme.js`、`viewmodels.js`。
+`miniprogram/utils/` 当前有 31 个 JavaScript 文件：`ai-photos.js`、`ai-sessions.js`、`ai-settings.js`、`api.js`、`avatar.js`、`categories.js`、`chart.js`、`common-questions.js`、`confetti.js`、`date.js`、`digest.js`、`format-number.js`、`haptics.js`、`heatmap.js`、`home-cards.js`、`home-refresh.js`、`list-patch.js`、`markdown.js`、`milestone-overview.js`、`motion.js`、`net.js`、`page-cache.js`、`page.js`、`record-scope.js`、`references.js`、`registration.js`、`reveal.js`、`statistics-detail-core.js`、`statistics-insights.js`、`theme.js`、`viewmodels.js`。
 
 `utils/common-questions.js` 的 7 类数据类型是端侧唯一枚举来源，常见问题与定时报告共用；`pages/ai-tasks` 另在页面内维护 `ALL`（类型）、`RANGES`（报告数据范围）与 `rangeName/rangeHint` 三个纯函数，报告范围的语义以 `cloudfunctions/_shared/schedule.js` 的 `REPORT_RANGES` 为准，两边改动必须同时进行。
 
 `utils/page-cache.js` 是页面读缓存：内存 + 本地存储双层，键为「作用域 + 参数」，默认 60 秒可复用，超过 64KB 的结果只留在内存。记录类写操作经 `utils/home-refresh.js` 的 `invalidateRecords()` 按 `home` / `statistics` 作用域失效；退出登录由 `app.logout()` 整体清空。首页与小迈优先渲染缓存再静默校验，`load(true)` 或下拉刷新跳过缓存，但都不会清空已有内容闪骨架。
+
+`utils/list-patch.js` 用数组路径只更新列表行中变化的字段，供滑动等高频交互复用；用户编辑的常见问题存储按 openid 分桶。
 
 常见问题数据和端侧存储工具仍保留；管理入口已并入 `pages/ai-settings/`，没有单独的常见问题页面。`utils/common-questions.js` 同时定义常见问题的 6 档取数范围（今天/近 7 天/本周/本月/近 30 天/本年）与 7 类数据类型及内置默认类别——这 6 档是**提问时**的取数范围，与定时报告的 5 档 `range` 不是同一套枚举，不要互相套用；`utils/digest.js` 负责按所选类别生成记录快照。`confetti.js` 仍用于发育里程碑达成效果。
 

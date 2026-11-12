@@ -3,6 +3,7 @@ const page = require('../../utils/page')
 const { call, requestId, toastError } = require('../../utils/api')
 const { tap } = require('../../utils/haptics')
 const { dateKey } = require('../../utils/date')
+const { setListItemFields, setListFields } = require('../../utils/list-patch')
 // 历史报告只有「删除」一个动作，轨道宽度取全局 --swipe-action-width 的一半（110rpx），
 // 使删除按钮与「常见问题」页（两个动作平分 220rpx）的单个按钮等宽。
 const ACTION_WIDTH_RPX = 110
@@ -94,7 +95,8 @@ page({
     if (gesture.axis !== 'horizontal') return
     if (dx < -8 && this._openSwipeKey && this._openSwipeKey !== gesture.id) this.closeSwipe()
     const offset = Math.max(-this.actionWidth(), Math.min(0, gesture.startOffset + dx))
-    this.setData({ items: this.data.items.map(item => ({ ...item, swipeX: item.id === gesture.id ? offset : item.swipeX })) })
+    const index = this.data.items.findIndex(item => item.id === gesture.id)
+    setListItemFields(this, 'items', index, { swipeX: offset })
     if (Math.abs(dx) > 12) this._ignoreCardTapUntil = Date.now() + 450
   },
   onCardTouchEnd() {
@@ -109,20 +111,22 @@ page({
   },
   closeSwipe() {
     this._openSwipeKey = ''
-    this.setData({ items: this.data.items.map(item => ({ ...item, swipeX: 0 })) })
+    setListFields(this, 'items', item => item.swipeX ? { swipeX: 0 } : null)
   },
   openSwipe(id) {
     this._openSwipeKey = id
     const offset = -this.actionWidth()
-    this.setData({ items: this.data.items.map(item => ({ ...item, swipeX: item.id === id ? offset : 0 })) })
+    setListFields(this, 'items', item => {
+      const swipeX = item.id === id ? offset : 0
+      return item.swipeX === swipeX ? null : { swipeX }
+    })
     this._ignoreCardTapUntil = Date.now() + 450
   },
   resetSwipe() {
     this._cardGesture = null
     this._openSwipeKey = ''
     this._ignoreCardTapUntil = 0
-    const items = this.data.items || []
-    if (items.some(item => item.swipeX)) this.setData({ items: items.map(item => ({ ...item, swipeX: 0 })) })
+    setListFields(this, 'items', item => item.swipeX ? { swipeX: 0 } : null)
   },
 
   onCardTap(event) {

@@ -38,6 +38,13 @@ const DEFAULT_POOL = [
 const STORAGE_KEY = 'slownote_common_questions'
 const LEGACY_KEY = 'slownote_common_custom'
 
+// User-authored questions are local account data; move the old shared key to the first active account once.
+function storageKey() {
+  let openid = ''
+  try { openid = getApp().globalData.openid || '' } catch (error) {}
+  return openid ? `${STORAGE_KEY}:${openid}` : STORAGE_KEY
+}
+
 // 去掉非法/重复值并保留用户的选择顺序；空数组是合法选择（不附带记录）。
 function normalizeCategories(value, fallback) {
   if (!Array.isArray(value)) return (fallback || ALL_CATEGORIES).slice()
@@ -48,13 +55,19 @@ function normalizeCategories(value, fallback) {
   return result
 }
 function loadAll() {
-  let list = wx.getStorageSync(STORAGE_KEY)
+  const key = storageKey()
+  let list = wx.getStorageSync(key)
   if (!Array.isArray(list) || !list.length) {
+    const shared = key === STORAGE_KEY ? null : wx.getStorageSync(STORAGE_KEY)
     const legacy = wx.getStorageSync(LEGACY_KEY)
     const customs = Array.isArray(legacy) ? legacy.filter(q => typeof q.text === 'string' && q.text.trim()) : []
-    list = DEFAULT_POOL.map((d, i) => ({ id: 'd' + (i + 1), text: d.text, builtin: true, pinned: false }))
+    list = Array.isArray(shared) && shared.length ? shared : DEFAULT_POOL.map((d, i) => ({ id: 'd' + (i + 1), text: d.text, builtin: true, pinned: false }))
       .concat(customs.map(q => ({ id: q.id || 'q' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8), text: q.text.trim(), builtin: false, pinned: !!q.pinned })))
-    wx.setStorageSync(STORAGE_KEY, list)
+    wx.setStorageSync(key, list)
+    if (key !== STORAGE_KEY) {
+      wx.removeStorageSync(STORAGE_KEY)
+      wx.removeStorageSync(LEGACY_KEY)
+    }
   }
   const defaults = new Map(DEFAULT_POOL.map(item => [item.text, item.categories]))
   return list
@@ -66,7 +79,7 @@ function loadAll() {
       categories: normalizeCategories(q.categories, defaults.get(q.text) || ALL_CATEGORIES)
     }))
 }
-function saveAll(list) { wx.setStorageSync(STORAGE_KEY, list) }
+function saveAll(list) { wx.setStorageSync(storageKey(), list) }
 // 从内置问题（未固定的）随机取 size 条。
 function batch(list, size) {
   const pool = list.filter(q => q.builtin && !q.pinned).slice()

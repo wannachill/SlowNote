@@ -4,6 +4,7 @@ const settingsCache = require('../../utils/ai-settings')
 const questionsStore = require('../../utils/common-questions')
 const { detectRange, rangeLabel } = require('../../utils/digest')
 const { tap } = require('../../utils/haptics')
+const { setListItemFields, setListFields } = require('../../utils/list-patch')
 const RANGES = questionsStore.RANGES
 const QUESTION_RANGE_LABELS = RANGES.map(item => item.label)
 const CATEGORIES = questionsStore.CATEGORIES
@@ -317,7 +318,8 @@ page({
     if (gesture.axis !== 'horizontal') return
     if (dx < -8 && this._openSwipeKey && this._openSwipeKey !== gesture.id) this.closeQuestionSwipe()
     const offset = Math.max(-this.questionActionWidth(), Math.min(0, gesture.startOffset + dx))
-    this.setData({ questions: this.data.questions.map(item => ({ ...item, swipeX: item.id === gesture.id ? offset : item.swipeX })) })
+    const index = this.data.questions.findIndex(item => item.id === gesture.id)
+    setListItemFields(this, 'questions', index, { swipeX: offset })
     if (Math.abs(dx) > 12) this._ignoreCardTapUntil = Date.now() + 450
   },
   onQuestionCardTouchEnd() {
@@ -332,12 +334,15 @@ page({
   },
   closeQuestionSwipe() {
     this._openSwipeKey = ''
-    if (this.data.questions.some(item => item.swipeX)) this.setData({ questions: this.data.questions.map(item => ({ ...item, swipeX: 0 })) })
+    setListFields(this, 'questions', item => item.swipeX ? { swipeX: 0 } : null)
   },
   openQuestionSwipe(id) {
     this._openSwipeKey = id
     const offset = -this.questionActionWidth()
-    this.setData({ questions: this.data.questions.map(item => ({ ...item, swipeX: item.id === id ? offset : 0 })) })
+    setListFields(this, 'questions', item => {
+      const swipeX = item.id === id ? offset : 0
+      return item.swipeX === swipeX ? null : { swipeX }
+    })
     this._ignoreCardTapUntil = Date.now() + 450
   },
   onQuestionCardTap(event) {
@@ -348,7 +353,7 @@ page({
     this._cardGesture = null
     this._openSwipeKey = ''
     this._ignoreCardTapUntil = 0
-    if ((this.data.questions || []).some(item => item.swipeX)) this.setData({ questions: this.data.questions.map(item => ({ ...item, swipeX: 0 })) })
+    setListFields(this, 'questions', item => item.swipeX ? { swipeX: 0 } : null)
   },
   removeQuestion(e) {
     const id = e.currentTarget.dataset.id

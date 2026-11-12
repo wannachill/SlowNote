@@ -5,6 +5,7 @@ const confetti = require('../../utils/confetti')
 const milestoneOverview = require('../../utils/milestone-overview')
 const pageCache = require('../../utils/page-cache')
 const { ageMonth } = require('../../utils/date')
+const { setListItemFields, setListFields } = require('../../utils/list-patch')
 const DOMAINS = ['大运动', '精细动作', '语言', '社交', '其他']
 const MONTHS = Array.from({ length: 36 }, (_, index) => index + 1)
 const CLIENT_ID = () => `${Date.now()}-${Math.random().toString(36).slice(2)}`
@@ -157,14 +158,19 @@ require('../../utils/page')({
         return center && currentY < center.y
       })
       if (dropIndex < 0) dropIndex = this.data.visible.length - 1
-      this.setData({ dropIndex, visible: this.data.visible.map(item => ({ ...item, dragY: item.key === gesture.key ? dragY : 0 })) })
+      const index = this.data.visible.findIndex(item => item.key === gesture.key)
+      const patch = {}
+      if (this.data.dropIndex !== dropIndex) patch.dropIndex = dropIndex
+      if (index >= 0 && this.data.visible[index].dragY !== dragY) patch[`visible[${index}].dragY`] = dragY
+      if (Object.keys(patch).length) this.setData(patch)
       return
     }
     if (!gesture.axis && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) gesture.axis = Math.abs(dx) > Math.abs(dy) * 1.15 ? 'horizontal' : 'vertical'
     if (gesture.axis !== 'horizontal') return
     if (dx < -8 && this._openSwipeKey && this._openSwipeKey !== gesture.key) this.closeSwipe()
     const offset = Math.max(-this.actionWidth(), Math.min(0, gesture.startOffset + dx))
-    this.setData({ visible: this.data.visible.map(item => ({ ...item, swipeX: item.key === gesture.key ? offset : item.swipeX })) })
+    const index = this.data.visible.findIndex(item => item.key === gesture.key)
+    setListItemFields(this, 'visible', index, { swipeX: offset })
     if (Math.abs(dx) > 12) this._ignoreCardTapUntil = Date.now() + 450
   },
   onCardTouchEnd() {
@@ -188,12 +194,15 @@ require('../../utils/page')({
   },
   closeSwipe() {
     this._openSwipeKey = ''
-    this.setData({ visible: this.data.visible.map(item => ({ ...item, swipeX: 0 })) })
+    setListFields(this, 'visible', item => item.swipeX ? { swipeX: 0 } : null)
   },
   openSwipe(key) {
     this._openSwipeKey = key
     const offset = -this.actionWidth()
-    this.setData({ visible: this.data.visible.map(item => ({ ...item, swipeX: item.key === key ? offset : 0 })) })
+    setListFields(this, 'visible', item => {
+      const swipeX = item.key === key ? offset : 0
+      return item.swipeX === swipeX ? null : { swipeX }
+    })
     this._ignoreCardTapUntil = Date.now() + 450
   },
   toggleDone(event) {

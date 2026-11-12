@@ -4,6 +4,7 @@ const { dateKey } = require('../../utils/date')
 const { avatarSrc } = require('../../utils/avatar')
 const { tap } = require('../../utils/haptics')
 const { closeLater } = require('../../utils/motion')
+const { setListItemFields, setListFields } = require('../../utils/list-patch')
 const GENDERS = ['male', 'female']
 // Keep in sync with --swipe-action-width in app.wxss.
 const ACTION_WIDTH_RPX = 220
@@ -62,7 +63,8 @@ page({
     if (gesture.axis !== 'horizontal') return
     if (dx < -8 && this._openSwipeKey && this._openSwipeKey !== gesture.id) this.closeSwipe()
     const offset = Math.max(-this.actionWidth(), Math.min(0, gesture.startOffset + dx))
-    this.setData({ babies: this.data.babies.map(item => ({ ...item, swipeX: item.baby_id === gesture.id ? offset : item.swipeX })) })
+    const index = this.data.babies.findIndex(item => item.baby_id === gesture.id)
+    setListItemFields(this, 'babies', index, { swipeX: offset })
     if (Math.abs(dx) > 12) this._ignoreCardTapUntil = Date.now() + 450
   },
   onCardTouchEnd() {
@@ -77,20 +79,22 @@ page({
   },
   closeSwipe() {
     this._openSwipeKey = ''
-    this.setData({ babies: this.data.babies.map(item => ({ ...item, swipeX: 0 })) })
+    setListFields(this, 'babies', item => item.swipeX ? { swipeX: 0 } : null)
   },
   openSwipe(id) {
     this._openSwipeKey = id
     const offset = -this.actionWidth()
-    this.setData({ babies: this.data.babies.map(item => ({ ...item, swipeX: item.baby_id === id ? offset : 0 })) })
+    setListFields(this, 'babies', item => {
+      const swipeX = item.baby_id === id ? offset : 0
+      return item.swipeX === swipeX ? null : { swipeX }
+    })
     this._ignoreCardTapUntil = Date.now() + 450
   },
   resetSwipe() {
     this._cardGesture = null
     this._openSwipeKey = ''
     this._ignoreCardTapUntil = 0
-    const babies = this.data.babies || []
-    if (babies.some(item => item.swipeX)) this.setData({ babies: babies.map(item => ({ ...item, swipeX: 0 })) })
+    setListFields(this, 'babies', item => item.swipeX ? { swipeX: 0 } : null)
   },
   onCardTap(event) {
     const id = event.currentTarget.dataset.id
