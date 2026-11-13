@@ -140,7 +140,7 @@
 - **Canvas（`#statisticsChart`）绝不可放入任何 `scroll-view`**（否则绘制层与页面滚动错位）。统计页用**页面级滚动**，图表置于最后一个 `</scroll-view>` 之后。测试检查此项。
 - 首页记录区：`.metric-slot` 单列全宽；左侧时间轴轨道 `--rail-gutter 32rpx`，时间位于卡片上方并与节点对齐；竖线跨槽位延续，末项收于底部。
 - 头部固定原则：凡内容可能超长，头部（返回/关闭）固定，只滚内容区；二级页 `.sub-nav` sticky。
-- 统计页因 canvas 不能进 `scroll-view` 只能页面级滚动，标题区**不使用 sticky、不铺独立背景**（透明 sticky 会透出滚动内容，纯色背景会与主题渐变拼接出分割线）；**安全区 + `--tab-page-top` 的偏移写在头部自身的 `padding` 与 `height` 内**（容器 `padding-top: 0`），三 Tab 页顶部留白统一由 `app.wxss` 的 `--tab-page-top`（64rpx）控制，首页/我的的 `padding-top` 与小迈头部均引用该令牌。
+- 统计页因 canvas 不能进 `scroll-view` 只能页面级滚动，标题区**不使用 sticky、不铺独立背景**（透明 sticky 会透出滚动内容，纯色背景会与主题渐变拼接出分割线）；**安全区 + `--tab-page-top` 的偏移写在头部自身的 `padding` 与 `height` 内**（容器 `padding-top: 0`），三 Tab 页顶部留白统一由 `app.wxss` 的 `--tab-page-top`（80rpx）控制，首页/我的的 `padding-top` 与小迈头部均引用该令牌。
 
 ### ⚠️ `box-sizing` 真实范围（重要）
 - **`box-sizing: border-box` 只在 4 处局部定义**（app.wxss 211 / 390 / 573 / 1003 行），**项目没有全局 border-box**。`frontend-standard.md` 第 8 行称"项目有全局 box-sizing"是**过时错误**。

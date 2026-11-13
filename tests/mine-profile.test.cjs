@@ -72,7 +72,8 @@ test('three tab pages share one compact top inset', () => {
   const app = fs.readFileSync('miniprogram/app.wxss', 'utf8')
   const token = /--tab-page-top:\s*(\d+)rpx/.exec(app)
   assert.ok(token, '顶部留白应由统一令牌控制')
-  assert.equal(Number(token[1]), 64, '顶部留白收紧到 64rpx，避免标题距屏幕顶部过远')
+  const inset = Number(token[1])
+  assert.ok(inset >= 72 && inset <= 96, `顶部留白 ${inset}rpx 应落在 72~96rpx：比 128rpx 紧凑，也不像 64rpx 那样贴着状态栏与胶囊`)
   for (const page of ['index', 'statistics', 'mine']) {
     const style = fs.readFileSync(`miniprogram/pages/${page}/index.wxss`, 'utf8')
     assert.match(style, /var\(--tab-page-top\)/, `${page} 顶部偏移必须引用统一令牌`)
