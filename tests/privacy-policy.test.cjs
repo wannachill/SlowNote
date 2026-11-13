@@ -24,6 +24,7 @@ test('隐私政策正文覆盖合规必需条款，小程序与文档口径一�
   for (const text of [content, doc]) {
     assert.match(text, /不收集微信号、微信昵称、头像、手机号/)
     assert.match(text, /DeepSeek/)
+    assert.match(text, /硅基流动/, '语音转写第三方服务商须在政策与小程序正文同时写明')
     assert.match(text, /模型训练/)
     assert.match(text, /中华人民共和国境内|中国境内/)
     assert.match(text, /7 个工作日/)
