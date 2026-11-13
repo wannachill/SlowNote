@@ -38,7 +38,7 @@ tests/                          # 44 个 *.test.cjs 文件 + helpers.cjs
   statistics-insights.test.cjs swipe-card-radius.test.cjs
 docs/
   CLAUDE.md database-design.md deployment-checklist.md release-checklist.md
-  legal/privacy-policy.md legal/privacy-guide-fill.md
+  legal/privacy-policy.md legal/privacy-policy.txt legal/privacy-guide-fill.md
   prd/slownote-prd.md
   rules/backend-standard.md rules/code-style.md rules/frontend-standard.md
   rules/git-workflow.md rules/introduction.md rules/pitfalls.md

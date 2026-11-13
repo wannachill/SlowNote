@@ -40,6 +40,12 @@ test('隐私政策正文覆盖合规必需条款，小程序与文档口径一�
   assert.match(fill, /北京硅基流动科技股份有限公司/)
   assert.match(fill, /platform\.deepseek\.com\/downloads\/DeepSeek%20Privacy%20Policy\.html/)
   assert.match(fill, /docs\.siliconflow\.cn\/cn\/legals\/privacy-policy/)
+  const attachment = read('docs/legal/privacy-policy.txt')
+  assert.match(attachment, /1142374087@qq\.com/, '平台补充文档须公示联系邮箱')
+  assert.match(attachment, /杭州深度求索人工智能基础技术研究有限公司/)
+  assert.match(attachment, /北京硅基流动科技股份有限公司/)
+  assert.match(attachment, /不读取剪切板内容/, '补充文档须澄清剪切板仅写入')
+  assert.doesNotMatch(attachment, /\*\*|^#/m, '补充文档为纯文本，不得残留 Markdown 标记')
   const { SECTIONS } = load('miniprogram/utils/privacy-content.js')
   assert.equal(SECTIONS.length, 9)
   for (const section of SECTIONS) {
