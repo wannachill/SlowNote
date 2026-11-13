@@ -31,7 +31,15 @@ test('隐私政策正文覆盖合规必需条款，小程序与文档口径一�
     assert.match(text, /转写完成后删除/)
     assert.match(text, /14 岁以下/)
     assert.match(text, /录音用于语音识别|长按输入框|临时音频/)
+    assert.match(text, /杭州深度求索人工智能基础技术研究有限公司/, '第三方主体全称须在政策与小程序正文同时披露')
+    assert.match(text, /北京硅基流动科技股份有限公司/)
   }
+  const fill = read('docs/legal/privacy-guide-fill.md')
+  assert.match(fill, /1142374087@qq\.com/)
+  assert.match(fill, /杭州深度求索人工智能基础技术研究有限公司/)
+  assert.match(fill, /北京硅基流动科技股份有限公司/)
+  assert.match(fill, /platform\.deepseek\.com\/downloads\/DeepSeek%20Privacy%20Policy\.html/)
+  assert.match(fill, /docs\.siliconflow\.cn\/cn\/legals\/privacy-policy/)
   const { SECTIONS } = load('miniprogram/utils/privacy-content.js')
   assert.equal(SECTIONS.length, 9)
   for (const section of SECTIONS) {
