@@ -1,7 +1,7 @@
 // 隐私政策正文：与 docs/legal/privacy-policy.md 保持同一口径。
-// CONTACT_EMAIL 为空表示尚未公示联系渠道：页面显示「待公示（上线前补齐）」，
+// 联系邮箱常量已公示；若清空则页面显示「待公示（上线前补齐）」，
 // 且 docs/release-checklist.md 的 #15 必须保持未勾选（tests/privacy-policy.test.cjs 守护）。
-const CONTACT_EMAIL = ''
+const CONTACT_EMAIL = '1142374087@qq.com'
 const LAST_UPDATED = '2026-11-13'
 
 const SECTIONS = [

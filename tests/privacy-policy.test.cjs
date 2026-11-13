@@ -52,13 +52,15 @@ test('隐私政策页复用主题与设计令牌，不硬编码颜色', () => {
   assert.doesNotMatch(wxss, /#[0-9a-fA-F]{3,8}/)
 })
 
-test('合规占位符已清除，联系邮箱未公示时 #15 不得勾选', () => {
+test('合规占位符已清除，联系邮箱已公示且 #15 已勾选', () => {
   const { CONTACT_EMAIL } = load('miniprogram/utils/privacy-content.js')
   const doc = read('docs/legal/privacy-policy.md')
   const checklist = read('docs/release-checklist.md')
-  assert.doesNotMatch(read('docs/prd/slownote-prd.md'), /\[待补充：上线前确认\]/)
+  const prd = read('docs/prd/slownote-prd.md')
+  assert.equal(CONTACT_EMAIL, '1142374087@qq.com', '小程序正文联系邮箱须与政策全文一致')
+  assert.match(doc, /1142374087@qq\.com/, '政策全文须公示联系邮箱')
+  assert.doesNotMatch(doc, /CONTACT_EMAIL|上线前必须替换|待补信息（上线阻塞）/, '政策全文不得残留占位')
+  assert.doesNotMatch(prd, /\[待补充：上线前确认\]|\*\*待补\*\*：联系邮箱/)
   assert.doesNotMatch(read('docs/database-design.md'), /\[待补充：上线前确认\]/)
-  const checked = /^- \[x\] \*\*#15/m.test(checklist)
-  const placeholder = CONTACT_EMAIL === '' || /CONTACT_EMAIL/.test(doc)
-  assert.equal(checked, !placeholder, '联系邮箱补齐后需替换两处占位并勾选 #15；未补齐时不得勾选')
+  assert.match(checklist, /^- \[x\] \*\*#15/m, '联系邮箱公示后 #15 须勾选')
 })
