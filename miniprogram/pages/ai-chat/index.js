@@ -6,6 +6,8 @@ const sessions = require('../../utils/ai-sessions')
 const parseMarkdown = require('../../utils/markdown')
 const aiSettings = require('../../utils/ai-settings')
 const SNAPSHOT_PREVIEW_LINES = 5
+const INPUT_HOLD_MS = 350
+const INPUT_HOLD_MOVE_TOLERANCE = 12
 page({
   data: { messages: [], messageViews: [], typingMessageId: '', activeMessageId: '', activeMessageIndex: -1, activeQuestionSummary: '', pickMode: false, picked: {}, pickedCount: 0, editing: null, quote: null, focusInput: false, thinkOpen: {}, question: '', images: [], liveTranscript: '', selecting: false, sending: false, keyboardHeight: 0, scrollInto: '', showJumpBottom: false, error: '', attachLabel: '', attaching: false, commonList: [], showThinking: false, thinkingSettingsReady: false, statusBarHeight: 20 },
   onLoad(options) {
@@ -47,6 +49,8 @@ page({
     }
   },
   onUnload() {
+    this.clearInputHold()
+    this._inputTouchActive = false
     const stopVoice = this._voiceActive && !this._voiceStopping
     const voiceMode = this._voiceMode
     this._disposed = true
@@ -441,7 +445,46 @@ page({
     const urls = this.data.images.concat(history).map(p => p.path)
     if (urls.includes(current)) wx.previewImage({ current, urls: [...new Set(urls)] })
   },
-  // —— 语音输入：优先实时识别，插件不可用时由 asrProxy 转写 ——
+  // —— 语音输入：长按输入框说话，优先实时识别，插件不可用时由 asrProxy 转写 ——
+  clearInputHold() {
+    if (this._inputHoldTimer) { clearTimeout(this._inputHoldTimer); this._inputHoldTimer = null }
+  },
+  // textarea 与外层 view 同时绑定：原生组件不冒泡时仍能收到手势，重复派发由 _inputTouchActive 去重。
+  onInputTouchStart(e) {
+    if (this._inputTouchActive || this.data.sending || this.data.selecting || this.data.attaching || this.data.recording) return
+    const touch = e.touches && e.touches[0]
+    this._inputTouchActive = true
+    this._inputTouchX = touch ? touch.clientX : 0
+    this._inputTouchY = touch ? touch.clientY : 0
+    this._inputTouchMoved = false
+    this.clearInputHold()
+    this._inputHoldTimer = setTimeout(() => {
+      this._inputHoldTimer = null
+      if (this._disposed || !this._inputTouchActive || this._inputTouchMoved) return
+      this.startVoice()
+    }, INPUT_HOLD_MS)
+  },
+  onInputTouchMove(e) {
+    if (!this._inputTouchActive) return
+    const touch = e.touches && e.touches[0]
+    if (!touch) return
+    if (Math.abs(touch.clientX - this._inputTouchX) > INPUT_HOLD_MOVE_TOLERANCE || Math.abs(touch.clientY - this._inputTouchY) > INPUT_HOLD_MOVE_TOLERANCE) {
+      this._inputTouchMoved = true
+      this.clearInputHold()
+    }
+  },
+  onInputTouchEnd() {
+    if (!this._inputTouchActive) return
+    this._inputTouchActive = false
+    this.clearInputHold()
+    if (this._voiceActive) this.stopVoice({ type: 'touchend' })
+  },
+  onInputTouchCancel() {
+    if (!this._inputTouchActive) return
+    this._inputTouchActive = false
+    this.clearInputHold()
+    if (this._voiceActive) this.stopVoice({ type: 'touchcancel' })
+  },
   getVoiceManager() {
     if (this._siManager !== undefined) return this._siManager
     this._siManager = null
@@ -474,7 +517,8 @@ page({
     this._voiceCancelled = false
     this._voiceStopping = false
     this._voiceActive = true
-    this.setData({ recording: true, liveTranscript: '', error: '' })
+    try { wx.hideKeyboard() } catch (error) {}
+    this.setData({ recording: true, liveTranscript: '', error: '', focusInput: false })
     const manager = this.getVoiceManager()
     if (manager) {
       this._voiceMode = 'plugin'
@@ -496,7 +540,7 @@ page({
     }
   },
   stopVoice(event) {
-    if (!this.data.recording || !this._voiceActive) return
+    if (!this._voiceActive || this._voiceStopping) return
     this._voiceCancelled = !!(event && event.type === 'touchcancel')
     this._voiceStopping = true
     this.setData({ recording: false, liveTranscript: '', selecting: true })

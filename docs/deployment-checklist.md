@@ -48,7 +48,7 @@ LLM_API_URL 支持 HTTPS 的完整 /chat/completions 地址或基础路径（如
 DeepSeek 思考模式由小迈页面的「深度思考」开关控制，默认关闭，用户可手动切换，带图片提问时自动开启且不改写用户保存的偏好；开启时应用层最多等待45秒，`aiChat` 云函数需配置至少60秒超时。后端优先使用请求中的布尔值，其次读取 `LLM_THINKING=disabled` 或 `enabled`；两者都未设置且模型名以 `deepseek` 开头时默认关闭。非 DeepSeek 或其它取值不会发送该字段，以兼容其它 OpenAI 兼容网关。
 深度思考入口是否显示由 `ai_settings.showThinking` 持久化配置；用户在聊天页选择的逐次思考偏好保存在端侧 `ai.thinking`，请求携带布尔值。后端以该请求值为先，其次读取 `LLM_THINKING=disabled` 或 `enabled`；未设置且模型名以 `deepseek` 开头时默认关闭。图片提问可按聊天页逻辑启用思考。开启思考时应用层最多等待 45 秒，`aiChat` 云函数需配置至少 60 秒超时。
 图片分析要求同一 HTTPS 端点兼容 Chat Completions 的 `content: [{type: 'text', text}, {type: 'image_url', image_url: {url: 'data:image/jpeg;base64,...'}}]`；模型支持 JPG/PNG/WebP。单次至多3张、每张压缩后至多2MiB，总图片至多6MiB，Base64请求约8MiB，必须核实供应商请求上限。模型是单独的 `LLM_VISION_MODEL`，不会把图片盲发给 `LLM_MODEL`。照片只附到最新一轮提问，历史消息仅文本；需要回看图片时用户重新附图。文本会脱敏，但图像内个人信息无法自动脱敏。
-个人主体不可用微信同声传译 WechatSI，当前不在 `app.json` 声明该插件。语音输入使用 `RecorderManager`（mp3、16kHz 单声道）录音，松开后将音频上传到 `audio/{openid}/{ts}.mp3` 并调用 `asrProxy` 一次性转写；该云函数转发至 OpenAI 兼容 `/audio/transcriptions` 端点（multipart：file + model），要求 ASR_URL 完整 HTTPS 地址、ASR_KEY Bearer 密钥；30 秒超时，音频 1KiB-15MiB。前端会在请求结束后删除云端临时音频。ASR 配置是个人主体语音输入的唯一通道，未配置时提示“语音转写服务未配置”。主体变更为非个人后可加回 WechatSI 声明恢复实时预览。
+个人主体不可用微信同声传译 WechatSI，当前不在 `app.json` 声明该插件。语音输入由长按输入框触发（已移除独立麦克风按钮，短按仍为文字输入、松手完成识别），使用 `RecorderManager`（mp3、16kHz 单声道）录音，松开后将音频上传到 `audio/{openid}/{ts}.mp3` 并调用 `asrProxy` 一次性转写；该云函数转发至 OpenAI 兼容 `/audio/transcriptions` 端点（multipart：file + model），要求 ASR_URL 完整 HTTPS 地址、ASR_KEY Bearer 密钥；30 秒超时，音频 1KiB-15MiB。前端会在请求结束后删除云端临时音频。ASR 配置是个人主体语音输入的唯一通道，未配置时提示“语音转写服务未配置”。主体变更为非个人后可加回 WechatSI 声明恢复实时预览。
 订阅消息默认发送「报告类型=小迈定时报告」「生成时间=北京时间」「报告结果=任务「报告标题」（≤20 字，未配置则不展示）」三项——**文案与字段值由 `aiReport/index.js` 的 `sendNotice()` 写死/取自任务配置，不是模板名**。公众平台模板库按小程序类目展示现成模板，不支持自定义模板名，搜该文案不会有结果。代码只要求模板含 `thingN`（报告类型/结果）+ `timeN`（时间）字段，因此可直接复用下方已申请模板，或从公共模板库选用任意「事项 + 时间」类一次性模板。模板需正式小程序实际申请，用户授权次数可能耗尽；失败不影响站内通知。「报告结果」不再截取报告正文（会被中途截断且难看），改为取任务配置的「报告标题」（在「报告任务」页填写、上限 20 字，与微信 thing 字段上限一致）；不填则该字段整行不展示。**微信推送为「单任务开关」**：用户须在「报告任务」卡片上单独开启「微信通知」并授权一次性订阅后，该任务才会尝试推送；`aiReport` 仅当 `ai_tasks.notify=true` 才调用 `subscribeMessage.send`，否则报告只落站内（`delivery.message=WECHAT_NOTIFY_DISABLED`），不消耗订阅额度。新任务 `notify` 默认 false，因此旧任务与新建任务都需用户逐一开启。
 报告订阅模板已申请（2026-11-11 由「打卡提醒」更换为「查看报告提醒」）：`AI_REPORT_TEMPLATE_ID=IBU-7JzVwiyk0eD0pBoDLxZJg9l37V4gnsWMOKfNGE`，字段映射「报告类型=thing1、生成时间=time2、报告结果=thing3」，代码默认 `AI_REPORT_TITLE_FIELD=thing1`、`AI_REPORT_TIME_FIELD=time2`，可选 `AI_REPORT_RESULT_FIELD=thing3`（承载任务「报告标题」，≤20 字，未配置则不展示）。须在 `aiReport` 与 `aiTasks` 配同一模板 ID；`AI_REPORT_TEMPLATE_ID` 整组留空亦可（报告结果存站内，仅不推微信）。**字段编号以公众平台「我的模板」详情页为准——本模板为 thing1/thing3/time2，并非固定 thing1/time13，填错会回退站内并报错**。模板 ID 务必从公众平台「我的模板」点复制粘贴，勿手抄（含大小写与连字符）。模板选用/申请以公众平台「我的模板」与公共模板库为准。
 
@@ -87,7 +87,7 @@ DeepSeek 思考模式由小迈页面的「深度思考」开关控制，默认�
 
 ## 5. 小程序平台配置
 - [ ] 订阅消息模板：确认「查看报告提醒」模板可用（ID 见上方 §3）；定时报告通知配 `AI_REPORT_TEMPLATE_ID` + `AI_REPORT_TITLE_FIELD=thing1`/`AI_REPORT_TIME_FIELD=time2`/`AI_REPORT_RESULT_FIELD=thing3`（报告结果对应任务「报告标题」，未配置则不展示该字段），或从公共模板库搜索「提醒/通知/报告/结果/完成」等词，选用含 `thingN`+`timeN` 字段的一次性模板；确需新模板则在公共模板库最后一页点「找不到你想要的模板？帮我们完善模板库」提审，审核 3-7 工作日。字段编号以公众平台「我的模板」详情页为准（非固定 thing1/time13）。
-- 个人主体不可用 WechatSI，当前语音为 `RecorderManager → asrProxy` 一次性转写；主体变更为非个人后可加回插件声明恢复实时预览。真机需验证按住说话、松开后文字进入输入框。
+- 个人主体不可用 WechatSI，当前语音为 `RecorderManager → asrProxy` 一次性转写；主体变更为非个人后可加回插件声明恢复实时预览。真机需验证长按输入框说话、松手后文字进入输入框，且短按仍可正常打字与定位光标；输入框为空与已有文字两种状态都要覆盖，确认系统长按菜单不影响录音与松手停止。
 - [ ] 服务器域名：云开发免配置；若 ASR 服务走 HTTPS 可直连云函数中转，无需小程序侧域名白名单。
 - [ ] 隐私协议/用户隐私保护指引：补充声明「录音用于语音识别」，并覆盖宝宝记录、照片等实际收集范围；明确成长日记正文、里程碑事项、辅食/自定义备注会在用户主动附带问答或已同意的定时报告中发送给第三方 AI 服务商。
 

@@ -74,7 +74,7 @@ docs/
 
 `statistics` 是小迈主页面：范围选择、通用问答入口和六类概况卡。进入页面先渲染 60 秒内的缓存结果，再按需静默校验，切 Tab 不重复请求；切换范围或下拉刷新才跳过缓存，且不清空已有卡片。仅展示范围内有记录的类别；范围内完全无数据时隐藏概况卡片区并显示登记引导。成长/喂养为多项指标卡，统一三列：标签｜数值+单位｜环比变化，变化不重复单位；其余为单指标卡。`statistics-detail` 显示分类指标、趋势图与选中日期当天该类型记录，不含日历热力图；统计范围从概况卡入口传入。横滑由 `.chart-scroll` 内的透明占位层驱动，明细在 `.detail-scroll` 纵向滚动，页面容器不滚动且禁用整页下拉刷新。横滑只浏览趋势、不刷新当天明细；点选吸附到最近的有登记值日期，空白日期不切换、不请求后台，点选登记日才触发 daily 查询。数值标签集合与选中态无关，每个有值点始终显示数值。`utils/chart.js` 的 `seriesChart()` 由 `statistics-detail` 调用。Canvas 固定为视口宽并位于 `.chart-scroll` 外，滚动层内的透明占位层宽为 `chartWidth`；逻辑布局按 `chartWidth` 计算，`drawFrame()` 固定裁剪 `[0, viewWidth]` 并将逻辑内容平移 `-viewOffset`，不依赖 Canvas 节点随滚动容器移动。选中日期以加粗实心节点显示，不画竖向高亮虚线。日历热力图模块 `utils/heatmap.js` 与 `tests/heatmap.test.cjs` 已在死文件清理中移除，前端工具清单不再列出。
 
-`ai-chat` 保留 WechatSI 惰性加载兼容代码，但个人主体不在 `app.json` 声明插件，加载失败后使用 `RecorderManager → asrProxy` 一次性转写；主体变更为非个人后可加回声明恢复实时预览。`tests/ai-chat-voice.test.cjs` 覆盖无插件声明、惰性加载、转写清理与卸载收尾。
+`ai-chat` 保留 WechatSI 惰性加载兼容代码，但个人主体不在 `app.json` 声明插件，加载失败后使用 `RecorderManager → asrProxy` 一次性转写；主体变更为非个人后可加回声明恢复实时预览。`tests/ai-chat-voice.test.cjs` 覆盖无插件声明、惰性加载、转写清理与卸载收尾，以及长按输入框手势、麦克风按钮移除、录音态样式与卸载计时器清理。
 
 统计详情的右侧纵轴使用按刻度文字宽度收缩的固定栏，数字右对齐；左侧 `.chart-plot-viewport` 绘图区在纵轴栏前结束并独立横向滚动，横线和数据不会延伸到纵轴下方。
 

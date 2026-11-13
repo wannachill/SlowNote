@@ -39,8 +39,8 @@ test('final plugin text wins and empty results use the cleaned asrProxy fallback
 test('recording preview is accessible, token-styled, and cleared on cancel and unload', () => {
   assert.match(template, /wx:if="\{\{recording\}\}"[^>]*aria-live="polite"/)
   assert.match(template, /class="voice-live-text">\{\{liveTranscript\}\}/)
-  assert.match(template, /class="voice-live-placeholder">正在录音…松开后自动转写/)
-  assert.match(template, /bindtouchcancel="stopVoice"/)
+  assert.match(template, /class="voice-live-placeholder">正在录音…<\/text><text class="voice-live-placeholder">松开结束/)
+  assert.match(template, /bindtouchcancel="onInputTouchCancel"/)
   const textStyle = styles.match(/\.voice-live-text\s*\{([^}]+)\}/)
   const placeholderStyle = styles.match(/\.voice-live-placeholder\s*\{([^}]+)\}/)
   assert(textStyle && placeholderStyle)
@@ -55,4 +55,55 @@ test('recording preview is accessible, token-styled, and cleared on cancel and u
   assert.match(unload, /this\._siManager\.stop\(\)/)
   assert.match(unload, /this\._recorder\.stop\(\)/)
   assert.match(script, /event\.type === 'touchcancel'[\s\S]*?liveTranscript: ''/)
+})
+
+test('microphone button is removed and the input box owns the hold gesture', () => {
+  assert.doesNotMatch(template, /voice-button|voice-symbol|bindtouchstart="startVoice"/)
+  assert.doesNotMatch(styles, /\.voice-button|\.voice-symbol/)
+  assert.match(template, /class="chat-input-shell \{\{recording \? 'recording' : ''\}\}"/)
+  assert.match(template, /bindtouchstart="onInputTouchStart" bindtouchmove="onInputTouchMove" bindtouchend="onInputTouchEnd" bindtouchcancel="onInputTouchCancel"/)
+  assert.equal((template.match(/bindtouchstart="onInputTouchStart"/g) || []).length, 2)
+  assert.equal((template.match(/bindtouchend="onInputTouchEnd"/g) || []).length, 2)
+  assert.equal((template.match(/bindtouchcancel="onInputTouchCancel"/g) || []).length, 2)
+  assert.match(template, /发消息或长按说话…/)
+  assert.match(template, /aria-label="向小迈提问，长按可语音输入"/)
+})
+
+test('recording state is shown on the input box with theme tokens', () => {
+  const shell = styles.match(/\.chat-input-shell\s*\{([^}]+)\}/)
+  const active = styles.match(/\.chat-input-shell\.recording\s*\{([^}]+)\}/)
+  assert(shell && active)
+  assert.match(shell[1], /flex:\s*1/)
+  assert.match(shell[1], /var\(--radius-small\)/)
+  assert.match(active[1], /var\(--color-accent-soft\)/)
+  assert.doesNotMatch(shell[1] + active[1], /#[\da-f]{3,8}\b|\b\d+(?:px|rpx)\b/i)
+})
+
+test('short taps keep text input; only a sustained hold starts recording', () => {
+  const start = section(script, 'onInputTouchStart(e) {', 'onInputTouchMove(e) {')
+  const end = section(script, 'onInputTouchEnd() {', 'onInputTouchCancel() {')
+  assert.match(script, /const INPUT_HOLD_MS = 350/)
+  assert.match(start, /if \(this\._inputTouchActive \|\|/)
+  assert.match(start, /setTimeout\(\(\) => \{[\s\S]*?this\.startVoice\(\)[\s\S]*?\}, INPUT_HOLD_MS\)/)
+  assert.match(end, /this\.clearInputHold\(\)/)
+  assert.match(end, /if \(this\._voiceActive\) this\.stopVoice\(\{ type: 'touchend' \}\)/)
+  assert.match(section(script, 'startVoice() {', 'stopVoice(event) {'), /try \{ wx\.hideKeyboard\(\) \}[\s\S]*?focusInput: false/)
+  assert.match(section(script, 'stopVoice(event) {', 'finishLiveVoice(res) {'), /if \(!this\._voiceActive \|\| this\._voiceStopping\) return/)
+})
+
+test('finger movement cancels a pending hold; cancel gesture discards the recording', () => {
+  const move = section(script, 'onInputTouchMove(e) {', 'onInputTouchEnd() {')
+  const cancel = section(script, 'onInputTouchCancel() {', 'getVoiceManager() {')
+  assert.match(script, /const INPUT_HOLD_MOVE_TOLERANCE = 12/)
+  assert.match(move, /Math\.abs\(touch\.clientX - this\._inputTouchX\) > INPUT_HOLD_MOVE_TOLERANCE/)
+  assert.match(move, /Math\.abs\(touch\.clientY - this\._inputTouchY\) > INPUT_HOLD_MOVE_TOLERANCE/)
+  assert.match(move, /this\._inputTouchMoved = true[\s\S]*?this\.clearInputHold\(\)/)
+  assert.match(cancel, /this\.stopVoice\(\{ type: 'touchcancel' \}\)/)
+})
+
+test('hold timer and touch state are cleaned on unload', () => {
+  const unload = section(script, 'onUnload() {', 'onInput(e) {')
+  assert.equal((unload.match(/this\.clearInputHold\(\)/g) || []).length, 1)
+  assert.match(unload, /this\._inputTouchActive = false/)
+  assert.match(section(script, 'clearInputHold() {', 'onInputTouchStart(e) {'), /clearTimeout\(this\._inputHoldTimer\)/)
 })
