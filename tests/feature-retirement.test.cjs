@@ -63,7 +63,7 @@ test('文档不再把智能提醒写成现有功能', () => {
   assert.doesNotMatch(prd, /信息推送\/小迈配置入口/)
 
   const structure = read('docs/rules/project-structure.md')
-  assert.match(structure, /当前 18 个页面/)
+  assert.match(structure, /当前 19 个页面/)
   assert.match(structure, /15 个可调用函数/)
   assert.doesNotMatch(structure, /reminder-schedule\.test\.cjs/)
 })

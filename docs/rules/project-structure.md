@@ -10,7 +10,7 @@ miniprogram/
   components/
     net-banner/                 # 断网与网络异常横幅
   custom-tab-bar/               # 首页 / 小迈 / 我的
-  utils/                        # 30 个前端工具模块，清单见下
+  utils/                        # 31 个前端工具模块，清单见下
   pages/
     index/ statistics/ mine/    # 三个底部 Tab
     statistics-detail/          # 分类趋势详情（二级页）
@@ -25,14 +25,14 @@ cloudfunctions/                 # 15 个可调用云函数 + _shared
 scripts/
   sync-cloud-runtime.js         # 同步共享源码到 14 个受管函数 lib/
   check-project.js              # 项目注册与一致性检查
-tests/                          # 43 个 *.test.cjs 文件 + helpers.cjs
+tests/                          # 44 个 *.test.cjs 文件 + helpers.cjs
   ai-chat-images.test.cjs ai-chat-snapshot.test.cjs ai-chat-voice.test.cjs ai-settings-cache.test.cjs ai-settings-questions.test.cjs
   baby-profile.test.cjs chart-bars.test.cjs chart-selection.test.cjs common-questions.test.cjs copy-terse.test.cjs
   custom-record-validation.test.cjs feature-retirement.test.cjs growth-multi-measurement.test.cjs
   home-cache.test.cjs home-card-edit.test.cjs home-card.test.cjs home-timeline.test.cjs history-swipe.test.cjs
   interaction-motion.test.cjs list-swipe-performance.test.cjs llm-encoding.test.cjs markdown.test.cjs milestone-defs.test.cjs
   milestone-entry.test.cjs milestone-gestures.test.cjs mine-profile.test.cjs navigation-routing.test.cjs
-  page-cache.test.cjs prompt-defaults.test.cjs question-categories.test.cjs record-details.test.cjs record-mutations.test.cjs references.test.cjs
+  page-cache.test.cjs privacy-policy.test.cjs prompt-defaults.test.cjs question-categories.test.cjs record-details.test.cjs record-mutations.test.cjs references.test.cjs
   registration.test.cjs report-history.test.cjs report-scope.test.cjs slownote.test.cjs
   statistics-action.test.cjs statistics-brief.test.cjs statistics-detail-core.test.cjs statistics-detail.test.cjs
   statistics-insights.test.cjs swipe-card-radius.test.cjs
@@ -45,7 +45,7 @@ docs/
 ~~~
 
 ## 前端工具模块
-`miniprogram/utils/` 当前有 30 个 JavaScript 文件：`ai-photos.js`、`ai-sessions.js`、`ai-settings.js`、`api.js`、`avatar.js`、`categories.js`、`chart.js`、`common-questions.js`、`confetti.js`、`date.js`、`digest.js`、`format-number.js`、`haptics.js`、`home-cards.js`、`home-refresh.js`、`list-patch.js`、`markdown.js`、`milestone-overview.js`、`motion.js`、`net.js`、`page-cache.js`、`page.js`、`record-scope.js`、`references.js`、`registration.js`、`reveal.js`、`statistics-detail-core.js`、`statistics-insights.js`、`theme.js`、`viewmodels.js`。
+`miniprogram/utils/` 当前有 31 个 JavaScript 文件：`ai-photos.js`、`ai-sessions.js`、`ai-settings.js`、`api.js`、`avatar.js`、`categories.js`、`chart.js`、`common-questions.js`、`confetti.js`、`date.js`、`digest.js`、`format-number.js`、`haptics.js`、`home-cards.js`、`home-refresh.js`、`list-patch.js`、`markdown.js`、`milestone-overview.js`、`motion.js`、`net.js`、`page-cache.js`、`page.js`、`privacy-content.js`、`record-scope.js`、`references.js`、`registration.js`、`reveal.js`、`statistics-detail-core.js`、`statistics-insights.js`、`theme.js`、`viewmodels.js`。
 
 `utils/common-questions.js` 的 7 类数据类型是端侧唯一枚举来源，常见问题与定时报告共用；`cloudfunctions/_shared/record-details.js` 镜像类别键并由 `tests/record-details.test.cjs` 校验一致，负责字段白名单、服务端明细渲染和共享长度预算；`pages/ai-tasks` 另在页面内维护 `ALL`（类型）、`RANGES`（报告数据范围）与 `rangeName/rangeHint` 三个纯函数，报告范围的语义以 `cloudfunctions/_shared/schedule.js` 的 `REPORT_RANGES` 为准，两边改动必须同时进行。
 
@@ -70,7 +70,7 @@ docs/
 展示在 `pages/ai-notifications`（`aiNotifications` 的 `list` / `read` / `remove`，全部按 openid 校验归属）：卡片未读圆点由 `read` 字段驱动，打开详情即标记已读，左滑删除走 `mutation_receipts` 幂等。底栏不展示未读数字角标，`aiNotifications` 也不提供 `unreadCount`。
 
 ## 页面与统计
-`miniprogram/pages/` 当前 18 个页面：`index`、`statistics`、`statistics-detail`、`feeding`、`solid`、`excretion`、`growth`、`milestone`、`diary`、`mine`、`baby`、`theme`、`ai-settings`、`ai-chat`、`ai-history`、`ai-tasks`、`ai-notifications`、`custom-record`。底部 Tab 为首页/小迈/我的。
+`miniprogram/pages/` 当前 19 个页面：`index`、`statistics`、`statistics-detail`、`feeding`、`solid`、`excretion`、`growth`、`milestone`、`diary`、`mine`、`baby`、`theme`、`ai-settings`、`ai-chat`、`ai-history`、`ai-tasks`、`ai-notifications`、`custom-record`、`privacy`。底部 Tab 为首页/小迈/我的；`privacy` 为隐私政策内置页，由 `utils/page.js` 的 `PUBLIC_PAGES` 列为免登录公开页，正文由 `utils/privacy-content.js` 渲染。
 
 `statistics` 是小迈主页面：范围选择、通用问答入口和六类概况卡。进入页面先渲染 60 秒内的缓存结果，再按需静默校验，切 Tab 不重复请求；切换范围或下拉刷新才跳过缓存，且不清空已有卡片。仅展示范围内有记录的类别；范围内完全无数据时隐藏概况卡片区并显示登记引导。成长/喂养为多项指标卡，统一三列：标签｜数值+单位｜环比变化，变化不重复单位；其余为单指标卡。`statistics-detail` 显示分类指标、趋势图与选中日期当天该类型记录，不含日历热力图；统计范围从概况卡入口传入。横滑由 `.chart-scroll` 内的透明占位层驱动，明细在 `.detail-scroll` 纵向滚动，页面容器不滚动且禁用整页下拉刷新。横滑只浏览趋势、不刷新当天明细；点选吸附到最近的有登记值日期，空白日期不切换、不请求后台，点选登记日才触发 daily 查询。数值标签集合与选中态无关，每个有值点始终显示数值。`utils/chart.js` 的 `seriesChart()` 由 `statistics-detail` 调用。Canvas 固定为视口宽并位于 `.chart-scroll` 外，滚动层内的透明占位层宽为 `chartWidth`；逻辑布局按 `chartWidth` 计算，`drawFrame()` 固定裁剪 `[0, viewWidth]` 并将逻辑内容平移 `-viewOffset`，不依赖 Canvas 节点随滚动容器移动。选中日期以加粗实心节点显示，不画竖向高亮虚线。日历热力图模块 `utils/heatmap.js` 与 `tests/heatmap.test.cjs` 已在死文件清理中移除，前端工具清单不再列出。
 

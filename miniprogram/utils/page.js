@@ -1,5 +1,7 @@
 const theme = require('./theme')
 const motion = require('./motion')
+// 无需登录即可进入的公开页面：三个 Tab 页 + 隐私政策（登录前必须可查看）。
+const PUBLIC_PAGES = ['pages/index/index', 'pages/statistics/index', 'pages/mine/index', 'pages/privacy/index']
 module.exports = function themedPage(definition) {
   const load = definition.onLoad, show = definition.onShow, ready = definition.onReady, initial = theme.resolve()
   Page({
@@ -33,7 +35,7 @@ module.exports = function themedPage(definition) {
       const info = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync()
       this.setData({ statusBarHeight: info.statusBarHeight || 20 })
       this._entryReady = (async () => {
-        const app = getApp(), core = ['pages/index/index', 'pages/statistics/index', 'pages/mine/index'].includes(this.route)
+        const app = getApp(), core = PUBLIC_PAGES.includes(this.route)
         if (!core && (!app.globalData.initialized || app._initializing)) await app.init()
         this._entryAllowed = core || app.globalData.loggedIn
         if (!this._entryAllowed) { this.redirectToMine(); return }
@@ -46,7 +48,7 @@ module.exports = function themedPage(definition) {
       motion.reset.call(this)
       this.applyTheme()
       await this._entryReady
-      const core = ['pages/index/index', 'pages/statistics/index', 'pages/mine/index'].includes(this.route)
+      const core = PUBLIC_PAGES.includes(this.route)
       this._entryAllowed = core || getApp().globalData.loggedIn
       if (!this._entryAllowed) { this.redirectToMine(); return }
       if (this.data.panelMode && this._registrationSaved) { require('./registration').close(this, true); return }

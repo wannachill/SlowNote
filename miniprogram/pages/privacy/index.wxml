@@ -1,0 +1,18 @@
+<view class="theme-root {{themeClass}} page privacy-page">
+  <view class="sub-nav" style="height: calc({{statusBarHeight}}px + var(--nav-height)); padding-top: {{statusBarHeight}}px;"><button class="sub-nav-back" bindtap="goBack" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" aria-label="返回"></button><text class="sub-nav-title">隐私政策</text><view class="sub-nav-spacer" aria-hidden="true"></view></view>
+
+  <view class="card privacy-header">
+    <text class="title">一迈一记 · 隐私政策</text>
+    <text class="form-note">生效日期 {{lastUpdated}} · 运营者：本小程序运营者（个人开发者）</text>
+  </view>
+
+  <view wx:for="{{sections}}" wx:key="title" class="card privacy-section">
+    <text class="privacy-section-title">{{item.title}}</text>
+    <text wx:for="{{item.paragraphs}}" wx:for-item="line" wx:key="*this" class="privacy-paragraph">{{line}}</text>
+  </view>
+
+  <view class="card privacy-section">
+    <text class="privacy-section-title">十、联系我们</text>
+    <text class="privacy-paragraph">如需查阅、更正、删除个人信息，或申请删除账号及全部数据，请发送邮件至 {{contactLabel}}，我们会在 7 个工作日内处理并回复确认。</text>
+  </view>
+</view>

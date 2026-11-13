@@ -17,7 +17,8 @@
     "pages/ai-history/index",
     "pages/ai-tasks/index",
     "pages/ai-notifications/index",
-    "pages/custom-record/index"
+    "pages/custom-record/index",
+    "pages/privacy/index"
   ],
   "window": {
     "navigationBarBackgroundColor": "@navigationBackground",

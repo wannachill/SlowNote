@@ -328,7 +328,7 @@ test('定时报告页不再提供「查看站内通知」入口，历史报告�
 
   const mine = read('miniprogram/pages/mine/index.wxml')
   const names = [...mine.matchAll(/<text class="settings-name">([^<]+)<\/text>/g)].map(match => match[1])
-  assert.deepEqual(names, ['主题设置', '小迈设置', '定时报告', '历史报告'])
+  assert.deepEqual(names, ['主题设置', '小迈设置', '定时报告', '历史报告', '隐私政策'])
   assert.match(mine, /data-url="\/pages\/ai-notifications\/index"[^>]*aria-label="历史报告"/)
 })
 

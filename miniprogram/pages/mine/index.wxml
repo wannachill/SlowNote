@@ -9,6 +9,7 @@
     <button class="settings-link" data-url="/pages/ai-settings/index" bindtap="go" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" aria-label="小迈设置"><text class="settings-name">小迈设置</text><view class="chevron" aria-hidden="true"></view></button>
     <button class="settings-link" data-url="/pages/ai-tasks/index" bindtap="go" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" aria-label="定时报告"><text class="settings-name">定时报告</text><view class="chevron" aria-hidden="true"></view></button>
     <button class="settings-link" data-url="/pages/ai-notifications/index" bindtap="go" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" aria-label="历史报告"><text class="settings-name">历史报告</text><view class="chevron" aria-hidden="true"></view></button>
+    <button class="settings-link" data-url="/pages/privacy/index" bindtap="go" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" aria-label="隐私政策"><text class="settings-name">隐私政策</text><view class="chevron" aria-hidden="true"></view></button>
   </view>
   <button wx:if="{{loggedIn}}" class="btn-secondary logout" bindtap="logout" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}">退出登录</button>
   </scroll-view>

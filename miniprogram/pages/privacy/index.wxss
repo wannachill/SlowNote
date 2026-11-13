@@ -1,0 +1,24 @@
+.privacy-page {
+  padding-top: 0;
+}
+.privacy-header {
+  margin-top: var(--space-m);
+}
+.privacy-section {
+  margin-top: var(--space-m);
+}
+.privacy-section-title {
+  display: block;
+  margin-bottom: var(--space-s);
+  color: var(--color-text-1);
+  font-size: var(--font-heading);
+  font-weight: var(--weight-semibold);
+  line-height: var(--line-heading);
+}
+.privacy-paragraph {
+  display: block;
+  margin-bottom: var(--space-s);
+  color: var(--color-text-2);
+  font-size: var(--font-body);
+  line-height: var(--line-body);
+}
