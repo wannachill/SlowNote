@@ -127,10 +127,45 @@
 }
 /* 详情区的送达时间复用 .form-note，但基础样式带 margin-top 会把文字往下推、与标签不对齐，这里复位。 */
 .report-meta .form-note { margin-top: 0; }
+.report-copy {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-size: var(--font-caption);
+  color: var(--color-accent-ink);
+}
 .report-content {
   display: block;
   font-size: var(--font-body);
   line-height: var(--line-body);
-  white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+/* rich-text 内部节点只能用直接类选择器命中，不能用后代选择器；此处与对话页保持同一套类名。 */
+.md-paragraph {
+  display: block;
+  margin: 0 0 var(--space-xs);
+  line-height: var(--line-body);
+}
+.md-paragraph:last-child { margin-bottom: 0; }
+.md-list-item, .md-unordered, .md-ordered {
+  display: block;
+  margin: 0 0 var(--space-xs) var(--space-m);
+  line-height: var(--line-body);
+}
+.md-heading {
+  display: block;
+  margin: var(--space-xs) 0;
+  color: var(--color-text-1);
+  font-weight: var(--weight-semibold);
+  line-height: var(--line-heading);
+}
+.md-heading-1 { font-size: var(--font-title); }
+.md-heading-2 { font-size: var(--font-control); }
+.md-heading-3, .md-heading-4, .md-heading-5, .md-heading-6 { font-size: var(--font-body); }
+.md-strong { font-weight: var(--weight-semibold); }
+.md-em { font-style: italic; }
+.md-inline-code {
+  padding: 0 var(--space-xs);
+  border-radius: var(--radius-icon);
+  background: var(--color-field);
+  font-family: monospace;
 }

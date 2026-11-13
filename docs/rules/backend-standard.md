@@ -46,7 +46,7 @@
 
 - 函数最小权限、环境隔离、依赖锁定；限制并发、执行时长与返回大小。
 - 校验云函数调用身份和数据库安全规则，不信任客户端传入用户标识。
-- 默认提示词（SAFETY / style / vision / report）与三场景拼接只由 `cloudfunctions/_shared/ai-settings.js` 的 `compose()` 定义；`aiChat` / `aiReport` 显式传入 system，`_shared/llm.js` 的兜底同样复用 `compose()`，禁止在别处另写一份默认文案。调整默认文案须同步 14 份 `lib/`、递增 `aiSettings` 的 `build` 标记并重新部署；`PREVIOUS_DEFAULTS` 保留历史默认全文，用于老用户静默归一与「已自定义」判定。
+- 默认提示词（SAFETY / style / vision / report）与三场景拼接只由 `cloudfunctions/_shared/ai-settings.js` 的 `compose()` 定义；`aiChat` / `aiReport` 显式传入 system，`_shared/llm.js` 的兜底同样复用 `compose()`，禁止在别处另写一份默认文案。调整默认文案须同步 14 份 `lib/`、递增 `aiSettings` 的 `build` 标记并重新部署；`PREVIOUS_DEFAULTS` 保留历史默认全文，用于老用户静默归一与「已自定义」判定；本轮已保留两代。加粗与分节属 `style` / `report` 可编辑风格段，不写进 SAFETY：只用双星号加粗总结论与需留意/就医警示点、不整段加粗；因渲染器不支持表格与图表，提示词同时禁止输出表格或图表代码，图表若要做须由 `aggregate()` 的真实记录产出结构化序列并由端侧绘制，不能让模型生成。
 
 ## 6. 登录身份与功能可用性
 

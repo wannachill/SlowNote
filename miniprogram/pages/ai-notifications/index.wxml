@@ -45,9 +45,10 @@
       <view class="report-meta">
         <text class="form-note">{{current.dateText}}</text>
         <text wx:if="{{current.wechatText}}" class="status-tag {{current.wechatClass}}">{{current.wechatText}}</text>
+        <button class="text-action report-copy" bindtap="copyReport" hover-class="tap-feedback" aria-label="复制报告全文">复制全文</button>
       </view>
       <scroll-view class="sheet-scroll report-scroll" scroll-y enhanced show-scrollbar="{{true}}" catchtap="noop">
-        <view class="sheet-content"><text class="report-content" selectable>{{current.content}}</text></view>
+        <view class="sheet-content"><rich-text class="report-content" nodes="{{reportNodes}}" /></view>
       </scroll-view>
     </view>
   </view>

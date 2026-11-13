@@ -201,7 +201,31 @@ test('历史报告卡片与定时报告同构：标题+时间首行、微信状�
   assert.match(style, /\.report-sheet\s*\{\s*height:\s*var\(--sheet-max-height\)/)
   assert.match(style, /\.report-scroll\s*\{[^}]*height:\s*0;[^}]*flex:\s*1 1 0%;[^}]*min-height:\s*0/)
   assert.ok(template.indexOf('class="sheet-heading"') < template.indexOf('class="sheet-scroll report-scroll"'))
-  assert.match(template, /class="report-content" selectable>\{\{current.content\}\}/)
+  assert.match(template, /<rich-text class="report-content" nodes="\{\{reportNodes\}\}"/)
+  assert.match(template, /bindtap="copyReport"/)
+  assert.doesNotMatch(template, /class="report-content" selectable/)
+  assert.match(style, /\.md-strong\s*\{[^}]*font-weight:\s*var\(--weight-semibold\)/)
+  assert.match(style, /\.md-heading-2\s*\{[^}]*font-size:\s*var\(--font-control\)/)
+  assert.match(style, /\.report-copy\s*\{[^}]*margin-left:\s*auto/)
+})
+
+test('报告正文按 Markdown 渲染，加粗与小标题生效，复制全文保留原始内容', async () => {
+  const content = '## 总体结论\n**喂养稳定**，体重增长正常。\n\n## 需留意\n如有异常请及时就医。'
+  const ctx = pageWith([{ ...reports()[0], content }])
+  await ctx.page.onShow()
+  ctx.page.onCardTap({ currentTarget: { dataset: { id: 'n1' } } })
+  const nodes = ctx.page.data.reportNodes
+  const serialized = JSON.stringify(nodes)
+  assert.ok(nodes.length > 0, '应生成 rich-text 节点')
+  assert.match(serialized, /md-heading md-heading-2/)
+  assert.match(serialized, /md-strong/)
+  assert.doesNotMatch(serialized, /\*\*/, '双星号不应原样显示')
+  let copied = ''
+  ctx.wx.setClipboardData = ({ data, success }) => { copied = data; if (success) success() }
+  ctx.page.copyReport()
+  assert.equal(copied, content)
+  ctx.page.onCardTap({ currentTarget: { dataset: { id: 'n1' } } })
+  assert.equal(ctx.page.data.reportNodes, nodes, '重复打开应复用缓存节点')
 })
 
 test('长报告打开后保留完整正文，微信未发送时仍标识为站内通知', async () => {

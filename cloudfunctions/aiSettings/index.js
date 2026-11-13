@@ -5,7 +5,7 @@ function response(stored) {
   return {
     code: 0,
     // 云端版本标记：排查“部署没生效”时，看到它就知道跑的是这份代码。
-    build: 'ai-settings-3',
+    build: 'ai-settings-4',
     ...settingsOf(stored),
     defaults: DEFAULTS,
     // 配置页展示全部锁定条文：通用 + 带图 + 纯文本对话，三段都会实际参与拼接。

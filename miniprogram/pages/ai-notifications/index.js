@@ -4,6 +4,8 @@ const { call, requestId, toastError } = require('../../utils/api')
 const { tap } = require('../../utils/haptics')
 const { dateKey } = require('../../utils/date')
 const { setListItemFields, setListFields } = require('../../utils/list-patch')
+// 报告正文与小迈回答共用同一套 Markdown 子集渲染，标题/加粗/列表在这里同样生效。
+const parseMarkdown = require('../../utils/markdown')
 // 历史报告只有「删除」一个动作，轨道宽度取全局 --swipe-action-width 的一半（110rpx），
 // 使删除按钮与「常见问题」页（两个动作平分 220rpx）的单个按钮等宽。
 const ACTION_WIDTH_RPX = 110
@@ -22,7 +24,7 @@ function wechatStatus(delivery) {
 }
 
 page({
-  data: { items: [], loading: false, error: '', panel: false, closing: false, current: null,
+  data: { items: [], loading: false, error: '', panel: false, closing: false, current: null, reportNodes: [],
     startDate: '', endDate: '', startDateLabel: '', endDateLabel: '', today: '', total: 0, hasMore: false },
 
   onShow() {
@@ -138,13 +140,22 @@ page({
     if (Date.now() < (this._ignoreCardTapUntil || 0)) return
     tap()
     this.resetSwipe()
-    this.setData({ panel: true, closing: false, current: item })
+    // 正文最长可达数千字，按报告 ID 缓存解析结果，重复打开不重复生成节点。
+    const cache = this._nodesCache = this._nodesCache || {}
+    const nodes = cache[item.id] || (cache[item.id] = parseMarkdown(item.content || ''))
+    this.setData({ panel: true, closing: false, current: item, reportNodes: nodes })
     if (!item.read) this.markRead(item.id)
   },
   closePanel() {
     if (this.data.closing) return
     this.setData({ closing: true })
-    require('../../utils/motion').closeLater(this, () => this.setData({ panel: false, closing: false, current: null }))
+    require('../../utils/motion').closeLater(this, () => this.setData({ panel: false, closing: false, current: null, reportNodes: [] }))
+  },
+  // rich-text 不支持 selectable，用显式复制按钮保留原来的长按复制能力。
+  copyReport() {
+    const content = this.data.current && this.data.current.content
+    if (!content) return
+    wx.setClipboardData({ data: content, success: () => wx.showToast({ title: '已复制', icon: 'none' }) })
   },
 
   async markRead(id) {

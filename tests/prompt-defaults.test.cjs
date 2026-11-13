@@ -18,6 +18,12 @@ test('默认提示词包含本轮新增的关键约束', () => {
   assert.match(DEFAULTS.report, /可独立阅读，不写寒暄、不反问/)
   assert.match(DEFAULTS.report, /未展开的记录与未附带的类别不推断/)
   assert.doesNotMatch(DEFAULTS.report, /没有记录不代表没有发生/, '该句由 aiReport 的 user 消息注入，system 不再重复')
+  assert.match(DEFAULTS.style, /二级小标题/)
+  assert.match(DEFAULTS.style, /只用双星号加粗/)
+  assert.match(DEFAULTS.style, /不要整段加粗/)
+  assert.match(DEFAULTS.style, /不输出表格或图表代码/, '渲染器不支持表格与图表，提示词不得诱导模型输出')
+  assert.match(DEFAULTS.report, /各起一行二级小标题/)
+  assert.match(DEFAULTS.report, /不输出表格或图表代码/)
 })
 
 test('三场景按锁定段 → 风格段 → 场景段分层，互斥不重复', () => {
@@ -62,6 +68,23 @@ test('历史默认全文静默升级为新默认，不误标为自定义', () =>
   assert.equal(custom.showThinking, false)
 })
 
+test('多代历史默认值与混合存储都能归一，不误标为自定义', () => {
+  const { PREVIOUS_DEFAULTS, DEFAULTS, normalizePrompts, customOf } = settings
+  assert.ok(PREVIOUS_DEFAULTS.length >= 2, '加粗规则上线后应保留两代历史默认值')
+  PREVIOUS_DEFAULTS.forEach((legacy, index) => {
+    assert.deepEqual(normalizePrompts(legacy), DEFAULTS, `第 ${index + 1} 代默认值应升级`)
+    for (const key of ['style', 'vision', 'report']) {
+      assert.equal(customOf(storedOf(legacy))[key], false, `第 ${index + 1} 代 ${key} 不应被误标`)
+    }
+  })
+  const mixed = storedOf({ style: PREVIOUS_DEFAULTS[0].style, vision: '自定义图片说明', report: PREVIOUS_DEFAULTS[1].report })
+  const flags = customOf(mixed)
+  assert.equal(flags.style, false)
+  assert.equal(flags.vision, true)
+  assert.equal(flags.report, false)
+  assert.equal(normalizePrompts(mixed.prompts).vision, '自定义图片说明')
+})
+
 test('真实自定义提示词原样保留并标记为已自定义', () => {
   const { PREVIOUS_DEFAULTS, DEFAULTS, normalizePrompts, customOf } = settings
   const custom = '请只用粤语回答，且每条建议不超过两行。'
@@ -98,8 +121,8 @@ test('llm.js 不再维护第二份默认提示词，兜底复用 compose', () =>
 
 test('aiSettings 的 build 标记随默认提示词升级', () => {
   const source = fs.readFileSync('cloudfunctions/aiSettings/index.js', 'utf8')
-  assert.match(source, /build: 'ai-settings-3'/)
-  assert.doesNotMatch(source, /build: 'ai-settings-2'/)
+  assert.match(source, /build: 'ai-settings-4'/)
+  assert.doesNotMatch(source, /build: 'ai-settings-[23]'/)
 })
 
 test('14 份 lib 副本与 _shared 的提示词文件逐字一致', () => {
