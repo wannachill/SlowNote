@@ -3,7 +3,7 @@
 > 创建日期：2026-11-12
 > 用途：把 `docs/prd/slownote-prd.md` §8（8 项）与 `docs/deployment-checklist.md`（16 项）中**全部 24 项未勾选项**，按依赖关系重排成可逐项勾选、可执行的动作清单；另补入两份文档正文中未勾选但必须完成的前置动作（集合/权限/索引/环境变量/15 个云函数部署），以及 2026-11-12 功能审计发现的 3 项遗留（云端旧函数清理、2 处合规 `[待补充]`）。
 > 本文**不修改**上述两份文档正文；勾选在本文进行，全部完成后再回填原文档对应项。
-> 状态：本清单仅为整理产物，**所有云端部署与真机验收均未执行**。
+> 状态：本清单为执行台账。截至 2026-11-13，本地基线与用户确认的云端部署/配置已勾选；**云端实际取值与真机验收未经本仓库核验**，勾选不代表我方验证结论。
 > 引用方式：PRD 的来源统一按「§7 小节」或「§8 第 N 项」定位，不用行号，避免 PRD 增删行后来源失效；部署清单仍按行号定位。2026-11-12 补充「登录与数据隔离」实现说明及登录硬前置，见 `docs/prd/slownote-prd.md` §7 与下方阶段 1 说明块。
 
 ## 用法
@@ -33,18 +33,18 @@
 
 ## 阶段 2 · 外部服务与小程序平台配置
 
-- [ ] **#10 `[控制台]` 配置 LLM 变量** — `aiChat`、`aiReport` 配 `LLM_API_URL` / `LLM_API_KEY` / `LLM_MODEL`；`aiChat` 另配 `LLM_VISION_MODEL`（图片分析）。密钥只放云环境变量，不进小程序包、数据库或文档。来源：`docs/deployment-checklist.md:35,36,43`
-- [ ] **#11 `[控制台]` 配置 ASR 变量** — `asrProxy` 配 `ASR_URL` / `ASR_KEY` / `ASR_MODEL`（`ASR_MODEL` 必配，代码默认 `whisper-1` 硅基流动不支持）；`ASR_URL` 为完整 HTTPS 转录地址。来源：`docs/deployment-checklist.md:37,51,58`
-- [ ] **#12 `[控制台]` 配置订阅模板变量** — `aiReport` 与 `aiTasks` 的 `AI_REPORT_TEMPLATE_ID` 必须同值（从公众平台「我的模板」复制，勿手抄）；`aiReport` 另配 `AI_REPORT_TITLE_FIELD=thing1`、`AI_REPORT_TIME_FIELD=time2`、`AI_REPORT_RESULT_FIELD=thing3`。变量名只能是 `AI_REPORT_TEMPLATE_ID`（误建 `REMINDER_TEMPLATE_ID` 会稳定返回 501）。来源：`docs/deployment-checklist.md:38,39,53,56,57`
-- [ ] **#13 `[控制台]` 确认订阅模板可用** — 「查看报告提醒」`IBU-7JzVwiyk0eD0pBoDLxZJg9l37V4gnsWMOKfNGE`，字段为 thing1/thing3/time2（以「我的模板」详情页为准，非固定 thing1/time13）；若无合适模板则从公共模板库选含 `thingN`+`timeN` 的一次性模板，新模板提审需 3-7 工作日。来源：`docs/deployment-checklist.md:89`（原 D14）、`:53`
-- [ ] **#14 `[控制台]` 服务器域名** — 云开发免配置；ASR 走云函数中转，无需小程序侧域名白名单，确认无需额外配置即可。来源：`docs/deployment-checklist.md:91`（原 D15）
+- [x] **#10 `[控制台]` 配置 LLM 变量** — `aiChat`、`aiReport` 配 `LLM_API_URL` / `LLM_API_KEY` / `LLM_MODEL`；`aiChat` 另配 `LLM_VISION_MODEL`（图片分析）。密钥只放云环境变量，不进小程序包、数据库或文档。来源：`docs/deployment-checklist.md:35,36,43`。（2026-11-13 用户确认已配置。）
+- [x] **#11 `[控制台]` 配置 ASR 变量** — `asrProxy` 配 `ASR_URL` / `ASR_KEY` / `ASR_MODEL`（`ASR_MODEL` 必配，代码默认 `whisper-1` 硅基流动不支持）；`ASR_URL` 为完整 HTTPS 转录地址。来源：`docs/deployment-checklist.md:37,51,58`。（2026-11-13 用户确认已配置。）
+- [x] **#12 `[控制台]` 配置订阅模板变量** — `aiReport` 与 `aiTasks` 的 `AI_REPORT_TEMPLATE_ID` 必须同值（从公众平台「我的模板」复制，勿手抄）；`aiReport` 另配 `AI_REPORT_TITLE_FIELD=thing1`、`AI_REPORT_TIME_FIELD=time2`、`AI_REPORT_RESULT_FIELD=thing3`。变量名只能是 `AI_REPORT_TEMPLATE_ID`（误建 `REMINDER_TEMPLATE_ID` 会稳定返回 501）。来源：`docs/deployment-checklist.md:38,39,53,56,57`。（2026-11-13 用户确认模板变量已配置；三个字段映射的取值仍建议与「我的模板」详情页复核。）
+- [x] **#13 `[控制台]` 确认订阅模板可用** — 「查看报告提醒」`IBU-7JzVwiyk0eD0pBoDLxZJg9l37V4gnsWMOKfNGE`，字段为 thing1/thing3/time2（以「我的模板」详情页为准，非固定 thing1/time13）；若无合适模板则从公共模板库选含 `thingN`+`timeN` 的一次性模板，新模板提审需 3-7 工作日。来源：`docs/deployment-checklist.md:89`（原 D14）、`:53`。（2026-11-13 用户确认模板已配置，模板 ID 于 2026-11-11 申请。）
+- [x] **#14 `[控制台]` 服务器域名** — 云开发免配置；ASR 走云函数中转，无需小程序侧域名白名单，确认无需额外配置即可。来源：`docs/deployment-checklist.md:91`（原 D15）。（2026-11-13 代码侧核对：小程序端仅有 `wx.requestSubscribeMessage`，无外部 `wx.request` / `wx.uploadFile`；LLM 与 ASR 的 HTTPS 请求均在云函数内发起，无需配置域名白名单。）
 - [ ] **#15 `[控制台]` 隐私协议 / 用户隐私保护指引** — 补充声明「录音用于语音识别」，并覆盖宝宝记录、照片等实际收集范围；明确成长日记正文、里程碑事项、辅食/自定义备注会在用户主动附带问答或已同意的定时报告中发送给第三方 AI 服务商（依赖 #01 的服务商与责任人信息）。来源：`docs/deployment-checklist.md:92`（原 D16）
 
 ## 阶段 3 · 云函数、触发器与权限
 
-- [ ] **#16 `[控制台]` 逐个部署 15 个云函数** — aiChat、aiNotifications、aiReport、aiSettings、aiTasks、asrProxy、babyProfile、customRecord、diaryRecord、feedingRecord、growthRecord、homeCards、login、milestoneRecord、statistics；每个都选「上传并部署：云端安装依赖」，含各自 `lib/` 与 `package.json`；`_shared` 不作为云函数部署。**本次新增 `_shared/record-details.js` 并修改 `aggregation.js`、`llm.js`、`ai-settings.js`，同步脚本已把 6 份共享文件复制到全部 14 个受管函数目录；须先运行 `node scripts/sync-cloud-runtime.js`，再重新部署全部 14 个含 `lib/` 的云函数，最低限度也要重新部署 `statistics`、`aiChat`、`aiReport`、`aiSettings` 这 4 个直接消费明细与默认提示词的函数——只部署 4 个会让云端其余函数仍运行旧 `lib/`，与仓库版本不一致。本轮再次修改 `_shared/ai-settings.js`（加粗与分节规则、追加第二历史默认值），同步后 14 份 `lib/ai-settings.js` 均已更新；`aiSettings` 的 `build` 标记已升为 `ai-settings-4`，部署后可用 `get` 返回的 `build` 核对云端版本。** 来源：`docs/deployment-checklist.md:13,20,21`。**【登录硬前置】** 其中 `login` 未部署时 `app.js` 静默保持未登录态、全员无法进入（PRD §7.3）。
+- [x] **#16 `[控制台]` 逐个部署 15 个云函数** — aiChat、aiNotifications、aiReport、aiSettings、aiTasks、asrProxy、babyProfile、customRecord、diaryRecord、feedingRecord、growthRecord、homeCards、login、milestoneRecord、statistics；每个都选「上传并部署：云端安装依赖」，含各自 `lib/` 与 `package.json`；`_shared` 不作为云函数部署。**本次新增 `_shared/record-details.js` 并修改 `aggregation.js`、`llm.js`、`ai-settings.js`，同步脚本已把 6 份共享文件复制到全部 14 个受管函数目录；须先运行 `node scripts/sync-cloud-runtime.js`，再重新部署全部 14 个含 `lib/` 的云函数，最低限度也要重新部署 `statistics`、`aiChat`、`aiReport`、`aiSettings` 这 4 个直接消费明细与默认提示词的函数——只部署 4 个会让云端其余函数仍运行旧 `lib/`，与仓库版本不一致。本轮再次修改 `_shared/ai-settings.js`（加粗与分节规则、追加第二历史默认值），同步后 14 份 `lib/ai-settings.js` 均已更新；`aiSettings` 的 `build` 标记已升为 `ai-settings-4`，部署后可用 `get` 返回的 `build` 核对云端版本。** 来源：`docs/deployment-checklist.md:13,20,21`。**【登录硬前置】** 其中 `login` 未部署时 `app.js` 静默保持未登录态、全员无法进入（PRD §7.3）。
 - [ ] **#17 `[控制台]` 设置云函数超时** — `aiChat` ≥60 秒且内存 ≥256MB（含图片下载/编码、深度思考 45 秒应用层超时余量）；`aiReport` ≥60 秒。该值在控制台按函数设置，`config.json` 不承载。来源：`docs/deployment-checklist.md:22`（原 D5）、`:46`
-- [ ] **#18 `[控制台]` 上传 aiReport/config.json 触发器** — 确认 `aiReportTimer` 为 `0 */5 * * * * *`（每 5 分钟一次）。来源：`docs/deployment-checklist.md:24`（原 D7）
+- [x] **#18 `[控制台]` 上传 aiReport/config.json 触发器** — 确认 `aiReportTimer` 为 `0 */5 * * * * *`（每 5 分钟一次）。来源：`docs/deployment-checklist.md:24`（原 D7）
 - [ ] **#19 `[控制台]` 校验 aiReport 可信调度** — 仅接受无客户端 OPENID 且 `TriggerName=aiReportTimer` 的调用（`event.Type` 不作为唯一判据）；验证前端无法指定 openid 触发报告生成。来源：`docs/deployment-checklist.md:25`（原 D8）
 - [ ] **#20 `[控制台]` 给 aiReport 开 openapi 权限** — 权限须含 `subscribeMessage.send`，否则推送恒定失败。来源：`docs/deployment-checklist.md:30`（原 D13）
 - [ ] **#21 `[真机]` 验证 aiTasks 的范围校验** — 保存/更新校验 7 类 `categories`（非法返回 400 `INVALID_CATEGORIES`）与 `range`（非法返回 400 `INVALID_RANGE`），`monthly` 归一为 `auto`；旧任务无 `range` 按 `auto` 处理，无需迁移。来源：`docs/deployment-checklist.md:26`（原 D9）
@@ -87,4 +87,15 @@
 | deployment-checklist.md | 89 / 91 / 92 | #13 / #14 / #15 |
 | prd/slownote-prd.md §8 | 第 1-8 项 | #29-#36 |
 
-**执行状态**：截至 2026-11-12，仅 #02、#03 两项 `[本地]` 已完成（执行记录见上），其余 36 项尚未执行。本轮**未进行任何云端部署、控制台配置或真机验收**；`[控制台]` / `[真机]` / `[待确认]` 项均需人工完成，只读预检结果不代替勾选。
+**执行状态**：截至 2026-11-13，已勾选 9 项 —— #02、#03（本地基线）、#10、#11、#12、#13、#14、#16、#18；其余 29 项未勾选。#02/#03 由本地命令验证，#14 由代码侧只读核对，#10–#13、#16、#18 由用户口述确认；**云端控制台取值、部署覆盖范围与真机验收均未经本仓库验证**，勾选仅表示「用户确认已执行」，不代替验收结论。
+
+### 2026-11-13 云端进度确认（依据与边界）
+
+用户确认已完成：部署云函数、上传触发器、配置环境变量与订阅模板。映射到本清单为 #10、#11、#12、#13、#16、#18；#14 经代码侧核对无需额外配置，一并勾选。
+
+仍需复核的边界：
+- #16 是否覆盖**全部 15 个**含最新 `lib/` 的函数；`aiSettings/get` 的 `build=ai-settings-4` 已由真机截图间接验证，但只能证明该函数是新版。
+- #12 的三个字段映射变量取值是否与「我的模板」字段编号一致；#20 `subscribeMessage.send` openapi 权限是否随 `config.json` 生效。
+- #17 云函数超时/内存、#19 可信调度校验、#21–#25 接口行为，均不在本次确认范围内。
+
+**尚未执行的硬阻塞**：#01 合规信息（两处 `[待补充：上线前确认]`）、#15 用户隐私保护指引、#06/#07/#08 集合与客户端权限及索引（数据隔离开关）、#09 云端旧函数清理、#26–#36 真机验收。完成前不建议提交审核。
