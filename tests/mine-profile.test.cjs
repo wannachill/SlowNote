@@ -67,3 +67,25 @@ test('three tab headings stay transparent so the theme gradient has no seam', ()
     assert.doesNotMatch(body, /position:\s*sticky/, `${page} 标题区不得 sticky，否则透明时滚动内容会透出`)
   }
 })
+
+test('three tab pages share one compact top inset', () => {
+  const app = fs.readFileSync('miniprogram/app.wxss', 'utf8')
+  const token = /--tab-page-top:\s*(\d+)rpx/.exec(app)
+  assert.ok(token, '顶部留白应由统一令牌控制')
+  assert.equal(Number(token[1]), 64, '顶部留白收紧到 64rpx，避免标题距屏幕顶部过远')
+  for (const page of ['index', 'statistics', 'mine']) {
+    const style = fs.readFileSync(`miniprogram/pages/${page}/index.wxss`, 'utf8')
+    assert.match(style, /var\(--tab-page-top\)/, `${page} 顶部偏移必须引用统一令牌`)
+    assert.doesNotMatch(style, /128rpx/, `${page} 不得写死旧的顶部留白`)
+  }
+})
+
+test('shrinking the top inset never drops the status-bar safe area', () => {
+  const read = page => fs.readFileSync(`miniprogram/pages/${page}/index.wxss`, 'utf8')
+  const home = read('index'), mine = read('mine'), statistics = read('statistics')
+  for (const [page, style] of [['index', home], ['mine', mine]]) {
+    assert.match(style, /\.tab-page\s*\{[^}]*padding-top:\s*calc\(env\(safe-area-inset-top\) \+ var\(--tab-page-top\)\)/s, `${page} 需保留状态栏安全区`)
+  }
+  assert.match(statistics, /height:\s*calc\(env\(safe-area-inset-top\) \+ var\(--tab-page-top\) \+ 176rpx\)/)
+  assert.match(statistics, /padding:\s*calc\(env\(safe-area-inset-top\) \+ var\(--tab-page-top\) \+ 28rpx\)/)
+})

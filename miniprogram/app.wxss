@@ -128,7 +128,8 @@ page, .theme-root {
   --nav-side-width: 112rpx;
   --nav-edge-inset: var(--space-ml);
   --nav-height: max(88rpx, 44px);
-  --tab-page-top: 128rpx;
+  /* 三 Tab 页共用：状态栏安全区另由 env(safe-area-inset-top) 承担，这里只保留胶囊按钮下方的呼吸空间 */
+  --tab-page-top: 64rpx;
   --nav-top: 0px;
   --avatar-size: 160rpx;
   --avatar-sheet-size: 132rpx;
