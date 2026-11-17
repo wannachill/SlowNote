@@ -9,7 +9,7 @@ const SNAPSHOT_PREVIEW_LINES = 5
 const INPUT_HOLD_MS = 350
 const INPUT_HOLD_MOVE_TOLERANCE = 12
 page({
-  data: { messages: [], messageViews: [], typingMessageId: '', activeMessageId: '', activeMessageIndex: -1, activeQuestionSummary: '', pickMode: false, picked: {}, pickedCount: 0, editing: null, quote: null, focusInput: false, inputCursor: -1, thinkOpen: {}, question: '', images: [], liveTranscript: '', selecting: false, sending: false, keyboardHeight: 0, scrollInto: '', showJumpBottom: false, error: '', attachLabel: '', attaching: false, commonList: [], showThinking: false, thinkingSettingsReady: false, statusBarHeight: 20 },
+  data: { messages: [], messageViews: [], typingMessageId: '', activeMessageId: '', activeMessageIndex: -1, activeQuestionSummary: '', pickMode: false, picked: {}, pickedCount: 0, editing: null, quote: null, focusInput: false, inputCursor: -1, thinkOpen: {}, question: '', images: [], liveTranscript: '', voiceTranscribing: false, selecting: false, sending: false, keyboardHeight: 0, scrollInto: '', showJumpBottom: false, error: '', attachLabel: '', attaching: false, commonList: [], showThinking: false, thinkingSettingsReady: false, statusBarHeight: 20 },
   onLoad(options) {
     this._disposed = false
     this._batch = []
@@ -29,7 +29,19 @@ page({
     this.buildCommon()
     if (id) this.loadSession(id)
   },
-  onShow() { this.refreshAISettings() },
+  onShow() { this._inputHidden = false; this.refreshAISettings() },
+  onHide() {
+    this._inputHidden = true
+    this.clearInputHold()
+    this._inputTouchActive = false
+    this._inputTapReady = false
+    this._inputHoldFired = true
+    if (this._voiceActive) {
+      this._voiceCancelled = true
+      this.stopVoice({ type: 'touchcancel' })
+    }
+    this.setData({ focusInput: false, keyboardHeight: 0 })
+  },
   onReady() { this.measureList() },
   async refreshAISettings() {
     const openid = app.globalData.openid || ''
@@ -51,6 +63,7 @@ page({
   onUnload() {
     this.clearInputHold()
     this._inputTouchActive = false
+    this._inputTapReady = false
     const stopVoice = this._voiceActive && !this._voiceStopping
     const voiceMode = this._voiceMode
     this._disposed = true
@@ -59,6 +72,7 @@ page({
     this._voiceActive = false
     this.data.liveTranscript = ''
     this.data.recording = false
+    this.data.voiceTranscribing = false
     this.data.selecting = false
     if (stopVoice) {
       try {
@@ -72,13 +86,30 @@ page({
   onInput(e) {
     if (!this.data.sending && !this.data.attaching && !this.data.recording && !this.data.selecting) this.setData({ question: e.detail.value, inputCursor: Number.isFinite(e.detail.cursor) ? e.detail.cursor : -1 })
   },
-  onInputBlur() { this.setData({ focusInput: false }) },
-  focusTextInput() {
-    if (this._disposed || this._inputHoldFired || this._inputTouchMoved || this._voiceActive || this.data.recording || this.data.selecting || this.data.sending || this.data.attaching) return
-    this.setData({ focusInput: true })
+  onInputFocus() {
+    // Only a completed short tap (or an explicit edit/quote action) may enable/focus the native editor.
+    if (this._disposed || this._inputHidden || !this.data.focusInput || this._voiceActive || this.data.recording || this.data.selecting || this.data.sending || this.data.attaching) {
+      if (!this._disposed) this.setData({ focusInput: false })
+      try { wx.hideKeyboard() } catch (error) {}
+    }
+  },
+  onInputBlur(e) {
+    if (this._disposed) return
+    const cursor = e && e.detail && e.detail.cursor
+    this.setData({ focusInput: false, ...(Number.isFinite(cursor) ? { inputCursor: cursor } : {}) })
+  },
+  focusTextInput(e) {
+    const ready = this._inputTapReady || (e && e.type === 'tap' && !this._inputTouchActive)
+    this._inputTapReady = false
+    if (!ready || this._disposed || this._inputHidden || this._inputTouchActive || this._inputHoldFired || this._inputTouchMoved || this._voiceActive || this.data.recording || this.data.selecting || this.data.sending || this.data.attaching) return
+    if (!this.data.focusInput) this.setData({ focusInput: true })
   },
   onKeyboardHeight(e) {
     if (this._disposed) return
+    if (e.detail.height > 0 && (!this.data.focusInput || this._inputHidden)) {
+      try { wx.hideKeyboard() } catch (error) {}
+      return
+    }
     this.setData({ keyboardHeight: Math.max(0, Number(e.detail.height) || 0) }, () => {
       this.measureList(() => this._forceFollow())
     })
@@ -445,7 +476,7 @@ page({
   },
   // —— 图片 ——
   async choosePhotos() {
-    if (this.data.sending || this.data.selecting || this.data.attaching || this.data.images.length >= 3) return
+    if (this.data.sending || this.data.recording || this.data.selecting || this.data.attaching || this.data.images.length >= 3) return
     this.setData({ selecting: true, error: '' })
     try {
       const images = await photos.choose(3 - this.data.images.length)
@@ -470,11 +501,15 @@ page({
   clearInputHold() {
     if (this._inputHoldTimer) { clearTimeout(this._inputHoldTimer); this._inputHoldTimer = null }
   },
-  // 透明热区与外层 shell 双绑，原生 textarea 不接触摸；重复派发由 _inputTouchActive 去重。
+  // The native textarea stays disabled until a completed short tap; an overlay alone cannot prevent native focus.
   onInputTouchStart(e) {
-    if (this._inputTouchActive || this.data.sending || this.data.selecting || this.data.attaching || this.data.recording) return
+    if (e.touches && e.touches.length > 1) { this.onInputTouchCancel(); return }
+    if (this._disposed || this._inputHidden || this._inputTouchActive || this._voiceActive || this.data.sending || this.data.selecting || this.data.attaching || this.data.recording) return
     const touch = e.touches && e.touches[0]
     this._inputTouchActive = true
+    this._inputTapReady = false
+    this._inputTouchStarted = Date.now()
+    this._inputTouchStamp = Number.isFinite(e.timeStamp) ? e.timeStamp : null
     this._inputTouchX = touch ? touch.clientX : 0
     this._inputTouchY = touch ? touch.clientY : 0
     this._inputTouchMoved = false
@@ -482,13 +517,14 @@ page({
     this.clearInputHold()
     this._inputHoldTimer = setTimeout(() => {
       this._inputHoldTimer = null
-      if (this._disposed || !this._inputTouchActive || this._inputTouchMoved) return
+      if (this._disposed || this._inputHidden || !this._inputTouchActive || this._inputTouchMoved) return
       this._inputHoldFired = true
       this.startVoice()
     }, INPUT_HOLD_MS)
   },
   onInputTouchMove(e) {
     if (!this._inputTouchActive) return
+    if (e.touches && e.touches.length > 1) { this.onInputTouchCancel(); return }
     const touch = e.touches && e.touches[0]
     if (!touch) return
     if (Math.abs(touch.clientX - this._inputTouchX) > INPUT_HOLD_MOVE_TOLERANCE || Math.abs(touch.clientY - this._inputTouchY) > INPUT_HOLD_MOVE_TOLERANCE) {
@@ -496,14 +532,19 @@ page({
       this.clearInputHold()
     }
   },
-  onInputTouchEnd() {
+  onInputTouchEnd(e) {
     if (!this._inputTouchActive) return
     this._inputTouchActive = false
     this.clearInputHold()
+    const elapsed = Math.max(Date.now() - this._inputTouchStarted, e && Number.isFinite(e.timeStamp) && this._inputTouchStamp !== null ? e.timeStamp - this._inputTouchStamp : 0)
+    // A busy JS thread can deliver touchend before the hold timer. Never turn that long hold into a tap.
+    if (elapsed >= INPUT_HOLD_MS) this._inputHoldFired = true
+    this._inputTapReady = !this._inputHoldFired && !this._inputTouchMoved && !this._voiceActive
     if (this._voiceActive) this.stopVoice({ type: 'touchend' })
   },
   onInputTouchCancel() {
     this._inputTouchMoved = true
+    this._inputTapReady = false
     if (!this._inputTouchActive) return
     this._inputTouchActive = false
     this.clearInputHold()
@@ -536,13 +577,13 @@ page({
     return this._siManager
   },
   startVoice() {
-    if (this.data.sending || this.data.selecting || this.data.attaching || this.data.recording) return
+    if (this._disposed || this._inputHidden || this._voiceActive || this.data.sending || this.data.selecting || this.data.attaching || this.data.recording) return
     this._voiceStarted = Date.now()
     this._voiceCancelled = false
     this._voiceStopping = false
     this._voiceActive = true
     try { wx.hideKeyboard() } catch (error) {}
-    this.setData({ recording: true, liveTranscript: '', error: '', focusInput: false })
+    this.setData({ recording: true, voiceTranscribing: false, liveTranscript: '', error: '', focusInput: false, keyboardHeight: 0 })
     const manager = this.getVoiceManager()
     if (manager) {
       this._voiceMode = 'plugin'
@@ -558,6 +599,10 @@ page({
       const recorder = this._recorder || (this._recorder = wx.getRecorderManager())
       if (recorder.offStop) recorder.offStop()
       recorder.onStop(res => this.finishVoice(res))
+      if (recorder.offError) recorder.offError()
+      recorder.onError(() => {
+        if (this._voiceMode === 'recorder' && this._voiceActive) this.failVoice('无法启动录音，请重试')
+      })
       recorder.start({ duration: 60000, sampleRate: 16000, numberOfChannels: 1, encodeBitRate: 48000, format: 'mp3' })
     } catch (error) {
       this.failVoice('无法启动录音，请重试')
@@ -567,7 +612,7 @@ page({
     if (!this._voiceActive || this._voiceStopping) return
     this._voiceCancelled = !!(event && event.type === 'touchcancel')
     this._voiceStopping = true
-    this.setData({ recording: false, liveTranscript: '', selecting: true })
+    this.setData({ recording: false, voiceTranscribing: !this._voiceCancelled, liveTranscript: '', selecting: true })
     try {
       if (this._voiceMode === 'plugin') this._siManager.stop()
       else this._recorder.stop()
@@ -581,12 +626,12 @@ page({
     this._voiceActive = false
     this._voiceCancelled = false
     this._voiceStopping = false
-    this.setData({ recording: false, liveTranscript: '', selecting: !cancelled })
+    this.setData({ recording: false, voiceTranscribing: !cancelled, liveTranscript: '', selecting: !cancelled })
     if (cancelled) return
     const text = String(res && res.result || '').trim()
     if (text) { this.finishVoiceText(text); return }
     if (res && res.tempFilePath) { this.transcribeWithAsr(res.tempFilePath); return }
-    this.setData({ selecting: false })
+    this.setData({ selecting: false, voiceTranscribing: false })
     wx.showToast({ title: '没有听清，请再试一次', icon: 'none' })
   },
   failVoice(message) {
@@ -594,16 +639,16 @@ page({
     this._voiceActive = false
     this._voiceCancelled = false
     this._voiceStopping = false
-    this.setData({ recording: false, liveTranscript: '', selecting: false, error: message })
+    this.setData({ recording: false, voiceTranscribing: false, liveTranscript: '', selecting: false, error: message })
   },
   finishVoiceText(text) {
     if (this._disposed) return
     const value = String(text || '').trim()
     if (value) {
       const question = this.data.question
-      this.setData({ question: question ? `${question} ${value}` : value, liveTranscript: '', recording: false, selecting: false, error: '' })
+      this.setData({ question: question ? `${question} ${value}` : value, liveTranscript: '', recording: false, voiceTranscribing: false, selecting: false, error: '' })
     } else {
-      this.setData({ liveTranscript: '', recording: false, selecting: false })
+      this.setData({ liveTranscript: '', recording: false, voiceTranscribing: false, selecting: false })
       wx.showToast({ title: '没有听清，请再试一次', icon: 'none' })
     }
   },
@@ -613,17 +658,17 @@ page({
     this._voiceActive = false
     this._voiceCancelled = false
     this._voiceStopping = false
-    this.setData({ recording: false, liveTranscript: '', selecting: !cancelled && !!(res && res.tempFilePath) })
+    this.setData({ recording: false, voiceTranscribing: !cancelled && !!(res && res.tempFilePath), liveTranscript: '', selecting: !cancelled && !!(res && res.tempFilePath) })
     if (cancelled || !res || !res.tempFilePath) return
     return this.transcribeWithAsr(res.tempFilePath)
   },
   async transcribeWithAsr(tempFilePath) {
     if (this._disposed || !tempFilePath) return
-    this.setData({ selecting: true, liveTranscript: '', recording: false })
+    this.setData({ selecting: true, voiceTranscribing: true, liveTranscript: '', recording: false })
     const seconds = (Date.now() - this._voiceStarted || 0) / 1000
     if (seconds < 1) {
       wx.showToast({ title: '说话时间太短', icon: 'none' })
-      this.setData({ selecting: false })
+      this.setData({ selecting: false, voiceTranscribing: false })
       return
     }
     let audioFileID = ''
@@ -643,7 +688,7 @@ page({
       if (audioFileID && wx.cloud && wx.cloud.deleteFile) {
         try { await wx.cloud.deleteFile({ fileList: [audioFileID] }) } catch (error) {}
       }
-      if (!this._disposed) this.setData({ selecting: false, liveTranscript: '', recording: false })
+      if (!this._disposed) this.setData({ selecting: false, voiceTranscribing: false, liveTranscript: '', recording: false })
     }
   },
   // —— 提问 ——
@@ -772,6 +817,7 @@ page({
     }
   },
   async send(suggestedQuestion, suggestedRange, suggestedCategories) {
+    if (this.data.recording) return
     if (this._deletePending || this.data.sending || this.data.selecting || this.data.attaching || this.data.pickMode || this._preparing) return
     const currentQuestion = typeof suggestedQuestion === 'string' ? suggestedQuestion : this.data.question
     if (!currentQuestion.trim() && !this.data.images.length) return
