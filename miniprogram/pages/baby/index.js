@@ -26,10 +26,10 @@ page({
     else if (app.globalData.loggedIn) app.loadProfile().then(() => this.refresh())
     else this.refresh()
   },
-  onShow() { this.refresh() },
+  onShow() { this.refresh(); this.retryPendingBabyDeletion() },
   onHide() { this.resetSwipe() },
   onUnload() { this.resetSwipe() },
-  onSessionChange() { this.refresh() },
+  onSessionChange() { this.refresh(); this.retryPendingBabyDeletion() },
 
   goBack() {
     const pages = getCurrentPages()
@@ -123,28 +123,83 @@ page({
 
   deleteBaby(e) {
     const id = e.currentTarget.dataset.id
+    const openid = app.globalData.openid
     const baby = app.globalData.babies.find(b => b.baby_id === id)
     if (!id || !baby) return
     this.closeSwipe()
     this.confirmDanger({ object: baby.nickname, title: '删除宝宝档案', content: '将删除该宝宝的档案及其关联记录，此操作不可恢复。', success: async r => {
-      if (!r.confirm || this._motionInactive || this._deletePending) return
-      this._deletePending = true
-      const openid = app.globalData.openid
+      if (!r.confirm || this._motionInactive || this._deletePending || openid !== app.globalData.openid) return
       this.resetSwipe()
       const rollback = removeListItem(this, 'babies', 'baby_id', id)
-      if (!rollback) { this._deletePending = false; return }
-      try {
-        await call('babyProfile', { action: 'delete', babyId: id, clientRequestId: requestId() })
-        if (openid !== app.globalData.openid) return
-        app.globalData.babies = app.globalData.babies.filter(b => b.baby_id !== id)
-        if (app.globalData.activeBabyId === id) app.setActiveBaby(app.globalData.babies.length ? app.globalData.babies[0].baby_id : '')
-        wx.showToast({ title: '已删除', icon: 'success' })
-        this.setData({ activeBabyId: app.globalData.activeBabyId })
-        require('../../utils/list-patch').setListFields(this, 'babies', item => ({ active: item.baby_id === app.globalData.activeBabyId }))
-        require('../../utils/home-refresh').invalidateRecords()
-      } catch (error) { rollback(); toastError(error) }
-      finally { this._deletePending = false }
+      if (!rollback) return
+      const jobs = this.babyDeletionJobs(openid)
+      const job = jobs.find(item => item.babyId === id) || { babyId: id, clientRequestId: requestId(), babyDeleted: false }
+      if (!jobs.includes(job)) jobs.push(job)
+      // Persist before sending: even a lost response can be retried with the same receipt.
+      try { wx.setStorageSync(this.babyDeletionKey(openid), jobs) }
+      catch (error) { rollback(); toastError(error); return }
+      const pending = await this.runBabyDeletion(job, openid, rollback)
+      if (pending) this.offerBabyDeletionRetry(job, openid)
     } })
+  },
+
+  babyDeletionKey(openid) { return `slownote.babyDeletion:${openid}` },
+  babyDeletionJobs(openid) {
+    const jobs = wx.getStorageSync(this.babyDeletionKey(openid))
+    return Array.isArray(jobs) ? jobs : []
+  },
+  retryPendingBabyDeletion() {
+    const openid = app.globalData.openid
+    if (!openid || !app.globalData.loggedIn || this._deletePending || this._cleanupPrompt) return
+    const job = this.babyDeletionJobs(openid)[0]
+    if (job) this.offerBabyDeletionRetry(job, openid)
+  },
+  offerBabyDeletionRetry(job, openid) {
+    if (this._motionInactive || openid !== app.globalData.openid || this._cleanupPrompt) return
+    this._cleanupPrompt = true
+    wx.showModal({
+      title: job.babyDeleted ? '关联数据尚未清理完' : '上次删除尚未完成',
+      content: job.babyDeleted ? '宝宝档案已删除，部分关联数据清理失败。可现在重试，或下次进入宝宝信息页继续清理。' : '是否继续上次已确认的删除？重试会使用原请求，不会重复删除新记录。',
+      confirmText: '重试清理', cancelText: '稍后',
+      success: async result => {
+        if (result.confirm && !this._motionInactive && openid === app.globalData.openid) {
+          const pending = await this.runBabyDeletion(job, openid)
+          if (pending) wx.showToast({ title: '仍有数据未清理，请稍后再进入此页重试', icon: 'none' })
+        }
+      },
+      complete: () => { this._cleanupPrompt = false }
+    })
+  },
+  async runBabyDeletion(job, openid, rollback) {
+    if (this._deletePending || openid !== app.globalData.openid) return false
+    this._deletePending = true
+    let deleted = !!job.babyDeleted
+    try {
+      const result = await call('babyProfile', { action: 'delete', babyId: job.babyId, clientRequestId: job.clientRequestId })
+      deleted = true
+      if (openid !== app.globalData.openid) return false
+      job.babyDeleted = true
+      app.globalData.babies = app.globalData.babies.filter(b => b.baby_id !== job.babyId)
+      if (app.globalData.activeBabyId === job.babyId) app.setActiveBaby(app.globalData.babies.length ? app.globalData.babies[0].baby_id : '')
+      if (this.data.babies.some(b => b.baby_id === job.babyId)) removeListItem(this, 'babies', 'baby_id', job.babyId)
+      this.setData({ activeBabyId: app.globalData.activeBabyId })
+      require('../../utils/list-patch').setListFields(this, 'babies', item => ({ active: item.baby_id === app.globalData.activeBabyId }))
+      require('../../utils/home-refresh').invalidateRecords()
+      const pending = Object.keys(result.pending || {}).length > 0
+      const jobs = this.babyDeletionJobs(openid).filter(item => item.clientRequestId !== job.clientRequestId)
+      if (pending) jobs.push(job)
+      wx.setStorageSync(this.babyDeletionKey(openid), jobs)
+      if (!pending) wx.showToast({ title: '已删除', icon: 'success' })
+      return pending
+    } catch (error) {
+      // Once deletion is acknowledged, cleanup/storage failure must not resurrect the profile.
+      if (!deleted && rollback) rollback()
+      if (openid === app.globalData.openid) {
+        if (error.code === 413) wx.showToast({ title: '关联记录超过清理上限，请联系运营者处理', icon: 'none' })
+        else toastError(error)
+      }
+      return deleted
+    } finally { this._deletePending = false }
   },
 
   changeAvatar() {

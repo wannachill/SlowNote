@@ -12,7 +12,7 @@ function daysSince(birthday, today = dateKey()) {
 }
 
 page({
-  data: { loggedIn: false, loggingIn: false, refreshing: false, avatarSrc: '/images/boy.png', babyNickname: '宝宝', babyAgeDays: null },
+  data: { loggedIn: false, notAllowed: false, openid: '', loggingIn: false, refreshing: false, avatarSrc: '/images/boy.png', babyNickname: '宝宝', babyAgeDays: null },
 
   onLoad() {
     if (!app.globalData.initialized) app.init().then(() => this.refresh())
@@ -36,7 +36,16 @@ page({
   refresh() {
     const g = app.globalData
     const baby = g.baby || {}
-    this.setData({ loggedIn: g.loggedIn, avatarSrc: avatarSrc(baby), babyNickname: baby.nickname || '宝宝', babyAgeDays: daysSince(baby.birthday) })
+    this.setData({ loggedIn: g.loggedIn, notAllowed: !!g.notAllowed, openid: g.notAllowed ? g.openid : '', avatarSrc: avatarSrc(baby), babyNickname: baby.nickname || '宝宝', babyAgeDays: daysSince(baby.birthday) })
+  },
+
+  copyOpenid() {
+    if (!app.globalData.notAllowed || !app.globalData.openid) return
+    wx.setClipboardData({
+      data: app.globalData.openid,
+      success: () => wx.showToast({ title: '已复制，请发送给管理员', icon: 'none' }),
+      fail: () => wx.showToast({ title: '复制失败，请长按 openid 手动复制', icon: 'none' })
+    })
   },
 
   async login() {

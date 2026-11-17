@@ -1,4 +1,4 @@
-const { endpoint, access, createOnce, requestId, hash, validDate, key, fail, number, text } = require('./lib/runtime')
+const { endpoint, access, requireBaby, createOnce, requestId, hash, validDate, key, fail, number, text } = require('./lib/runtime')
 const { records, range } = require('./lib/aggregation')
 exports.main = endpoint(async ({event, db, openid}) => {
   const context=await access(db,openid)
@@ -42,6 +42,7 @@ exports.main = endpoint(async ({event, db, openid}) => {
     return {code:0,data:{id:found._id}}
   }
   if(action!=='add')fail(400,'UNKNOWN_ACTION')
+  await requireBaby(db, context, event.baby_id)
   const {type}=event,p=event.payload
   const payload=validatePayload(type,p)
   const date=event.recordDate||key();if(!validDate(date)||date>key())fail(400,'INVALID_DATE')

@@ -31,6 +31,8 @@ async function save(db, id, data) {
 // 屏蔽名单永远补不全，一旦漏一个，get/save/reset 会全部被判非法（400 INVALID_SETTINGS）。
 // 真正的安全性来自下面按白名单显式重建 stored，而不是拒绝未知字段。
 exports.main = endpoint(async ({ event, db, openid }) => {
+  // identity() already enforces the allowlist; no prompt/settings query is needed here.
+  if (event.action === 'checkAccess') return { code: 0 }
   if (event.action === 'get') {
     return response(await readStored(db, hash(openid)))
   }

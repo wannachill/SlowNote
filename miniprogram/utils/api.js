@@ -11,6 +11,7 @@ function requireWriteAccess() {
 }
 async function call(name, data = {}) {
   if (!getApp().globalData.loggedIn) throw Object.assign(new Error(messages[401]), { code: 401 })
+  if (getApp().globalData.notAllowed) throw Object.assign(new Error('本小程序仅限家庭成员使用，请联系管理员'), { code: 403, serverMessage: 'NOT_ALLOWED' })
   try {
     if (!wx.cloud) throw new Error('云服务暂不可用，请稍后再试')
     const result = (await wx.cloud.callFunction({ name, data })).result

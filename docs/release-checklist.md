@@ -1,7 +1,7 @@
 # 一迈一记 · 上线执行清单
 
 > 创建日期：2026-11-12
-> 用途：把 `docs/prd/slownote-prd.md` §8（8 项）与 `docs/deployment-checklist.md`（16 项）中**全部 24 项未勾选项**，按依赖关系重排成可逐项勾选、可执行的动作清单；另补入两份文档正文中未勾选但必须完成的前置动作（集合/权限/索引/环境变量/15 个云函数部署），以及 2026-11-12 功能审计发现的 3 项遗留（云端旧函数清理、2 处合规 `[待补充]`）。
+> 用途：把 `docs/prd/slownote-prd.md` §8（8 项）与 `docs/deployment-checklist.md`（16 项）中**全部 24 项未勾选项**，按依赖关系重排成可逐项勾选、可执行的动作清单；另补入两份文档正文中未勾选但必须完成的前置动作（集合/权限/索引/环境变量/15 个云函数部署），以及 2026-11-12 功能审计发现的 3 项遗留（云端旧函数清理、2 处合规 `[待补充]`）。2026-11-17 起新增的 allowlist 属于额外第 17 个集合，单独列为白名单部署待办，不回写旧阶段完成状态。
 > 本文**不修改**上述两份文档正文；勾选在本文进行，全部完成后再回填原文档对应项。
 > 状态：本清单为执行台账。截至 2026-11-13 已勾选 36 项，阶段 1、3、4、5 由用户确认完成，#01 合规信息与 #15 隐私政策材料及联系邮箱已补齐；**2.0.0 已于 2026-11-13 11:36:16 提交审核、状态「审核中」**，仅剩 #37/#38 两项上线后动作（见第七轮说明）；**云端控制台取值、部署范围与真机验收记录均未经本仓库核验**，勾选不代表我方验证结论。
 > 引用方式：PRD 的来源统一按「§7 小节」或「§8 第 N 项」定位，不用行号，避免 PRD 增删行后来源失效；部署清单仍按行号定位。2026-11-12 补充「登录与数据隔离」实现说明及登录硬前置，见 `docs/prd/slownote-prd.md` §7 与下方阶段 1 说明块。
@@ -28,7 +28,7 @@
 
 - [x] **#04 `[控制台]` 确认环境标识** — AppID `wx27a55616539c8020`、云环境 `cloud1-d6gil7n3u02d7414e` 与 `miniprogram/app.js` 的 `wx.cloud.init` 一致。来源：`docs/deployment-checklist.md:10`（原 D4）
 - [x] **#05 `[控制台]` 测试不写生产数据** — 使用现有正确云环境，客户端与测试账号不得写入生产数据。来源：`docs/deployment-checklist.md:9`（原 D3）
-- [x] **#06 `[控制台]` 创建 16 个集合** — `users`、`babies`、`family_members`、`feeding_records`、`custom_records`、`diary_records`、`growth_records`、`milestone_defs`、`milestone_records`、`ai_settings`、`ai_tasks`、`ai_notifications`、`ai_runs`、`ai_sessions`、`ai_rate_limits`、`mutation_receipts`；历史集合 `families`/`expense_records`/`reminder_items` 按现状保留，不新增、不读写。来源：`docs/deployment-checklist.md:61`。**【登录硬前置】** `login` 先查 `users`，缺集合则自动建档失败、所有人无法登录（PRD §7.3）。
+- [x] **#06 `[控制台]` 创建基础 16 个集合** — `users`、`babies`、`family_members`、`feeding_records`、`custom_records`、`diary_records`、`growth_records`、`milestone_defs`、`milestone_records`、`ai_settings`、`ai_tasks`、`ai_notifications`、`ai_runs`、`ai_sessions`、`ai_rate_limits`、`mutation_receipts`；历史集合 `families`/`expense_records`/`reminder_items` 按现状保留，不新增、不读写。新增的门禁集合 `allowlist` 单独列于阶段 3，未完成前不得开启云函数白名单开关。来源：`docs/deployment-checklist.md:61`。**【登录硬前置】** `login` 先查 `users`，缺集合则自动建档失败、所有人无法登录（PRD §7.3）。
 - [x] **#07 `[控制台]` 设置客户端权限** — 除 `ai_sessions` 外全部「所有用户不可读写」；`ai_sessions` 放行「仅本人读写本人记录」（`doc.openid == auth.openid`）；`ai_settings` 文档 ID 为 `hash(openid)`，仅云函数访问。来源：`docs/deployment-checklist.md:63,65,66`。**【登录硬前置】** 未配置前客户端可绕过云函数直连数据库，openid 隔离不生效（PRD §7.3）。
 - [x] **#08 `[控制台]` 建立索引** — 按 §4 索引表逐条建（`users.openid` 唯一、`ai_tasks: enabled + next_run_at + lease_until`、`ai_notifications: openid + created_at` 及 `delivery_status`、`ai_rate_limits.expires_at` 等）；控制台提示缺索引时以提示为准。来源：`docs/deployment-checklist.md:69-83`。**【登录硬前置】** `users.openid` 需唯一，避免同一微信号重复建档（PRD §7.3）。
 - [x] **#09 `[控制台]` 人工删除 6 个已下线旧云函数** — `reminderRecord`、`family`、`migrateFamilyData`、`monthlyReport`、`expenseRecord`、`sendReminder`（仓库内已移除，云端仍可能存在）；删除前按需归档 `expense_records` 与迁移产生的历史记录，保留数据库历史 `family_id` 字段。来源：`docs/deployment-checklist.md:15-18`、2026-11-12 审计
@@ -43,6 +43,16 @@
 - [x] **#15 `[控制台]` 隐私协议 / 用户隐私保护指引** — 补充声明「录音用于语音识别」，并覆盖宝宝记录、照片等实际收集范围；明确成长日记正文、里程碑事项、辅食/自定义备注会在用户主动附带问答或已同意的定时报告中发送给第三方 AI 服务商（依赖 #01 的服务商与责任人信息）。来源：`docs/deployment-checklist.md:92`（原 D16）。（2026-11-13 材料侧完成：政策全文与平台填报对照见 `docs/legal/privacy-policy.md`，小程序「我的 → 隐私政策」内置页面已加入，对外联系邮箱 1142374087@qq.com 已写入政策全文与小程序正文，`tests/privacy-policy.test.cjs` 守护两处一致且无占位残留。**边界**：公众平台后台「用户隐私保护指引」逐项填报**尚未执行**，可复制文案见 `docs/legal/privacy-guide-fill.md`（含第三方主体名称与官方隐私政策链接）；该动作须运营者本人在平台完成，仓库无法代为执行或核验；填报完成后复核平台指引、政策全文、小程序内页面三处一致。）
 
 ## 阶段 3 · 云函数、触发器与权限
+
+### 2026-11-17 新增：openid 家庭白名单（独立待办，旧勾选不代表本轮已执行）
+
+- [ ] 建 `allowlist` 并设客户端不可读写，仅云函数访问；添加家人（含自己）的 openid，文档 `_id=sha256(openid).slice(0,32)`，字段 openid/remark/created_at。原 16 个集合加此集合后为 17 个，既有 #06 的完成状态仅指旧 16 个。
+- [ ] 运行 `node scripts/sync-cloud-runtime.js`，部署全部 14 个含 lib 的函数，必须包含 aiReport；login 无改动可不部署。
+- [ ] 部署完成后为全部 14 个函数分别设置 `ALLOWLIST_ENABLED=true`。默认关闭；不能只配置 aiChat 而漏 asrProxy、aiTasks、aiReport 等旁路。
+- [ ] 用名单内微信验证正常调用；名单外微信仍可登录建档，在“我的”页看到「本小程序仅限家庭成员使用，请联系管理员」及可复制 openid，云请求返回 403 NOT_ALLOWED；旧非成员任务不调用模型。增删成员最多 60 秒后复验，重新进入或“我的”页下拉刷新重做前端校验。
+- [ ] 在 DeepSeek / 硅基流动控制台设置日消费上限作为兜底；记录实际生效配置，不以仓库默认值代替核验。
+
+这些新增项均未执行生产控制台/真实账号验证。名单查询失败按拒绝处理；login、客户端直连 ai_sessions 与云存储的现有安全规则仍各自独立，白名单不替代这些规则，也不追溯取消已发出的计费请求。
 
 - [x] **#16 `[控制台]` 逐个部署 15 个云函数** — aiChat、aiNotifications、aiReport、aiSettings、aiTasks、asrProxy、babyProfile、customRecord、diaryRecord、feedingRecord、growthRecord、homeCards、login、milestoneRecord、statistics；每个都选「上传并部署：云端安装依赖」，含各自 `lib/` 与 `package.json`；`_shared` 不作为云函数部署。**本次新增 `_shared/record-details.js` 并修改 `aggregation.js`、`llm.js`、`ai-settings.js`，同步脚本已把 6 份共享文件复制到全部 14 个受管函数目录；须先运行 `node scripts/sync-cloud-runtime.js`，再重新部署全部 14 个含 `lib/` 的云函数，最低限度也要重新部署 `statistics`、`aiChat`、`aiReport`、`aiSettings` 这 4 个直接消费明细与默认提示词的函数——只部署 4 个会让云端其余函数仍运行旧 `lib/`，与仓库版本不一致。本轮再次修改 `_shared/ai-settings.js`（加粗与分节规则、追加第二历史默认值），同步后 14 份 `lib/ai-settings.js` 均已更新；`aiSettings` 的 `build` 标记已升为 `ai-settings-4`，部署后可用 `get` 返回的 `build` 核对云端版本。** 来源：`docs/deployment-checklist.md:13,20,21`。**【登录硬前置】** 其中 `login` 未部署时 `app.js` 静默保持未登录态、全员无法进入（PRD §7.3）。
 - [x] **#17 `[控制台]` 设置云函数超时** — `aiChat` ≥60 秒且内存 ≥256MB（含图片下载/编码、深度思考 45 秒应用层超时余量）；`aiReport` ≥60 秒。该值在控制台按函数设置，`config.json` 不承载。来源：`docs/deployment-checklist.md:22`（原 D5）、`:46`（2026-11-13 用户确认完成，代码侧不可核验。）

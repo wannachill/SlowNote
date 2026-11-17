@@ -4,6 +4,9 @@
 > 本文档由项目文档体系生成并维护，请在每次上线前逐项核对。
 
 ## 1. 上线前检查
+- [ ] 2026-11-17 新增记录宝宝校验：运行 `node scripts/sync-cloud-runtime.js` 后，重新部署 `feedingRecord` / `growthRecord` / `diaryRecord` / `customRecord` 与复用共享校验的 `milestoneRecord`；其余同步 lib 的相关云函数也应随发布部署以保持版本一致。发布首页后验证未建宝宝时 ＋ 按钮引导去宝宝信息页、取消不跳转；绕过前端直接 add 空 baby_id 返回 400，非当前 scope 的宝宝返回 404。统计/查询与全部宝宝定时报告仍允许空 baby_id。只提交 Git 不会更新线上云函数；本次未部署、未清理生产库，历史 baby_id:'' 孤儿记录需按已确认上线清理方案单独处理；若采用从零开始方案，须先确认目标集合及备份再清空，不能把历史数据清理当成本次自动动作。
+- [ ] 白名单上线：先创建 `allowlist`（客户端拒绝读写，仅云函数访问），手动添加家人 openid（含自己），每条为 `{_id: sha256(openid).slice(0,32), openid, remark, created_at}`（字段名须一致；云函数写入时用 `db.serverDate()`）；再运行同步脚本并部署全部 14 个含 lib 的函数（含 aiReport，login 逻辑未改可不部署）；之后在这 14 个函数逐个设置 `ALLOWLIST_ENABLED=true`，核对无漏项；最后用名单内/外微信验证可用/403 NOT_ALLOWED，以及“我的”页提示、openid 展示/复制。名单空或集合缺失且开关已开会拒绝全部受保护调用；新增/移除成员最多 60 秒缓存延迟。DeepSeek / 硅基流动控制台设置日消费上限作为额外兜底。本轮未创建生产集合、未改云端环境变量或部署。
+- [ ] 2026-11-17 宝宝级联删除：重新部署 `babyProfile`（含私有 `cleanup.js`），再发布消费 cleaned/pending 的宝宝页与更新后的隐私政策；本次未改 `_shared`、未部署其他函数、未执行生产删除。测试环境验证六个记录/定义集合、本人会话、专属任务停用及历史清理、共享文件保护、失败同请求重试；核查 `mutation_receipts` 保留和相关查询索引。文件失败需生命周期/人工兜底，不能宣称已配置自动清理。
 - [ ] 微信 IDE 完整编译运行、原生控件/组件隔离、真实软键盘、安全区、读屏、冷启动主题无闪烁。
 - [ ] 真实云数据库索引/事务、定时触发、模型服务与订阅推送已部署并连接测试，不以本地 mock 代替。
 - [ ] 使用现有正确云环境；客户端/测试不写入生产数据。
@@ -19,6 +22,7 @@
 - 本地 376/376 测试通过，静态检查仍为原有 5 条告警；本轮输入区浏览器映射覆盖六套主题 × 320/375/430px × 空输入/聚焦空输入/草稿/多行/录音/转写/照片共 126 组，验证几何与主题，不代表原生键盘已验收。未改云函数、默认提示词、报告 Markdown、隐私政策与 app.json，本轮无云函数重新部署项。2.0.0 仍按此前用户确认记录为审核中，本地代码不进入该审核包；审核通过后要用新交互，须重新编译上传并提审，或纳入驳回整改版本。上线清单保持 36/38，旧勾选不视为本轮真机通过。
 
 ## 2. 云函数
+白名单受保护的 14 个函数：aiChat、aiNotifications、aiReport、aiSettings、aiTasks、asrProxy、babyProfile、customRecord、diaryRecord、feedingRecord、growthRecord、homeCards、milestoneRecord、statistics。前 13 个交互入口由 endpoint → identity 校验（此处“13 个”不含 aiReport）；aiReport 每个任务在认领前按 task.openid 复核，不改 TIMER_ONLY。`aiSettings.checkAccess` 仅返回 code=0，供登录后一次轻量检查。`login` 持续开放用于获取本人的 openid，加人后在“我的”页下拉刷新或重进小程序重新检查。未设开关或值不等于字面 `true` 时不拦截。
 截至 2026-11-11，`cloudfunctions/` 有 **15 个可调用云函数 + `_shared`**（`_shared` 不作为云函数部署）：aiChat、aiNotifications、aiReport、aiSettings、aiTasks、asrProxy、babyProfile、customRecord、diaryRecord、feedingRecord、growthRecord、homeCards、login、milestoneRecord、statistics。
 共享库同步脚本当前将 runtime/aggregation/record-details/llm/schedule/ai-settings 共 6 个文件复制到 14 个函数目录：statistics、babyProfile、customRecord、aiChat、aiTasks、aiNotifications、aiReport、aiSettings、asrProxy、feedingRecord、growthRecord、diaryRecord、homeCards、milestoneRecord。运行 `node scripts/sync-cloud-runtime.js` 后按输出确认。
 **已下线（2026-11-11，仓库内已移除，需在云开发控制台人工删除）**：`reminderRecord`。智能提醒与手机闹铃/日程重复，且一次性订阅无法保证送达，整条链路（页面、云函数、定时器、`reminder_items` 写入）已删除；存量 `reminder_items` 数据保留但不再读写。
@@ -67,7 +71,7 @@ DeepSeek 思考模式由小迈页面的「深度思考」开关控制，默认�
 语音转写服务商推荐硅基流动 SiliconFlow（国内直连 + SenseVoice 免费额度）：`ASR_URL=https://api.siliconflow.cn/v1/audio/transcriptions`、`ASR_KEY=<硅基流动 API Key>`、`ASR_MODEL=FunAudioLLM/SenseVoiceSmall`。个人主体下这些变量供录音松开后的一次性转写使用；当前不提供实时预览。主体变更为非个人后可加回 WechatSI 声明恢复实时预览。`ASR_MODEL` 必配——代码默认值 `whisper-1` 硅基流动没有，留空会请求失败。DeepSeek 无语音转写接口，DeepSeek Key 不能充当 ASR_KEY。
 
 ## 4. 集合、安全与索引
-当前云环境应有 **16 个集合**：`users`、`babies`、`family_members`、`feeding_records`、`custom_records`、`diary_records`、`growth_records`、`milestone_defs`、`milestone_records`、`ai_settings`、`ai_tasks`、`ai_notifications`、`ai_runs`、`ai_sessions`、`ai_rate_limits`、`mutation_receipts`。历史集合 `families`、`expense_records` 与已下线的 `reminder_items` 按现状保留，不新增、不读写。
+当前云环境应有 **17 个集合**：`users`、`babies`、`family_members`、`feeding_records`、`custom_records`、`diary_records`、`growth_records`、`milestone_defs`、`milestone_records`、`ai_settings`、`ai_tasks`、`ai_notifications`、`ai_runs`、`ai_sessions`、`ai_rate_limits`、`mutation_receipts`、`allowlist`。`allowlist` 在启用门禁前创建，字段为 `openid`、`remark`、`created_at`，文档 `_id=sha256(openid).slice(0,32)`；每个 openid 一条，控制台手动添加运营者及家人，`created_at` 记录创建时间。客户端权限必须拒绝读写，仅云函数服务端 SDK 可访问。历史集合 `families`、`expense_records` 与已下线的 `reminder_items` 按现状保留，不新增、不读写。
 
 **客户端权限**（云开发控制台「数据库 → 权限设置」）：除 `ai_sessions` 之外全部设为「所有用户不可读写」，只允许云函数用服务端 SDK 访问。`ai_sessions` 是唯一例外——对话历史由小程序端直接写入，规则需放行「仅本人读写本人记录」（`doc.openid == auth.openid`），其余拒绝。
 
@@ -91,7 +95,7 @@ DeepSeek 思考模式由小迈页面的「深度思考」开关控制，默认�
 | mutation_receipts | 主键；`openid + operation + created_at` |
 | ai_settings | 主键 `hash(openid)`，无需额外索引 |
 
-到期数据靠运维清理而非删集合：`ai_rate_limits` 的 `expires_at` 过期行、`mutation_receipts` 的久远回执可定期清；`ai_runs` 建议保留至少 30 天（定时报告防重复生成的凭据），`ai_notifications` 由用户在历史报告页自行删除。
+到期数据靠运维清理而非删集合：`ai_rate_limits` 的 `expires_at` 过期行、`mutation_receipts` 的久远回执可定期清，未完成宝宝级联删除的回执必须保留供重试；`ai_runs` 通常建议保留至少 30 天（定时报告防重复生成凭据），删除宝宝时本人专属任务的运行凭据和站内报告随之清理；`ai_notifications` 也可由用户在历史报告页自行删除。
 
 
 ## 5. 小程序平台配置

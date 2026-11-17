@@ -12,7 +12,7 @@ const milestoneOverview = require('../../utils/milestone-overview')
 const summaryTagState = (tags, active) => tags.map(tag => ({ ...tag, active: active.indexOf(tag.key) >= 0, dimmed: active.length > 0 && active.indexOf(tag.key) < 0 }))
 page({
   ...homeCards.methods,
-  data: { ...homeCards.data, nickname: '宝宝', age: '', avatarSrc: '/images/boy.png', selectedDate: dateKey(), week: [], monthDays: [], calendarExpanded: false, monthLabel: '', cards: [], summaryTags: [], activeTags: [], categories: [], milestoneEntry: { label: '成长里程碑', month: null, done: 0, total: 0 }, panel: false, loading: false, refreshing: false, error: '', loggedIn: false, dateLabel: '', today: dateKey() },
+  data: { ...homeCards.data, nickname: '宝宝', age: '', avatarSrc: '/images/boy.png', selectedDate: dateKey(), week: [], monthDays: [], calendarExpanded: false, monthLabel: '', cards: [], summaryTags: [], activeTags: [], categories: [], hasBaby: false, milestoneEntry: { label: '成长里程碑', month: null, done: 0, total: 0 }, panel: false, loading: false, refreshing: false, error: '', loggedIn: false, dateLabel: '', today: dateKey() },
   onLoad() { this.setData(homeCards.data); this.setDate(this.data.selectedDate, false) },
   async onShow() {
     if (!app.globalData.initialized || app._initializing) await app.init()
@@ -28,10 +28,10 @@ page({
     if (request && request.finally) request.finally(() => this.setData({ refreshing: false }))
     else this.setData({ refreshing: false })
   },
-  onSessionChange() { this.disposeCardMotion(); this._loadVersion = (this._loadVersion || 0) + 1; this._allCards = []; this._allCardsDate = ''; this._allCardsBabyId = ''; app.globalData.homeRefresh = null; this.setData({ ...homeCards.data, cards: [], summaryTags: [], activeTags: [], milestoneEntry: { label: '成长里程碑', month: null, done: 0, total: 0 }, loggedIn: false, panel: false }); this.showTabBar(true); this.loadMilestoneEntry() },
+  onSessionChange() { this.disposeCardMotion(); this._loadVersion = (this._loadVersion || 0) + 1; this._allCards = []; this._allCardsDate = ''; this._allCardsBabyId = ''; app.globalData.homeRefresh = null; this.setData({ ...homeCards.data, cards: [], summaryTags: [], activeTags: [], hasBaby: !!app.globalData.activeBabyId, milestoneEntry: { label: '成长里程碑', month: null, done: 0, total: 0 }, loggedIn: false, panel: false }); this.showTabBar(true); this.loadMilestoneEntry() },
   refreshProfile() {
     const baby = app.globalData.baby || {}
-    this.setData({ nickname: baby.nickname || '宝宝', age: ageText(baby.birthday), avatarSrc: avatarSrc(baby), loggedIn: app.globalData.loggedIn, categories: CATEGORIES.slice(), today: dateKey() })
+    this.setData({ nickname: baby.nickname || '宝宝', age: ageText(baby.birthday), avatarSrc: avatarSrc(baby), loggedIn: app.globalData.loggedIn, hasBaby: !!app.globalData.activeBabyId, categories: CATEGORIES.slice(), today: dateKey() })
   },
   async loadMilestoneEntry() {
     if (!app.globalData.loggedIn || !app.globalData.activeBabyId) {
@@ -153,6 +153,11 @@ page({
     if (this.data.cardBusy || this.data.cardSettling) return
     this.resetSwipe()
     if (!this.data.loggedIn) { this.goMine(); return }
+    if (!app.globalData.activeBabyId) {
+      tap()
+      wx.showModal({ title: '还没有宝宝档案', content: '还没有宝宝档案，请先添加宝宝后再记录', confirmText: '去添加', success: result => { if (result.confirm) this.goBaby() } })
+      return
+    }
     if (this.data.selectedDate > dateKey()) { wx.showToast({ title: '可以记录今天或过去的日期', icon: 'none' }); return }
     const babyId = app.globalData.activeBabyId || ''
     const hasCurrentScope = Array.isArray(this._allCards) && this._allCardsDate === this.data.selectedDate && this._allCardsBabyId === babyId
@@ -196,5 +201,6 @@ page({
     wx.navigateTo({ url: path + '?' + params.join('&') })
   },
   openMilestones() { wx.navigateTo({ url: '/pages/milestone/index' }) },
+  goBaby() { wx.navigateTo({ url: '/pages/baby/index' }) },
   goMine() { wx.switchTab({ url: '/pages/mine/index' }) }
 })

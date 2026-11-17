@@ -20,16 +20,46 @@ function number(value, min, max, optional = false) {
   if (!['number', 'string'].includes(typeof value) || value === '' || !Number.isFinite(Number(value)) || Number(value) < min || Number(value) > max) fail(400, 'INVALID_NUMBER')
   return Number(value)
 }
+const ALLOWLIST_TTL = 60000
+const allowlistCaches = new WeakMap()
+async function isAllowed(db, openid) {
+  if (typeof openid !== 'string' || !openid) return false
+  // Bootstrap stays open until explicitly enabled on EACH protected cloud function.
+  if (process.env.ALLOWLIST_ENABLED !== 'true') return true
+  let cache = allowlistCaches.get(db)
+  if (!cache) { cache = new Map(); allowlistCaches.set(db, cache) }
+  const now = Date.now(), cached = cache.get(openid)
+  if (cached && cached.expires > now) return cached.allowed
+  cache.delete(openid)
+  try {
+    const result = await db.collection('allowlist').where({ openid }).limit(1).get()
+    const allowed = Array.isArray(result.data) && result.data.some(row => row.openid === openid)
+    // Bounded per-runtime cache: positive AND negative entries expire, never serve stale access.
+    if (cache.size >= 256) cache.delete(cache.keys().next().value)
+    cache.set(openid, { allowed, expires: now + ALLOWLIST_TTL })
+    return allowed
+  } catch (_) {
+    // Missing collection / SDK errors deny access, but are not cached so recovery can be immediate.
+    return false
+  }
+}
 async function identity(cloud, db) {
   const openid = cloud.getWXContext().OPENID
   if (!openid) fail(401, 'UNAUTHORIZED')
   if (!(await db.collection('users').where({ openid }).count()).total) fail(401, 'USER_NOT_FOUND')
+  if (!await isAllowed(db, openid)) fail(403, 'NOT_ALLOWED')
   return openid
 }
 async function access(db, openid) {
   const membership = await db.collection('family_members').where({ openid }).limit(1).get()
   const familyId = membership.data.length ? membership.data[0].familyId : ''
   return { openid, familyId, scope: familyId ? { family_id: familyId } : { openid }, ownerKey: familyId ? `family:${familyId}` : `user:${openid}` }
+}
+async function requireBaby(db, accessContext, babyId) {
+  if (typeof babyId !== 'string' || !babyId || babyId.length > 64) fail(400, 'INVALID_BABY_ID')
+  const baby = (await db.collection('babies').where({ ...accessContext.scope, _id: babyId }).limit(1).get()).data[0]
+  if (!baby) fail(404, 'BABY_NOT_FOUND')
+  return { ...accessContext.scope, baby_id: babyId }
 }
 async function all(db, collection, condition, max = 10000) {
   const result = []; let cursor = ''
@@ -87,4 +117,5 @@ async function mutateOnce(db, openid, event, operation, handler) {
     return result
   })
 }
-module.exports = { hash, fail, key, validDate, requestId, text, number, identity, access, all, createOnce, endpoint, readDoc, mutateOnce }
+module.exports = { hash, fail, key, validDate, requestId, text, number, identity, isAllowed, access, all, createOnce, endpoint, readDoc, mutateOnce }
+module.exports.requireBaby = requireBaby

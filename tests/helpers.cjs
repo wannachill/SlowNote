@@ -62,7 +62,7 @@ function memoryDb(seed = {}) {
   return db
 }
 function seed() {
-  return { users: [{_id:'user-a',openid:'user-a'},{_id:'user-b',openid:'user-b'}], family_members: [], babies: [] }
+  return { users: [{_id:'user-a',openid:'user-a'},{_id:'user-b',openid:'user-b'}], family_members: [], babies: [{ _id:'baby-a', baby_id:'baby-a', openid:'user-a', nickname:'测试宝宝' }] }
 }
 function load(file, globals = {}, substitutions = {}) {
   const cache = new Map()
@@ -93,6 +93,7 @@ function front(name, options = {}) {
     getStorageSync:k=>storage[k],setStorageSync:(k,v)=>{storage[k]=v},removeStorageSync:k=>{delete storage[k]},
     getAppBaseInfo:()=>({theme:options.system||'light'}),getSystemInfoSync:()=>({pixelRatio:1,theme:options.system||'light'}),
     setNavigationBarColor(){},setBackgroundColor(){},onThemeChange(){},
+    setClipboardData:arg=>{calls.push({type:'copy',data:arg.data});if(options.clipboardFail){if(arg.fail)arg.fail({errMsg:'copy failed'})}else if(arg.success)arg.success({})},
     createSelectorQuery:()=>({in(){return this},select(){return this},fields(){return this},exec(cb){cb([])}}),
     navigateTo:arg=>calls.push({type:'navigateTo',...arg}),switchTab:arg=>calls.push({type:'switchTab',...arg}),
     showToast:arg=>calls.push({type:'toast',...arg}),showModal:arg=>arg.success({confirm:true}),stopPullDownRefresh(){},vibrateShort(){},

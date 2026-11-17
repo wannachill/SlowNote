@@ -2,13 +2,21 @@
   <net-banner />
   <view class="page-heading page-top-heading"><text class="page-title">我的</text><text class="page-note">照顾宝宝，也照顾好自己。</text></view>
   <scroll-view class="mine-scroll" scroll-y enhanced show-scrollbar="{{false}}" refresher-enabled="{{true}}" refresher-triggered="{{refreshing}}" bindrefresherrefresh="onScrollRefresh">
+  <view wx:if="{{notAllowed && openid}}" class="card">
+    <text class="profile-note">本小程序仅限家庭成员使用，请联系管理员</text>
+    <text class="profile-note">请复制下方 openid 并发送给管理员开通权限</text>
+    <text class="profile-note" selectable="{{true}}" user-select="{{true}}">openid：{{openid}}</text>
+    <button class="link-btn" bindtap="copyOpenid" aria-label="复制当前 openid">复制 openid</button>
+  </view>
+  <block wx:if="{{!notAllowed}}">
   <button wx:if="{{loggedIn}}" class="card profile-card profile-baby-card" bindtap="goBaby" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" aria-label="维护{{babyNickname}}信息"><image class="profile-avatar" src="{{avatarSrc}}" mode="aspectFill" aria-hidden="true"></image><view class="profile-text"><text class="profile-status">{{babyNickname}}</text><text class="profile-note">{{babyAgeDays !== null ? '出生 ' + babyAgeDays + ' 天' : '填写出生日期'}}</text></view><view class="chevron" aria-hidden="true"></view></button>
   <view wx:else class="card profile-card profile-login-card"><image class="profile-avatar" src="{{avatarSrc}}" mode="aspectFill" aria-hidden="true"></image><view class="profile-text"><text class="profile-status">暂未登录</text><text class="profile-note">登录后可保存宝宝信息与成长记录。</text><button class="btn-primary form-submit motion-primary {{motionRippleId === 'motion-mine-1' ? 'ripple-' + motionRipplePhase : ''}}" bindtap="login" loading="{{loggingIn}}" disabled="{{loggingIn}}" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" id="motion-mine-1" bindtouchstart="motionPress" style="{{motionRippleId === 'motion-mine-1' ? motionRippleStyle : ''}}">微信登录</button></view></view>
+  </block>
   <view class="card setting-card">
-    <button class="settings-link" data-url="/pages/theme/index" bindtap="go" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" aria-label="主题设置"><text class="settings-name">主题设置</text><view class="chevron" aria-hidden="true"></view></button>
-    <button class="settings-link" data-url="/pages/ai-settings/index" bindtap="go" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" aria-label="小迈设置"><text class="settings-name">小迈设置</text><view class="chevron" aria-hidden="true"></view></button>
-    <button class="settings-link" data-url="/pages/ai-tasks/index" bindtap="go" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" aria-label="定时报告"><text class="settings-name">定时报告</text><view class="chevron" aria-hidden="true"></view></button>
-    <button class="settings-link" data-url="/pages/ai-notifications/index" bindtap="go" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" aria-label="历史报告"><text class="settings-name">历史报告</text><view class="chevron" aria-hidden="true"></view></button>
+    <button wx:if="{{!notAllowed}}" class="settings-link" data-url="/pages/theme/index" bindtap="go" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" aria-label="主题设置"><text class="settings-name">主题设置</text><view class="chevron" aria-hidden="true"></view></button>
+    <button wx:if="{{!notAllowed}}" class="settings-link" data-url="/pages/ai-settings/index" bindtap="go" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" aria-label="小迈设置"><text class="settings-name">小迈设置</text><view class="chevron" aria-hidden="true"></view></button>
+    <button wx:if="{{!notAllowed}}" class="settings-link" data-url="/pages/ai-tasks/index" bindtap="go" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" aria-label="定时报告"><text class="settings-name">定时报告</text><view class="chevron" aria-hidden="true"></view></button>
+    <button wx:if="{{!notAllowed}}" class="settings-link" data-url="/pages/ai-notifications/index" bindtap="go" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" aria-label="历史报告"><text class="settings-name">历史报告</text><view class="chevron" aria-hidden="true"></view></button>
     <button class="settings-link" data-url="/pages/privacy/index" bindtap="go" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" aria-label="隐私政策"><text class="settings-name">隐私政策</text><view class="chevron" aria-hidden="true"></view></button>
   </view>
   <button wx:if="{{loggedIn}}" class="btn-secondary logout" bindtap="logout" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}">退出登录</button>

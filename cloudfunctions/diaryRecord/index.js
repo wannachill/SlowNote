@@ -1,4 +1,4 @@
-const { endpoint, access, createOnce, requestId, hash, validDate, key, fail, text } = require('./lib/runtime')
+const { endpoint, access, requireBaby, createOnce, requestId, hash, validDate, key, fail, text } = require('./lib/runtime')
 exports.main=endpoint(async({event,db,openid})=>{
   const context=await access(db,openid)
   const action=event.action||'add'
@@ -21,6 +21,7 @@ exports.main=endpoint(async({event,db,openid})=>{
     return {code:0,data:{id:found._id}}
   }
   if(action!=='add')fail(400,'UNKNOWN_ACTION')
+  await requireBaby(db, context, event.baby_id)
   const content=text(event.content||'',500),images=event.images||[]
   if(!Array.isArray(images)||images.length>9||images.some(i=>typeof i!=='string'||!i.startsWith('cloud://')||!i.includes('/diary/'+openid+'/')||i.length>500))fail(400,'INVALID_IMAGES')
   if(!content&&!images.length)fail(400,'EMPTY_CONTENT')

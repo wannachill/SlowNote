@@ -6,7 +6,7 @@ const day = '2026-10-20'
 
 test('feeding mutations validate the stored owner and keep type-specific payloads', async () => {
   const db = memoryDb(seed()), api = service('feedingRecord', db), other = service('feedingRecord', db, { openid: 'user-b' })
-  const added = await api.main({ type: 'feed', payload: { mode: 'bottle', amountMl: 90 }, recordDate: day, clientRequestId: 'feed-add-0001' })
+  const added = await api.main({ type: 'feed', payload: { mode: 'bottle', amountMl: 90 }, recordDate: day, baby_id: 'baby-a', clientRequestId: 'feed-add-0001' })
   const id = added.data.id
   assert.equal((await other.main({ action: 'update', id, type: 'feed', payload: { mode: 'bottle', amountMl: 200 }, recordDate: day })).code, 404)
   assert.equal(db.rows('feeding_records')[0].payload.amountMl, 90)
@@ -23,7 +23,7 @@ test('feeding mutations validate the stored owner and keep type-specific payload
 
 test('growth mutations update only validated measurements and delete owned records', async () => {
   const db = memoryDb(seed()), api = service('growthRecord', db), other = service('growthRecord', db, { openid: 'user-b' })
-  const added = await api.main({ height: 65, weight: 6.2, head: null, recordDate: day, clientRequestId: 'growth-add-01' })
+  const added = await api.main({ height: 65, weight: 6.2, head: null, recordDate: day, baby_id: 'baby-a', clientRequestId: 'growth-add-01' })
   const id = added.data.id
   assert.equal((await other.main({ action: 'delete', id })).code, 404)
   assert.equal(db.rows('growth_records').length, 1)
@@ -55,7 +55,7 @@ test('growth listDate filters by exact record date and retains the compatible li
 test('diary update revalidates photo ownership and replaces content and date', async () => {
   const db = memoryDb(seed()), api = service('diaryRecord', db), other = service('diaryRecord', db, { openid: 'user-b' })
   const image = 'cloud://env/diary/user-a/photo.jpg'
-  const added = await api.main({ content: '第一篇', images: [image], recordDate: day, clientRequestId: 'diary-add-001' })
+  const added = await api.main({ content: '第一篇', images: [image], recordDate: day, baby_id: 'baby-a', clientRequestId: 'diary-add-001' })
   const id = added.data.id
   assert.equal((await other.main({ action: 'delete', id })).code, 404)
   assert.equal(db.rows('diary_records').length, 1)
@@ -67,7 +67,7 @@ test('diary update revalidates photo ownership and replaces content and date', a
 
 test('custom mutations update allowed fields and reject another account record id', async () => {
   const db = memoryDb(seed()), owner = service('customRecord', db), other = service('customRecord', db, { openid: 'user-b' })
-  const added = await owner.main({ category: 'custom', label: '体温', value: 37, unit: '度', note: '晚间', recordDate: day, clientRequestId: 'custom-add-01' })
+  const added = await owner.main({ category: 'custom', label: '体温', value: 37, unit: '度', note: '晚间', recordDate: day, baby_id: 'baby-a', clientRequestId: 'custom-add-01' })
   const id = added.data.id
   const denied = await other.main({ action: 'update', id, category: 'custom', label: '覆盖', value: 99, unit: '', note: '', recordDate: day })
   assert.equal(denied.code, 404)

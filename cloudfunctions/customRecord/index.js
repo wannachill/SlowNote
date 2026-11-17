@@ -1,4 +1,4 @@
-const { endpoint, access, hash, requestId, text, number, validDate, key, fail, createOnce } = require('./lib/runtime')
+const { endpoint, access, requireBaby, hash, requestId, text, number, validDate, key, fail, createOnce } = require('./lib/runtime')
 exports.main = endpoint(async ({ event, db, openid }) => {
   const context = await access(db, openid)
   const babyId = typeof event.baby_id === 'string' && event.baby_id.length <= 64 ? event.baby_id : ''
@@ -28,6 +28,7 @@ exports.main = endpoint(async ({ event, db, openid }) => {
     return { code: 0, data: { id: found._id } }
   }
   if (event.action && event.action !== 'add') fail(400, 'UNKNOWN_ACTION')
+  await requireBaby(db, context, event.baby_id)
   if (event.category !== 'custom') fail(400, 'INVALID_CATEGORY')
   const recordDate = event.recordDate || key()
   if (!validDate(recordDate) || recordDate > key()) fail(400, 'INVALID_DATE')
