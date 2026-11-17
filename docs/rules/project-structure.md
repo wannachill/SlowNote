@@ -25,7 +25,8 @@ cloudfunctions/                 # 15 个可调用云函数 + _shared
 scripts/
   sync-cloud-runtime.js         # 同步共享源码到 14 个受管函数 lib/
   check-project.js              # 项目注册与一致性检查
-tests/                          # 45 个 *.test.cjs 文件 + helpers.cjs
+tests/                          # 46 个 *.test.cjs 文件 + helpers.cjs
+  allowlist.test.cjs            # 门禁开关/缓存/定时器/登录与未授权提示回归
   ai-chat-images.test.cjs ai-chat-snapshot.test.cjs ai-chat-voice.test.cjs ai-settings-cache.test.cjs ai-settings-questions.test.cjs
   baby-profile.test.cjs chart-bars.test.cjs chart-selection.test.cjs common-questions.test.cjs copy-terse.test.cjs
   custom-record-validation.test.cjs feature-retirement.test.cjs growth-multi-measurement.test.cjs
@@ -57,9 +58,12 @@ docs/
 常见问题数据和端侧存储工具仍保留；管理入口已并入 `pages/ai-settings/`，没有单独的常见问题页面。`utils/common-questions.js` 同时定义常见问题的 6 档取数范围（今天/近 7 天/本周/本月/近 30 天/本年）与 7 类数据类型及内置默认类别——这 6 档是**提问时**的取数范围，与定时报告的 5 档 `range` 不是同一套枚举，不要互相套用；`utils/digest.js` 请求统计云函数返回的服务端渲染明细，并按响应的 `detailsLimit` 展示/裁剪，不接收原始记录集合。`confetti.js` 仍用于发育里程碑达成效果。
 
 ## 云函数同步
+`_shared/runtime.js` 的 identity 在 users 校验后调用 isAllowed：仅 `ALLOWLIST_ENABLED=true` 时校验 allowlist（客户端拒绝读写），按 openid 缓存 60 秒，未命中/异常拒绝，401 身份语义不变。13 个 endpoint 入口统一受控；aiReport 在每任务认领前复用 isAllowed，不改变 TIMER_ONLY；login 独立建档仍开放。app.initializeSession 登录后通过 aiSettings.checkAccess 做一次探测，403 NOT_ALLOWED 标记 notAllowed；“我的”页保留访问、展示本人 openid 并提供复制。名单外请求不会在初始化阶段反复重试；门禁安全以服务端为准。此变更须同步 lib 并部署全部 14 个受管函数，再逐函数设开关，详见部署清单。
 `cloudfunctions/` 有 15 个可调用函数（不含 `_shared`）：`aiChat`、`aiNotifications`、`aiReport`、`aiSettings`、`aiTasks`、`asrProxy`、`babyProfile`、`customRecord`、`diaryRecord`、`feedingRecord`、`growthRecord`、`homeCards`、`login`、`milestoneRecord`、`statistics`。
 
 `scripts/sync-cloud-runtime.js` 当前同步 14 个函数目录的 `lib/`：`statistics`、`babyProfile`、`customRecord`、`aiChat`、`aiTasks`、`aiNotifications`、`aiReport`、`aiSettings`、`asrProxy`、`feedingRecord`、`growthRecord`、`diaryRecord`、`homeCards`、`milestoneRecord`。`login` 不依赖该同步产物。改 `_shared/` 后先运行同步脚本，再部署相应云函数。
+
+`babyProfile/cleanup.js` 是宝宝级联删除的私有模块，不属于生成的 `lib/`：冻结 scope/集合 ID → 主事务删档案 → 停用专属任务 → ≤40 条/批事务复核并清理六个记录/定义集合、本人会话和精确任务历史 → 归属/存活引用校验后尽力删头像与日记图片；builtin/custom 里程碑定义全删。返回 cleaned/pending，宝宝页按 openid 保存原请求提供立即/再次进入页重试，无后台执行器。账号/家庭与聚合全部任务不删；会话图片维持现有生命周期。只需重新部署 babyProfile，详见数据库设计 §6。
 
 药品/护理类日常记录页面及相关云端接口已移除；常见问题独立页面已移除。智能提醒（`pages/reminder`、`cloudfunctions/reminderRecord`、`reminder_items` 写入链路）已于 2026-11-11 整体下线——定时提醒与手机闹铃/日程重复，且一次性订阅无法保证送达；「信息推送」中转页也随之删除，入口直连定时报告。花销新增入口与统计已下线，`expense_records` 仅作为历史数据保留。家庭管理入口和相关函数已下线，已有家庭成员/归属字段仍用于历史数据范围兼容。
 

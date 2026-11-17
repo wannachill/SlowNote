@@ -1,19 +1,22 @@
 # 一迈一记数据库与接口事实
-> 版本 1.6｜2026-11-11｜微信云数据库；业务 ID 使用实际 _id。openid 仅由可信云上下文获取。
+> 版本 1.8｜2026-11-17｜微信云数据库；业务 ID 使用实际 _id。openid 仅由可信云上下文获取。
 
 ## 1. 归属与权限
 前端不直连业务集合写入；ai_sessions 是对话历史例外，由小程序端按 openid 规则保存。服务端 SDK 必须校验登录身份及家庭/宝宝/对象数据范围。家庭管理入口与管理函数已下线，但已有 `family_members` 与 `family_id` 仍参与历史数据 scope；有当前家庭成员关系时按 family_id 查询，否则按 openid 查询。不接收客户端指定身份/家庭作为查询范围。宝宝档案支持多记录，按当前 scope 列表并以 baby_id 选择；不使用单一家庭档案替代多宝宝数据。
-expense（花销）已于 2026-10-29 下线，历史 `expense_records` 保留，不再提供新增入口或统计维度。登录用户可使用全部功能。LLM 模型地址、密钥及模型名仅通过云函数环境变量读取。
+expense（花销）已于 2026-10-29 下线，历史 `expense_records` 保留，不再提供新增入口或统计维度。login 开放建档，受保护云函数可显式启用 openid 白名单；白名单默认关闭。LLM 模型地址、密钥及模型名仅通过云函数环境变量读取。
 
 ## 2. 既有集合与扩展
+当前功能使用 17 个集合（含新增 allowlist），完整创建清单见部署检查清单 §4；历史 families/expense_records/reminder_items 另行保留。allowlist 必须在开启门禁前创建并加入运营者本人。
+
 | 集合 | 关键字段/实际行为 |
 |---|---|
 | users | openid、nickname、created_at、last_login_at；新增 theme_pref={color: blue/pink/orange/mint/purple/dark}（6 套渐变主题，color-only，无独立明暗模式；深色作为独立主题色存在）、theme_request_id、updated_at |
+| allowlist | `_id=hash(openid)=sha256(openid).slice(0,32)` 唯一；openid、remark、created_at（服务端写入用 `db.serverDate()`，控制台人工建档填写创建时间）；客户端拒绝读写，仅云函数可读写。运营者先在控制台手动添加家人 openid，再逐个开启函数环境变量。`runtime.isAllowed()` 只接收可信 openid，集合缺失/异常拒绝访问，不向端侧返回成员名单 |
 | families / family_members | 历史家庭归属数据；家庭管理产品入口与函数已下线。family_members.openid/familyId 仍供服务端 scope 兼容读取，family_id 记录不在本次数据文档更新中迁移或清理 |
-| feeding_records | openid、family_id、baby_id、type、payload、client_request_id、created_at；新增 record_date=YYYY-MM-DD |
-| growth_records | openid、family_id、baby_id、height/weight/head(可空)、record_date、client_request_id、created_at |
-| diary_records | openid、family_id、baby_id、content、images(fileID[])、client_request_id、created_at；新增 record_date |
-| milestone_records | openid、family_id、baby_id、milestone_key、domain、record_date、client_request_id、created_at |
+| feeding_records | openid、family_id、baby_id、type、payload、client_request_id、created_at；新增 record_date=YYYY-MM-DD；删除宝宝时按冻结 scope + baby_id 清理 feed/solid/excretion 全部记录 |
+| growth_records | openid、family_id、baby_id、height/weight/head(可空)、record_date、client_request_id、created_at；删除宝宝时按 scope + baby_id 清理 |
+| diary_records | openid、family_id、baby_id、content、images(fileID[])、client_request_id、created_at；新增 record_date；删除宝宝时按 scope + baby_id 清理，图片按 §6 校验归属与剩余引用 |
+| milestone_records | openid、family_id、baby_id、milestone_key、domain、record_date、client_request_id、created_at；全部是用户打卡，删除宝宝时按 scope + baby_id 全删 |
 
 `reminder_items` 随智能提醒功能于 2026-11-11 下线，不再写入；存量数据保留但不参与统计与 AI 摘要。
 
@@ -36,6 +39,8 @@ feed payload：亲喂 durationMin，其他 amountMl；solid 当前写入 name/no
 | ai_rate_limits | 确定性 _id=hash(openid:分钟:槽0..3)，openid、expires_at、created_at；原子占槽实现每用户每分钟四次 |
 | mutation_receipts | _id=hash(openid:操作:请求ID)；openid、operation、client_request_id、result、created_at；宝宝/主题、报告任务更新/删除、通知已读/删除事务回执 |
 
+宝宝删除契约：`babies` 删除档案；`custom_records`（含历史户外类）按 scope + baby_id 清理；`milestone_defs` 按 scope + baby_id 全删，含 builtin/custom、已隐藏项，内置 68 项来自代码常量，其他存活宝宝 list 时仍可重建缺项。`ai_sessions` 仅清理本人 openid + babyId；`ai_tasks` 仅停用本人 openid + baby_id 的专属任务（enabled:false，清空 lease_token/lease_until），保留定义；聚合全部宝宝的空 baby_id 任务不动。专属任务的 `ai_runs` / `ai_notifications` 按 openid + task_id 精确快照、清理。`users` / `ai_settings` / `families` / `family_members` 不删除。幂等回执保存冻结范围、ID 快照与各批次结果，不能在重试完成前清掉。
+
 AI 任务 categories 为 `feeding/excretion/solid/growth/diary/milestone/custom` 七项，与常见问题同一套语义（feeding/excretion/solid 同源于 `feeding_records`，但分别选择、分别进入提示词）。`range` 与 `frequency` 解耦：`range` 决定单份报告看多久，缺省 `auto` 跟随频率；`monthly` 任务由服务端归一为 `auto`（上月整月），即便客户端传了显式范围也不生效。非法 `range` 返回 `400 INVALID_RANGE`，非法类别返回 `400 INVALID_CATEGORIES`。本人最多十任务，界面列表最多50条。frequency 支持 daily/weekly/monthly。monthly 由每月 1 日调度，聚合上一个完整自然月，窗口左闭右开。通知仅本人，最多返回最近50条；不向家庭成员共享个人任务或通知。**微信推送为「单任务开关」**：`notify` 默认 false，用户在任务卡片上单独开启并授权后才尝试订阅消息；未开启则报告只落站内，不消耗一次性订阅额度；`enabled` 仅控制任务是否运行（如撤回数据同意会被置 false 并暂停）。
 小迈配置中的常见问题由端侧存储维护，不属于 `ai_settings` 集合；每条问题除文案、范围、固定状态外还持久化 `categories`（7 类数据类型多选，空数组表示不附带记录），内置问题按语义预设，旧数据缺该字段时回退全量兼容；`showThinking` 控制聊天页是否显示深度思考入口，实际逐次请求的 thinking 布尔值由聊天页开关传递。提示词自定义字段只存 style/vision/report；SAFETY 内容不可编辑，由服务端按场景组合。`compose()` 是默认与兜底提示词的唯一来源；每次调整默认文案时把改动前整组三条追加进 `PREVIOUS_DEFAULTS`，`normalizePrompts()` / `customOf()` 据此把历史默认全文归一为当前默认，避免老用户停在旧提示词或被误标为自定义，无需迁移数据。
 云函数不持久化对话分析；对话历史由小程序端写入 ai_sessions（openid 隔离、幂等 upsert、失败静默降级）。AI 请求在用户主动附带记录或已同意的定时任务范围内，可包含服务端渲染的所选类别明细；日记正文、里程碑事项名、辅食/自定义备注会按白名单与长度预算发送，并经 `redact()` 脱敏。不发送 openid、家庭/宝宝标识、记录 ID、原始时间戳、昵称、精确生日或云文件 ID。分析文本与已附带的记录明细均为私有敏感数据。
@@ -43,6 +48,7 @@ AI 任务 categories 为 `feeding/excretion/solid/growth/diary/milestone/custom`
 
 ## 4. 幂等与并发
 - 新增登记的宝宝归属契约（2026-11-17）：`feedingRecord` / `growthRecord` / `diaryRecord` / `customRecord` 仅在 add 分支调用共享 `requireBaby(db, context, babyId)`；baby_id 必填、类型为字符串且长度不超过 64，并以可信 context.scope + babies._id 确认当前个人/家庭归属。空值/类型错误返回 400 INVALID_BABY_ID，不存在/越权返回 404 BABY_NOT_FOUND。list/listDate/listToday 以及 statistics / aiTasks / aiReport 中空 baby_id 仍表示全部宝宝，不设全局拦截。历史 baby_id:'' 记录不由本次校验迁移或删除。
+- 白名单是云功能入口开关，不改变个人/家庭 scope：`ALLOWLIST_ENABLED` 仅字面字符串 `true` 开启，未配置/false 默认开放；开启时 `identity()` 在 401/USER_NOT_FOUND 校验后以 openid 查询 allowlist，不命中返回 `403 NOT_ALLOWED`。进程内按数据库实例 + openid 缓存 60 秒（最多 256 项），到期必须回源；空名单/错误拒绝，错误不缓存。移除成员后最多 60 秒生效，已进入执行的计费调用不会被追溯取消。login 不校验名单，允许新用户建档并取得 openid；aiReport 在每个任务认领/模型调用前独立校验任务 openid，TIMER_ONLY 保持不变。各函数必须分别开启环境变量，避免漏设形成旁路。
 - 客户端带 clientRequestId，服务端存 client_request_id；别名 client_request_id 亦可接收。新记录确定性主键 + 原子 add，数据库主键阻止并发重复。兼容已有 auto ID 的 client_request_id 去重。
 - 可变配置在 runTransaction 中检查 mutation_receipts 并更新对象/回执；同一个请求即使隔着其他更新重放，也不会把新状态回滚为旧状态。
 - AI 调度：按到期时间排序取十条；匹配原 next_run_at 与过期 lease_until 后原子认领，租约180秒，并发二。运行/通知 ID 基于原计划时刻，不因重复触发产生新通知。
@@ -74,5 +80,14 @@ AI 任务 categories 为 `feeding/excretion/solid/growth/diary/milestone/custom`
 - 删除属于不可恢复动作，前端必须先确认；服务端返回 `{code:0, deleted, matched}` 才允许移除卡片视觉并刷新统计。
 
 ## 6. 兼容、回滚与未决项
+### 宝宝档案删除流程（babyProfile，2026-11-17）
+
+- 先校验可信身份及当前 scope；以 clientRequestId 固定 babyId、ownerKey、scope，并为六个记录/定义集合、本人会话、专属任务和任务历史分别冻结 ID。单集合最多 10000 条；快照查询失败或超限（413 TOO_MANY_RECORDS）发生在主删除前，档案保留，可用原请求重试。
+- 冻结完成后在 `baby-del` 事务内复核 scope/档案归属，读取该 `babies.avatar` 并删除档案。事务外先停用专属任务，再按冻结 ID 分批处理，每批最多 40 条；批次事务重新校验当前 scope 和记录归属，记录已不存在视为已清理，归属变更返回冲突，不静默跳过。内置和自定义里程碑定义全部删除；打卡全部删除。
+- 返回 `{code:0,babyDeleted:true,cleaned,pending,duplicate}`，cleaned 为删除/停用数量，pending 为失败集合的 code/message/batches；成功批次不回滚，重放只补失败批次，不删快照之后新增的记录。pending 非空时前端保留已删除状态并提示重试，将原请求按 openid 隔离保存在本机；可立即重试或下次进入宝宝信息页继续。无后台自动清理执行器，清缓存/换设备会失去本机重试入口，需联系运营者；运维应保留相关 mutation_receipts。
+- 头像只取被删档案的 avatar，且须为 `cloud://`、路径含 `/avatars/{openid}/`；内置头像不调删除。日记删除批次先收集 images，仅处理路径含 `/diary/{openid}/` 的本人文件；删除前检查存活日记/宝宝的引用，共享或无法确认的文件保留。引用扫描超过上限/失败时保留文件。云文件删除失败仅记不含 fileID 的日志，不阻断数据库清理，需存储生命周期或人工兜底，不能声称生命周期规则已部署。
+- AI 会话图片仍由 `ai-photos.js` / `aiChat/images.js` 的生命周期管理，不从会话递归收集或强删文件。报告任务已停用且租约撤销，慢响应发布受现有 enabled + lease_token 校验约束；清理只覆盖冻结快照，不宣称并发新写入、已发出的微信通知或备份会被追溯删除。
+- 本轮不处理账号删除，也不清理已下线 `expense_records` / `reminder_items`。只需重新部署 babyProfile；无 `_shared` 改动，不需同步或部署其他云函数。云端部署、生产库删除和存储生命周期配置均未执行。
+
 字段增量写入，未执行生产数据迁移/删除。部署兼容云函数后再发布小程序；旧客户端仍可发送旧基础类型和 clientRequestId。回滚前端时保留新增集合/字段，以免丢失用户记录。
-敏感数据保留周期、账号/宝宝删除流程、备份恢复目标、AI 服务商数据政策及责任人：见 `docs/legal/privacy-policy.md` 与 `docs/prd/slownote-prd.md` §7.4。AI 服务商为 DeepSeek；记录与宝宝档案在用户删除前保留，语音临时音频转写完成后删除，`ai_runs` 防重复凭据至少 30 天；宝宝档案及关联记录可在小程序内删除，账号及全部数据经联系邮箱申请、7 个工作日内处理；备份依赖微信云开发平台能力，不承诺 RPO / RTO；责任人为小程序运营者（个人开发者）。
+敏感数据保留周期、账号/宝宝删除流程、备份恢复目标、AI 服务商数据政策及责任人：见 `docs/legal/privacy-policy.md` 与 `docs/prd/slownote-prd.md` §7.4。AI 服务商为 DeepSeek；记录与宝宝档案在用户删除前保留，语音临时音频转写完成后删除，`ai_runs` 防重复凭据通常至少 30 天（删除宝宝时本人专属任务历史按上述契约清理）；宝宝档案及关联记录可在小程序内删除，账号及全部数据经联系邮箱申请、7 个工作日内处理；备份依赖微信云开发平台能力，不承诺 RPO / RTO；责任人为小程序运营者（个人开发者）。
