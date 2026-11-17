@@ -2,8 +2,9 @@
   <net-banner />
   <view class="page-heading page-top-heading"><text class="page-title">我的</text><text class="page-note">照顾宝宝，也照顾好自己。</text></view>
   <scroll-view class="mine-scroll" scroll-y enhanced show-scrollbar="{{false}}" refresher-enabled="{{true}}" refresher-triggered="{{refreshing}}" bindrefresherrefresh="onScrollRefresh">
-  <view wx:if="{{notAllowed}}" class="card">
+  <view wx:if="{{notAllowed && openid}}" class="card">
     <text class="profile-note">本小程序仅限家庭成员使用，请联系管理员</text>
+    <text class="profile-note">请复制下方 openid 并发送给管理员开通权限</text>
     <text class="profile-note" selectable="{{true}}" user-select="{{true}}">openid：{{openid}}</text>
     <button class="link-btn" bindtap="copyOpenid" aria-label="复制当前 openid">复制 openid</button>
   </view>

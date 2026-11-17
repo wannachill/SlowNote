@@ -41,7 +41,11 @@ page({
 
   copyOpenid() {
     if (!app.globalData.notAllowed || !app.globalData.openid) return
-    wx.setClipboardData({ data: app.globalData.openid })
+    wx.setClipboardData({
+      data: app.globalData.openid,
+      success: () => wx.showToast({ title: '已复制，请发送给管理员', icon: 'none' }),
+      fail: () => wx.showToast({ title: '复制失败，请长按 openid 手动复制', icon: 'none' })
+    })
   },
 
   async login() {

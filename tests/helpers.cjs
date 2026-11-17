@@ -93,7 +93,7 @@ function front(name, options = {}) {
     getStorageSync:k=>storage[k],setStorageSync:(k,v)=>{storage[k]=v},removeStorageSync:k=>{delete storage[k]},
     getAppBaseInfo:()=>({theme:options.system||'light'}),getSystemInfoSync:()=>({pixelRatio:1,theme:options.system||'light'}),
     setNavigationBarColor(){},setBackgroundColor(){},onThemeChange(){},
-    setClipboardData:arg=>calls.push({type:'copy',...arg}),
+    setClipboardData:arg=>{calls.push({type:'copy',data:arg.data});if(options.clipboardFail){if(arg.fail)arg.fail({errMsg:'copy failed'})}else if(arg.success)arg.success({})},
     createSelectorQuery:()=>({in(){return this},select(){return this},fields(){return this},exec(cb){cb([])}}),
     navigateTo:arg=>calls.push({type:'navigateTo',...arg}),switchTab:arg=>calls.push({type:'switchTab',...arg}),
     showToast:arg=>calls.push({type:'toast',...arg}),showModal:arg=>arg.success({confirm:true}),stopPullDownRefresh(){},vibrateShort(){},

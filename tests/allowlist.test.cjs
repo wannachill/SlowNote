@@ -118,15 +118,44 @@ test('login remains open and the mine tab displays and copies the current denied
   assert.equal(f.page.data.openid, 'new-family-member')
   f.page.copyOpenid()
   assert.ok(f.calls.some(call => call.type === 'copy' && call.data === 'new-family-member'))
+  assert.ok(f.calls.some(call => call.type === 'toast' && call.title === '已复制，请发送给管理员'))
   const template = fs.readFileSync('miniprogram/pages/mine/index.wxml', 'utf8')
   assert.match(template, /本小程序仅限家庭成员使用，请联系管理员/)
+  assert.match(template, /请复制下方 openid 并发送给管理员开通权限/)
   assert.match(template, /openid：\{\{openid\}\}/)
+  assert.match(template, /wx:if="\{\{notAllowed && openid\}\}"/)
+  assert.match(template, /selectable="\{\{true\}\}"/)
+
+  const normal = front('mine')
+  normal.app.globalData = { ...normal.app.globalData, loggedIn: true, notAllowed: false, openid: 'allowed-user' }
+  normal.page.refresh()
+  normal.page.copyOpenid()
+  assert.equal(normal.page.data.openid, '')
+  assert.equal(normal.calls.some(call => call.type === 'copy' || call.type === 'toast'), false)
+  assert.doesNotMatch(template, /openid：\{\{openid\}\}[^\n]*wx:if="\{\{!notAllowed\}\}"/)
+})
+
+test('mine hides and cannot copy a missing openid, and clipboard failure explains the fallback', () => {
+  const noId = front('mine')
+  noId.app.globalData = { ...noId.app.globalData, notAllowed: true, openid: '' }
+  noId.page.refresh()
+  noId.page.copyOpenid()
+  assert.equal(noId.page.data.openid, '')
+  assert.equal(noId.calls.some(call => call.type === 'copy'), false)
+
+  const failed = front('mine', { clipboardFail: true })
+  failed.app.globalData = { ...failed.app.globalData, notAllowed: true, openid: 'copy-fail-user' }
+  failed.page.refresh()
+  failed.page.copyOpenid()
+  assert.ok(failed.calls.some(call => call.type === 'toast' && call.title === '复制失败，请长按 openid 手动复制'))
 })
 
 test('initializeSession probes once and skips profile loading for denied accounts', async () => {
   const f = front('mine')
   let definition, profileCalls = 0, checks = 0
+  const callOrder = []
   f.wx.cloud.callFunction = async ({ name }) => {
+    callOrder.push(name)
     if (name === 'login') return { result: { code: 0, openid: 'outsider' } }
     if (name === 'aiSettings') { checks++; return { result: { code: 403, message: 'NOT_ALLOWED' } } }
     if (name === 'babyProfile') profileCalls++
@@ -138,6 +167,7 @@ test('initializeSession probes once and skips profile loading for denied account
   assert.equal(definition.globalData.openid, 'outsider')
   assert.equal(profileCalls, 0)
   assert.equal(checks, 1)
+  assert.deepEqual(callOrder.slice(0, 2), ['login', 'aiSettings'])
   assert.equal(f.calls.filter(call => call.type === 'toast').length, 0)
   definition.logout()
   assert.equal(definition.globalData.notAllowed, false)
