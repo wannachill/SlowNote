@@ -24,7 +24,7 @@ test('home blocks the add panel without a baby and offers a confirmed route to b
   assert.ok(f.calls.some(call => call.type === 'navigateTo' && call.url === '/pages/baby/index'))
 })
 
-test('home leaves FAB behavior unchanged, shows an empty-state guide, and only opens category panel with a baby', () => {
+test('home keeps its normal empty state and only opens the category panel with a baby', () => {
   const f = front('index')
   f.app.globalData.activeBabyId = 'baby-a'
   f.page.refreshProfile()
@@ -35,7 +35,8 @@ test('home leaves FAB behavior unchanged, shows an empty-state guide, and only o
   assert.equal(f.page.data.panel, true)
   assert.equal(f.page.data.hasBaby, true)
   const markup = fs.readFileSync('miniprogram/pages/index/index.wxml', 'utf8')
-  assert.match(markup, /wx:elif="\{\{!hasBaby\}\}"[^>]*>[\s\S]*?还没有宝宝档案[\s\S]*?添加宝宝后即可开始记录[\s\S]*?bindtap="goBaby"[^>]*>去添加宝宝/)
+  assert.doesNotMatch(markup, /添加宝宝后即可开始记录|去添加宝宝|bindtap="goBaby"/)
+  assert.match(markup, /这一天，还没有记录/)
   f.app.globalData.activeBabyId = ''
   f.page.onSessionChange()
   assert.equal(f.page.data.hasBaby, false)
