@@ -31,6 +31,12 @@ async function access(db, openid) {
   const familyId = membership.data.length ? membership.data[0].familyId : ''
   return { openid, familyId, scope: familyId ? { family_id: familyId } : { openid }, ownerKey: familyId ? `family:${familyId}` : `user:${openid}` }
 }
+async function requireBaby(db, accessContext, babyId) {
+  if (typeof babyId !== 'string' || !babyId || babyId.length > 64) fail(400, 'INVALID_BABY_ID')
+  const baby = (await db.collection('babies').where({ ...accessContext.scope, _id: babyId }).limit(1).get()).data[0]
+  if (!baby) fail(404, 'BABY_NOT_FOUND')
+  return { ...accessContext.scope, baby_id: babyId }
+}
 async function all(db, collection, condition, max = 10000) {
   const result = []; let cursor = ''
   while (true) {
@@ -88,3 +94,4 @@ async function mutateOnce(db, openid, event, operation, handler) {
   })
 }
 module.exports = { hash, fail, key, validDate, requestId, text, number, identity, access, all, createOnce, endpoint, readDoc, mutateOnce }
+module.exports.requireBaby = requireBaby

@@ -62,7 +62,7 @@ function memoryDb(seed = {}) {
   return db
 }
 function seed() {
-  return { users: [{_id:'user-a',openid:'user-a'},{_id:'user-b',openid:'user-b'}], family_members: [], babies: [] }
+  return { users: [{_id:'user-a',openid:'user-a'},{_id:'user-b',openid:'user-b'}], family_members: [], babies: [{ _id:'baby-a', baby_id:'baby-a', openid:'user-a', nickname:'测试宝宝' }] }
 }
 function load(file, globals = {}, substitutions = {}) {
   const cache = new Map()

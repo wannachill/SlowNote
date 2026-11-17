@@ -1,5 +1,5 @@
 // 云函数：milestoneRecord —— 宝宝个性化成长里程碑
-const { endpoint, access, all, createOnce, mutateOnce, requestId, hash, validDate, key: todayKey, fail, text } = require('./lib/runtime')
+const { endpoint, access, requireBaby, all, createOnce, mutateOnce, requestId, hash, validDate, key: todayKey, fail, text } = require('./lib/runtime')
 
 const MILESTONES = [
   ['lift_head', 1, '大运动', '俯卧时能抬起头'], ['follow_eye', 1, '精细动作', '眼睛能追视移动的物体'],
@@ -56,12 +56,6 @@ async function ensureDefsCollection(db) {
     try { await db.createCollection('milestone_defs') }
     catch (createError) { if (!isExistingCollection(createError)) throw createError }
   }
-}
-async function requireBaby(db, scope, babyId) {
-  if (typeof babyId !== 'string' || !babyId || babyId.length > 64) fail(400, 'INVALID_BABY_ID')
-  const baby = (await db.collection('babies').where({ ...scope.scope, _id: babyId }).limit(1).get()).data[0]
-  if (!baby) fail(404, 'BABY_NOT_FOUND')
-  return babyCondition(scope, babyId)
 }
 function defId(ownerKey, babyId, milestoneKey) { return hash(`milestone-def:${ownerKey}:${babyId}:${milestoneKey}`) }
 async function ensureBuiltins(db, scope, babyId) {

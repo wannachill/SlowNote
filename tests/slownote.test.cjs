@@ -94,7 +94,7 @@ test('aggregation paginates beyond the database default and uses latest non-empt
   assert.equal(r.summary.growth.count,205);assert.equal(r.summary.growth.height.latest,60);assert.equal(r.summary.growth.weight.latest,7)
 })
 test('feeding preserves legacy contract and makes concurrent writes idempotent',async()=>{
-  const db=memoryDb(seed()),api=service('feedingRecord',db),event={type:'feed',payload:{mode:'bottle',amountMl:90},recordDate:'2026-10-20',clientRequestId:request}
+  const db=memoryDb(seed()),api=service('feedingRecord',db),event={type:'feed',payload:{mode:'bottle',amountMl:90},recordDate:'2026-10-20',baby_id:'baby-a',clientRequestId:request}
   const results=await Promise.all([api.main(event),api.main(event)])
   assert(results.every(r=>r.code===0));assert.equal(db.rows('feeding_records').length,1)
   assert.equal(db.rows('feeding_records')[0].type,'feed')
@@ -103,10 +103,10 @@ test('feeding preserves legacy contract and makes concurrent writes idempotent',
 })
 test('excretion keeps stool and urine kinds and legacy records default to stool',async()=>{
   const db=memoryDb(seed()),api=service('feedingRecord',db)
-  const stool={type:'excretion',payload:{kind:'stool',count:2,shape:'正常'},recordDate:'2026-10-21',clientRequestId:request}
-  const urine={type:'excretion',payload:{kind:'urine',count:3,urineMl:120},recordDate:'2026-10-21',clientRequestId:'request-2'}
-  const solid={type:'solid',payload:{name:'南瓜泥',amountG:80,note:'旧记录'},recordDate:'2026-10-21',clientRequestId:'request-solid'}
-  const legacy={type:'excretion',payload:{count:1},recordDate:'2026-10-20',clientRequestId:'request-3'}
+  const stool={type:'excretion',payload:{kind:'stool',count:2,shape:'正常'},recordDate:'2026-10-21',baby_id:'baby-a',clientRequestId:request}
+  const urine={type:'excretion',payload:{kind:'urine',count:3,urineMl:120},recordDate:'2026-10-21',baby_id:'baby-a',clientRequestId:'request-2'}
+  const solid={type:'solid',payload:{name:'南瓜泥',amountG:80,note:'旧记录'},recordDate:'2026-10-21',baby_id:'baby-a',clientRequestId:'request-solid'}
+  const legacy={type:'excretion',payload:{count:1},recordDate:'2026-10-20',baby_id:'baby-a',clientRequestId:'request-3'}
   assert.equal((await api.main(stool)).code,0);assert.equal((await api.main(urine)).code,0);assert.equal((await api.main(solid)).code,0);assert.equal((await api.main(legacy)).code,0)
   assert.equal(db.rows('feeding_records').find(r=>r.payload.kind==='stool').payload.shape,'正常')
   assert.equal(Object.hasOwn(db.rows('feeding_records').find(r=>r.payload.kind==='urine').payload,'urineMl'),false)
@@ -121,7 +121,7 @@ test('excretion keeps stool and urine kinds and legacy records default to stool'
   assert.equal(listed.records.find(row=>row.id==='old-urine').payload.urineMl,90)
 })
 test('custom records are scoped, validated, and saved once',async()=>{
-  const db=memoryDb(seed()),api=service('customRecord',db),event={category:'custom',label:'饮水',value:30,unit:'ml',recordDate:'2026-10-21',clientRequestId:request}
+  const db=memoryDb(seed()),api=service('customRecord',db),event={category:'custom',label:'饮水',value:30,unit:'ml',recordDate:'2026-10-21',baby_id:'baby-a',clientRequestId:request}
   assert.equal((await api.main(event)).code,0);assert.equal((await api.main(event)).duplicate,true)
   assert.equal((await api.main({action:'list',recordDate:'2026-10-21'})).records.length,1)
   assert.equal((await api.main({...event,value:-1})).code,400)
@@ -490,7 +490,7 @@ test('missing task consent pauses analysis and notifications remain private',asy
   assert.equal((await other.main({action:'read',id:db.rows('ai_notifications')[0]._id,clientRequestId:request})).code,404)
 })
 test('FAB category routes preserve selected date and keep every category available',async()=>{
-  const f=front('index');await f.page.onLoad({});f.page.refreshProfile()
+  const f=front('index');f.app.globalData.activeBabyId='baby-a';await f.page.onLoad({});f.page.refreshProfile()
   f.page.setDate('2026-10-20',false);f.page.openPanel()
   assert.equal(f.page.data.panel,true)
   f.page.chooseCategory({currentTarget:{dataset:{key:'feeding'}}})
@@ -506,8 +506,8 @@ test('protected pages cannot load cloud data after local logout',async()=>{
 })
 test('legacy auto-ID records are recognized on idempotent retry',async()=>{
   const data=seed()
-  data.feeding_records=[{_id:'old-auto-id',openid:'user-a',client_request_id:request,type:'feed',payload:{mode:'bottle',amountMl:90},created_at:NOW}]
-  const db=memoryDb(data),r=await service('feedingRecord',db).main({type:'feed',payload:{mode:'bottle',amountMl:90},clientRequestId:request})
+  data.feeding_records=[{_id:'old-auto-id',openid:'user-a',baby_id:'baby-a',client_request_id:request,type:'feed',payload:{mode:'bottle',amountMl:90},created_at:NOW}]
+  const db=memoryDb(data),r=await service('feedingRecord',db).main({type:'feed',payload:{mode:'bottle',amountMl:90},baby_id:'baby-a',clientRequestId:request})
   assert.equal(r.code,0);assert.equal(r.duplicate,true);assert.equal(db.rows('feeding_records').length,1)
 })
 test('monthly report entry point and cloud function are retired',()=>{
@@ -549,7 +549,7 @@ test('retired family and expense entry points are absent while storage contracts
 })
 test('diary rejects cloud images owned by another account',async()=>{
   const api=service('diaryRecord',memoryDb(seed()))
-  assert.equal((await api.main({content:'记录',images:['cloud://test/diary/user-b/photo.jpg'],clientRequestId:request})).code,400)
+  assert.equal((await api.main({content:'记录',images:['cloud://test/diary/user-b/photo.jpg'],baby_id:'baby-a',clientRequestId:request})).code,400)
 })
 test('failed saves keep retry identity and cannot show success',async()=>{
   const f=front('feeding',{callFunction:async()=>({result:{code:503}})})

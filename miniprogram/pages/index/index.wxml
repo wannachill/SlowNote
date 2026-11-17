@@ -58,6 +58,7 @@
   </view>
   </view>
   <view wx:elif="{{activeTags.length}}" class="empty-illustration"><view class="empty-book" aria-hidden="true"></view><text class="empty-title">没有该类型的记录</text><text class="empty-note">点上方已选中的标签取消筛选</text></view>
+  <view wx:elif="{{!hasBaby}}" class="empty-illustration"><view class="empty-book" aria-hidden="true"></view><text class="empty-title">还没有宝宝档案</text><text class="empty-note">添加宝宝后即可开始记录</text><button class="btn-primary" bindtap="goBaby" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}">去添加宝宝</button></view>
   <view wx:else class="empty-illustration"><view class="empty-book" aria-hidden="true"></view><text class="empty-title">这一天，还没有记录</text></view>
   </scroll-view>
   <button class="record-fab motion-primary {{motionRippleId === 'motion-index-1' ? 'ripple-' + motionRipplePhase : ''}}" bindtap="openPanel" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" aria-label="添加记录" id="motion-index-1" bindtouchstart="motionPress" style="{{motionRippleId === 'motion-index-1' ? motionRippleStyle : ''}}"><view class="fab-plus" aria-hidden="true"></view></button>

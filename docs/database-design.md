@@ -42,6 +42,7 @@ AI 任务 categories 为 `feeding/excretion/solid/growth/diary/milestone/custom`
 家庭管理与迁移入口/函数已下线；数据库中既有 `families`、`family_members` 与 `family_id` 数据继续保留用于兼容 scope，不代表家庭管理界面仍可用。旧药品/护理日常记录集合已退出当前数据模型。
 
 ## 4. 幂等与并发
+- 新增登记的宝宝归属契约（2026-11-17）：`feedingRecord` / `growthRecord` / `diaryRecord` / `customRecord` 仅在 add 分支调用共享 `requireBaby(db, context, babyId)`；baby_id 必填、类型为字符串且长度不超过 64，并以可信 context.scope + babies._id 确认当前个人/家庭归属。空值/类型错误返回 400 INVALID_BABY_ID，不存在/越权返回 404 BABY_NOT_FOUND。list/listDate/listToday 以及 statistics / aiTasks / aiReport 中空 baby_id 仍表示全部宝宝，不设全局拦截。历史 baby_id:'' 记录不由本次校验迁移或删除。
 - 客户端带 clientRequestId，服务端存 client_request_id；别名 client_request_id 亦可接收。新记录确定性主键 + 原子 add，数据库主键阻止并发重复。兼容已有 auto ID 的 client_request_id 去重。
 - 可变配置在 runTransaction 中检查 mutation_receipts 并更新对象/回执；同一个请求即使隔着其他更新重放，也不会把新状态回滚为旧状态。
 - AI 调度：按到期时间排序取十条；匹配原 next_run_at 与过期 lease_until 后原子认领，租约180秒，并发二。运行/通知 ID 基于原计划时刻，不因重复触发产生新通知。
