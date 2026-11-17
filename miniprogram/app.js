@@ -5,6 +5,7 @@ App({
     openid: '',
     nickname: '',
     loggedIn: false,
+    notAllowed: false,
     initialized: false,
     online: null,
     netError: null,
@@ -63,16 +64,29 @@ App({
           this.globalData.openid = r.openid
           this.globalData.nickname = r.nickname || ''
           this.globalData.loggedIn = true
+          this.globalData.notAllowed = false
           wx.removeStorageSync('slownote_signed_out')
+          const check = (await wx.cloud.callFunction({ name: 'aiSettings', data: { action: 'checkAccess' } })).result
+          if (generation !== (this._sessionGeneration || 0)) return
+          if (check && check.code === 403 && check.message === 'NOT_ALLOWED') {
+            this.globalData.notAllowed = true
+            this.globalData.babies = []
+            this.globalData.activeBabyId = ''
+            this.globalData.baby = null
+            require('./utils/page-cache').clear()
+            require('./utils/ai-settings').clearCache()
+          }
         }
       } catch (e) { /* 弱网/未部署时保持未登录态 */ }
 
     }
+    if (generation !== (this._sessionGeneration || 0)) return
     this.globalData.initialized = true
     if (this.globalData.loggedIn) await this.loadProfile()
   },
 
   async loadProfile() {
+    if (this.globalData.notAllowed) return
     const revision = this._themeRevision || 0, generation = this._sessionGeneration || 0
     try {
       const r = (await wx.cloud.callFunction({ name: 'babyProfile', data: { action: 'get' } })).result
@@ -127,10 +141,10 @@ App({
     return this.syncTheme()
   },
   async syncTheme() {
-    if (!this.globalData.loggedIn) return false
+    if (!this.globalData.loggedIn || this.globalData.notAllowed) return false
     const pref = theme.preference(), revision = this._themeRevision || 0, generation = this._sessionGeneration || 0
     this._themeSync = (this._themeSync || Promise.resolve()).catch(() => false).then(async () => {
-      if (!this.globalData.loggedIn || generation !== (this._sessionGeneration || 0)) return false
+      if (!this.globalData.loggedIn || this.globalData.notAllowed || generation !== (this._sessionGeneration || 0)) return false
       try {
         const r = (await wx.cloud.callFunction({ name: 'babyProfile', data: { action: 'theme', theme_pref: pref, clientRequestId: `theme-${Date.now()}-${revision}` } })).result
         if (generation !== (this._sessionGeneration || 0)) return false
@@ -146,7 +160,7 @@ App({
     wx.setStorageSync('slownote_signed_out', true)
     require('./utils/page-cache').clear()
     require('./utils/ai-settings').clearCache()
-    Object.assign(this.globalData, { openid: '', nickname: '', babies: [], activeBabyId: '', baby: null, loggedIn: false, initialized: true })
+    Object.assign(this.globalData, { openid: '', nickname: '', babies: [], activeBabyId: '', baby: null, loggedIn: false, notAllowed: false, initialized: true })
     getCurrentPages().forEach(page => { if (page.onSessionChange) page.onSessionChange() })
   }
 })

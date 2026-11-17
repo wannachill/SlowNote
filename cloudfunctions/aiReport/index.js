@@ -1,7 +1,7 @@
 const cloud = require('wx-server-sdk')
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
-const { access, hash, createOnce, all } = require('./lib/runtime')
+const { access, hash, createOnce, all, isAllowed } = require('./lib/runtime')
 const { aggregate } = require('./lib/aggregation')
 const { buildDetails, MESSAGE_LIMIT, clipText } = require('./lib/record-details')
 const { nextRun, reportWindow } = require('./lib/schedule')
@@ -46,6 +46,7 @@ async function sendNotice(openid, now, result) {
   }
 }
 async function processTask(task, now) {
+  if (!await isAllowed(db, task.openid)) return false
   const token = hash(`${task._id}:${+now}:${Math.random()}`), slot = new Date(task.next_run_at).toISOString(), runId = hash(`${task._id}:${slot}`)
   const claim = await db.collection('ai_tasks').where({ _id: task._id, enabled: true, next_run_at: task.next_run_at, lease_until: db.command.lte(now) }).update({ data: { lease_token: token, lease_until: new Date(+now + 180000) } })
   if (!claim.stats.updated) return false
@@ -115,3 +116,4 @@ exports.main = async (event = {}) => {
   } catch (error) { return { code: 503, message: 'REPORT_SERVICE_UNAVAILABLE' } }
 }
 exports.sendNotice = sendNotice
+exports.processTask = processTask
