@@ -120,7 +120,7 @@ test('native textarea is disabled before short tap classification and has no ove
   assert.match(styles, /\.voice-touch-zone\s*\{[^}]*position:\s*absolute;[^}]*inset:\s*0/)
 })
 
-test('input and both action buttons share a centered control height without doubled textarea padding', () => {
+test('input, placeholder and both action buttons share the same vertical center', () => {
   for (const selector of ['send-button', 'input-tool']) {
     const rule = styles.match(new RegExp('(?:^|\\n)\\.' + selector + '\\s*\\{([^}]+)\\}'))[1]
     assert.match(rule, /height:\s*var\(--control-height\)/)
@@ -130,6 +130,15 @@ test('input and both action buttons share a centered control height without doub
   assert.match(styles, /\.chat-input-shell\s*\{[^}]*min-height:\s*var\(--control-height\)/)
   assert.match(styles, /\.chat-input\s*\{[^}]*min-height:\s*calc\(var\(--font-body\) \* var\(--line-body\)\)[^}]*padding:\s*0;/)
   assert.match(styles, /\.input-tool-count\s*\{[^}]*position:\s*absolute/)
+  const placeholder = styles.match(/\.chat-input-placeholder\s*\{([^}]+)\}/)[1]
+  assert.match(placeholder, /position:\s*absolute;[\s\S]*inset:\s*0;/)
+  assert.match(placeholder, /display:\s*flex;[\s\S]*align-items:\s*center;/)
+  assert.match(placeholder, /padding:\s*0 var\(--space-s\);/)
+  assert.match(placeholder, /pointer-events:\s*none;/)
+  assert.doesNotMatch(placeholder, /translate|margin-top|padding-top/)
+  assert.match(template, /<textarea[^>]*placeholder=""/)
+  assert.match(template, /wx:if="\{\{!question && !recording && !voiceTranscribing\}\}" class="chat-input-placeholder" aria-hidden="true"/)
+  assert.match(styles, /\.chat-input-placeholder-text\s*\{[^}]*white-space:\s*nowrap;[^}]*text-overflow:\s*ellipsis;/)
   const input = template.slice(template.indexOf('<view class="chat-input-shell'), template.indexOf('<button class="btn-primary send-button'))
   assert.match(input, /class="recording-tip"/)
   assert.doesNotMatch(template.slice(0, template.indexOf('<view class="compose-box">')), /class="recording-tip"/)

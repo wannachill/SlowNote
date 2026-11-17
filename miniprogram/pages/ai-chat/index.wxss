@@ -447,6 +447,25 @@
   opacity: 0;
   pointer-events: none;
 }
+.chat-input-placeholder {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  padding: 0 var(--space-s);
+  pointer-events: none;
+  color: var(--color-text-3);
+  font-size: var(--font-body);
+  line-height: var(--line-body);
+}
+.chat-input-placeholder-text {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
 .send-arrow {
   display: block;
   width: var(--icon-size);
