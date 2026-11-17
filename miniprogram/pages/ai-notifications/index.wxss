@@ -169,3 +169,9 @@
   background: var(--color-field);
   font-family: monospace;
 }
+
+.page.swipe-page { height: 100vh; min-height: 0; display: flex; flex-direction: column; overflow: hidden; padding-bottom: 0; }
+.swipe-page > .sub-nav { flex-shrink: 0; }
+.swipe-list-scroll { flex: 1; min-height: 0; height: 0; width: 100%; }
+
+.swipe-list-content { padding-bottom: calc(var(--space-m) + env(safe-area-inset-bottom)); }

@@ -1,5 +1,7 @@
-<view class="theme-root {{themeClass}} page">
+<view class="theme-root {{themeClass}} page swipe-page">
   <view class="sub-nav" style="height: calc({{statusBarHeight}}px + var(--nav-height)); padding-top: {{statusBarHeight}}px;"><button class="sub-nav-back" bindtap="goBack" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" aria-label="返回"></button><text class="sub-nav-title">定时报告</text><view class="sub-nav-spacer" aria-hidden="true"></view></view>
+  <scroll-view class="swipe-list-scroll" scroll-y="{{!swipeScrollLocked}}" enhanced show-scrollbar="{{false}}">
+  <view class="swipe-list-content">
 
   <!-- 一句话说明：只讲关键行为，不写界面自明的操作 -->
   <view class="page-tip">按设定频率生成，默认保存在站内通知；可单独开启微信推送。</view>
@@ -15,10 +17,9 @@
     <view wx:elif="{{!items.length}}" class="empty"><text class="empty-title">还没有报告任务</text><text class="empty-note">点上方「＋ 添加」。</text></view>
     <view wx:for="{{items}}" wx:key="_id" class="task-swipe {{item.swipeX ? 'swipe-open' : ''}}" data-id="{{item._id}}">
       <view class="swipe-actions">
-        <button class="swipe-action edit-action" data-id="{{item._id}}" catchtap="startEdit" hover-class="tap-feedback" aria-label="编辑报告任务">编辑</button>
         <button class="swipe-action delete-action" data-id="{{item._id}}" catchtap="remove" hover-class="tap-feedback" aria-label="删除报告任务">删除</button>
       </view>
-      <view class="task-item {{motionSetting && motionSettingKey === item._id ? 'setting-flash' : ''}}" data-id="{{item._id}}" style="transform: translate({{item.swipeX}}px, 0);" bindtap="onCardTap" bindtouchstart="onCardTouchStart" bindtouchmove="onCardTouchMove" bindtouchend="onCardTouchEnd" bindtouchcancel="onCardTouchEnd" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}">
+      <view class="task-item {{motionSetting && motionSettingKey === item._id ? 'setting-flash' : ''}}" data-id="{{item._id}}" style="transform: translate({{item.swipeX}}px, 0);" bindtap="onCardTap" bindtouchstart="onCardTouchStart" bindtouchmove="onCardTouchMove" bindtouchend="onCardTouchEnd" bindtouchcancel="onCardTouchCancel" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}">
         <view class="task-main">
           <text class="title">{{item.headline}}</text>
           <text class="form-note">{{item.scheduleText}}</text>
@@ -34,6 +35,7 @@
     </view>
   </view>
 
+  </view></scroll-view>
   <!-- 新增 / 编辑报告任务面板 -->
   <view wx:if="{{panel}}" class="mask {{closing ? 'closing' : ''}}" bindtap="closePanel">
     <view class="sheet {{closing ? 'closing' : ''}}" catchtap="noop">

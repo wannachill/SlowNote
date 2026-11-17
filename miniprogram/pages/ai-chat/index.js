@@ -9,7 +9,7 @@ const SNAPSHOT_PREVIEW_LINES = 5
 const INPUT_HOLD_MS = 350
 const INPUT_HOLD_MOVE_TOLERANCE = 12
 page({
-  data: { messages: [], messageViews: [], typingMessageId: '', activeMessageId: '', activeMessageIndex: -1, activeQuestionSummary: '', pickMode: false, picked: {}, pickedCount: 0, editing: null, quote: null, focusInput: false, thinkOpen: {}, question: '', images: [], liveTranscript: '', selecting: false, sending: false, keyboardHeight: 0, scrollInto: '', showJumpBottom: false, error: '', attachLabel: '', attaching: false, commonList: [], showThinking: false, thinkingSettingsReady: false, statusBarHeight: 20 },
+  data: { messages: [], messageViews: [], typingMessageId: '', activeMessageId: '', activeMessageIndex: -1, activeQuestionSummary: '', pickMode: false, picked: {}, pickedCount: 0, editing: null, quote: null, focusInput: false, inputCursor: -1, thinkOpen: {}, question: '', images: [], liveTranscript: '', selecting: false, sending: false, keyboardHeight: 0, scrollInto: '', showJumpBottom: false, error: '', attachLabel: '', attaching: false, commonList: [], showThinking: false, thinkingSettingsReady: false, statusBarHeight: 20 },
   onLoad(options) {
     this._disposed = false
     this._batch = []
@@ -69,7 +69,14 @@ page({
     this._cancelTyping()
     this._cancelReasoningPlayback()
   },
-  onInput(e) { if (!this.data.sending && !this.data.attaching) this.setData({ question: e.detail.value }) },
+  onInput(e) {
+    if (!this.data.sending && !this.data.attaching && !this.data.recording && !this.data.selecting) this.setData({ question: e.detail.value, inputCursor: Number.isFinite(e.detail.cursor) ? e.detail.cursor : -1 })
+  },
+  onInputBlur() { this.setData({ focusInput: false }) },
+  focusTextInput() {
+    if (this._disposed || this._inputHoldFired || this._inputTouchMoved || this._voiceActive || this.data.recording || this.data.selecting || this.data.sending || this.data.attaching) return
+    this.setData({ focusInput: true })
+  },
   onKeyboardHeight(e) {
     if (this._disposed) return
     this.setData({ keyboardHeight: Math.max(0, Number(e.detail.height) || 0) }, () => {
@@ -181,12 +188,12 @@ page({
       if (!this._disposed) { wx.hideLoading(); wx.showToast({ title: '载入失败，请稍后重试', icon: 'none' }) }
     } finally { this._loading = false }
   },
-  _persist() {
-    if (!this.data.messages.length) {
-      sessions.removeSession(app.globalData.openid || '', this._sessionId).catch(() => {})
-      return
-    }
-    sessions.saveSession(app.globalData.openid || '', this._sessionId, this.data.messages)
+  _persist(strict = false) {
+    const pending = this.data.messages.length
+      ? sessions.saveSession(app.globalData.openid || '', this._sessionId, this.data.messages, strict)
+      : sessions.removeSession(app.globalData.openid || '', this._sessionId)
+    if (strict) return pending
+    return pending.catch(() => {})
   },
   _reasonNodes(message) {
     const reasons = this._reasonCache || (this._reasonCache = Object.create(null))
@@ -292,13 +299,17 @@ page({
   cancelPickMode() { this.setData({ pickMode: false, picked: {}, pickedCount: 0, messageViews: this._messageViews(this.data.messages, {}) }) },
   deletePicked() {
     const ids = Object.keys(this.data.picked || {})
-    if (!ids.length || this.data.sending || this.data.typingMessageId) return
+    if (this._deletePending || !ids.length || this.data.sending || this.data.typingMessageId) return
     wx.showModal({
       title: '删除问答',
       content: `将删除 ${ids.length} 组问答，删除后无法恢复`,
       confirmText: '删除', cancelText: '取消',
-      success: result => {
+      success: async result => {
         if (!result.confirm || this._disposed) return
+        if (this._deletePending) return
+        this._deletePending = true
+        const sessionId = this._sessionId, openid = app.globalData.openid
+        const original = this.data.messages.slice()
         const selected = new Set(ids), removed = new Set()
         let currentUserId = ''
         const messages = this.data.messages.filter(message => {
@@ -309,7 +320,17 @@ page({
         })
         removed.forEach(id => { delete this._nodeCache[id]; delete this._reasonCache[id] })
         this.setData({ pickMode: false, picked: {}, pickedCount: 0, messages, messageViews: this._messageViews(messages, {}) })
-        this._persist()
+        try { await this._persist(true) }
+        catch (error) {
+          if (!this._disposed && this._sessionId === sessionId && app.globalData.openid === openid) {
+            const restored = this.data.messages.slice()
+            original.forEach((message, index) => {
+              if (removed.has(message.id) && !restored.some(item => item.id === message.id)) restored.splice(Math.min(index, restored.length), 0, message)
+            })
+            this.setData({ messages: restored, messageViews: this._messageViews(restored, {}) })
+            wx.showToast({ title: '删除失败，请重试', icon: 'none' })
+          }
+        } finally { this._deletePending = false }
       }
     })
   },
@@ -449,7 +470,7 @@ page({
   clearInputHold() {
     if (this._inputHoldTimer) { clearTimeout(this._inputHoldTimer); this._inputHoldTimer = null }
   },
-  // textarea 与外层 view 同时绑定：原生组件不冒泡时仍能收到手势，重复派发由 _inputTouchActive 去重。
+  // 透明热区与外层 shell 双绑，原生 textarea 不接触摸；重复派发由 _inputTouchActive 去重。
   onInputTouchStart(e) {
     if (this._inputTouchActive || this.data.sending || this.data.selecting || this.data.attaching || this.data.recording) return
     const touch = e.touches && e.touches[0]
@@ -457,10 +478,12 @@ page({
     this._inputTouchX = touch ? touch.clientX : 0
     this._inputTouchY = touch ? touch.clientY : 0
     this._inputTouchMoved = false
+    this._inputHoldFired = false
     this.clearInputHold()
     this._inputHoldTimer = setTimeout(() => {
       this._inputHoldTimer = null
       if (this._disposed || !this._inputTouchActive || this._inputTouchMoved) return
+      this._inputHoldFired = true
       this.startVoice()
     }, INPUT_HOLD_MS)
   },
@@ -480,6 +503,7 @@ page({
     if (this._voiceActive) this.stopVoice({ type: 'touchend' })
   },
   onInputTouchCancel() {
+    this._inputTouchMoved = true
     if (!this._inputTouchActive) return
     this._inputTouchActive = false
     this.clearInputHold()
@@ -624,7 +648,7 @@ page({
   },
   // —— 提问 ——
   async onSuggest(e) {
-    if (this.data.sending || this.data.selecting || this.data.attaching || this.data.pickMode || this._preparing) return
+    if (this._deletePending || this.data.sending || this.data.selecting || this.data.attaching || this.data.pickMode || this._preparing) return
     const s = e.currentTarget.dataset.s
     const range = (s && s.range) || detectRange(s.text)
     this.setData({ question: s.text })
@@ -748,7 +772,7 @@ page({
     }
   },
   async send(suggestedQuestion, suggestedRange, suggestedCategories) {
-    if (this.data.sending || this.data.selecting || this.data.attaching || this.data.pickMode || this._preparing) return
+    if (this._deletePending || this.data.sending || this.data.selecting || this.data.attaching || this.data.pickMode || this._preparing) return
     const currentQuestion = typeof suggestedQuestion === 'string' ? suggestedQuestion : this.data.question
     if (!currentQuestion.trim() && !this.data.images.length) return
     if (this.data.editing) { this._replaceEditedQuestion(currentQuestion); return }

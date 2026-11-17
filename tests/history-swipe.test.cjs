@@ -19,7 +19,7 @@ test('历史对话改为左滑露出删除，不再常显删除图标', () => {
   assert.match(wxml, /bindtouchstart="onCardTouchStart"/)
   assert.match(wxml, /bindtouchmove="onCardTouchMove"/)
   assert.match(wxml, /bindtouchend="onCardTouchEnd"/)
-  assert.match(wxml, /bindtouchcancel="onCardTouchEnd"/)
+  assert.match(wxml, /bindtouchcancel="onCardTouchCancel"/)
   assert.match(wxml, /style="transform: translate\(\{\{item\.swipeX\}\}px, 0\);?"/)
   assert.match(wxml, /aria-label="删除对话\{\{item\.title\}\}"/)
   assert.match(wxml, /aria-label="查看对话\{\{item\.title\}\}"/)
@@ -28,8 +28,9 @@ test('历史对话改为左滑露出删除，不再常显删除图标', () => {
 })
 
 test('删除动作宽度与历史报告一致，样式沿用设计 token', () => {
-  assert.match(js, /ACTION_WIDTH_RPX = 110/)
-  assert.match(js, /setListItemFields|setListFields/)
+  assert.match(js, /createSwipe\(\{ list: 'list', field: 'sessionId' \}\)/)
+  assert.equal(front('ai-history').page.actionWidth(), 55)
+  assert.match(fs.readFileSync('miniprogram/utils/swipe-gesture.js', 'utf8'), /setListItemFields|setListFields/)
   assert.match(wxss, /width: calc\(var\(--swipe-action-width\) \/ 2\)/)
   assert.match(wxss, /transition: transform var\(--motion-feedback\) var\(--curve-spring\)/)
   assert.match(wxss, /background: var\(--color-notice\)/)

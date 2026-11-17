@@ -43,11 +43,15 @@ test('editing a baby prefills the sheet and closes any open swipe', () => {
   assert.equal(page.data.babies[0].swipeX, 0)
 })
 
-test('tapping a card switches the current baby unless a swipe is open', () => {
+test('tapping opens the editor and its explicit action switches the baby', () => {
   const { page, app } = withBabies()
   page.refresh()
   page.onCardTap({ currentTarget: { dataset: { id: 'baby-b' } } })
+  assert.equal(app.globalData.activeBabyId, 'baby-a')
+  assert.equal(page.data.editingBabyId, 'baby-b')
+  page.setCurrentBaby()
   assert.equal(app.globalData.activeBabyId, 'baby-b')
+  assert.equal(page.data.panel, false)
   page.setData({ babies: page.data.babies.map(b => ({ ...b, swipeX: b.baby_id === 'baby-a' ? -100 : 0 })) })
   page.onCardTap({ currentTarget: { dataset: { id: 'baby-a' } } })
   assert.equal(app.globalData.activeBabyId, 'baby-b', 'tap on an open swipe must not switch the baby')

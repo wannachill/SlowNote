@@ -235,7 +235,7 @@
 .metric-slot:last-child .metric-rail-line { bottom: 0; }
 .metric-rail-node { position: absolute; left: calc(var(--rail-gutter) / 2); top: calc(var(--rail-time-height) / 2); transform: translate(-50%, -50%); width: var(--icon-small); height: var(--icon-small); border-radius: var(--radius-round); background: var(--color-accent-ink); box-shadow: 0 0 0 calc(var(--space-xs) / 2) var(--color-bg); }
 .metric-rail-time { display: block; height: var(--rail-time-height); margin-bottom: var(--space-xs); color: var(--color-text-2); font-size: var(--font-caption); line-height: var(--rail-time-height); font-variant-numeric: tabular-nums; }
-.metric-lift, .metric-wiggle {
+.metric-lift {
   display: flex;
   flex: 1;
   min-width: 0;
@@ -252,53 +252,15 @@
 .metric-item { display: inline-flex; flex-wrap: nowrap; align-items: baseline; min-width: 0; max-width: 100%; gap: var(--space-xs); }
 .metric-item-label { color: var(--color-text-2); font-size: var(--font-caption); overflow-wrap: anywhere; }
 .metric-item-value { color: var(--color-text-1); font-size: var(--font-caption); font-weight: var(--weight-medium); font-variant-numeric: tabular-nums; text-align: right; overflow-wrap: anywhere; }
-.cards-editing .metric-wiggle { animation: card-wiggle var(--card-wiggle-duration) ease-in-out var(--card-wiggle-delay) infinite alternate; }
-.card-removing .metric-lift { animation: card-remove var(--motion-card-shift) var(--curve-spring) both; }
-.card-removing .metric-wiggle { animation: none; }
-.card-remove {
-  position: absolute;
-  top: calc(var(--space-xs) * -1);
-  right: calc(var(--space-xs) * -1);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: var(--control-height);
-  height: var(--control-height);
-  border-radius: var(--radius-round);
-  background: transparent;
-  color: var(--color-text-1);
-  z-index: 4;
-}
-.card-remove-mark {
-  position: relative;
-  width: var(--icon-size);
-  height: var(--icon-size);
-  border: var(--border-width) solid var(--color-divider);
-  border-radius: var(--radius-round);
-  background: var(--color-field);
-}
-.card-remove-mark::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: var(--icon-inset);
-  right: var(--icon-inset);
-  height: var(--stroke-strong);
-  border-radius: var(--radius-pill);
-  background: currentColor;
-  transform: translateY(-50%);
-}
-@keyframes card-wiggle {
-  from { transform: rotate(calc(var(--card-wiggle-angle) * -1)); }
-  to { transform: rotate(var(--card-wiggle-angle)); }
-}
-@keyframes card-remove {
-  from { opacity: 1; transform: scale(1); }
-  to { opacity: 0; transform: scale(var(--card-remove-scale)); }
-}
+.cards-settling .metric-lift { animation: card-settle var(--motion-card-shift) var(--curve-spring) both; }
+@keyframes card-settle { from { opacity: var(--opacity-pressed); } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) {
   .daily-summary-tag, .daily-summary-label, .daily-summary-value { transition: none; }
-  .cards-editing .metric-wiggle { animation: none; }
-  .card-removing .metric-lift { animation-name: card-remove-fade; }
+  .cards-settling .metric-lift { animation: none; }
 }
-@keyframes card-remove-fade { from { opacity: 1; } to { opacity: 0; } }
+
+.metric-swipe { position: relative; flex: 1; min-width: 0; border-radius: var(--radius); overflow: hidden; background: var(--color-surface); isolation: isolate; }
+.metric-swipe .metric-card { position: relative; z-index: 1; border-radius: 0; background: var(--color-surface); transition: transform var(--motion-quick) var(--curve-spring); }
+.metric-swipe .swipe-actions { position: absolute; top: 0; right: 0; bottom: 0; width: calc(var(--swipe-action-width) / 2); display: flex; visibility: hidden; pointer-events: none; }
+.metric-swipe.swipe-open .swipe-actions { visibility: visible; pointer-events: auto; }
+.metric-swipe .swipe-action { flex: 1; min-width: 0; padding: 0 var(--space-xs); border-radius: 0; background: var(--color-notice); color: var(--color-on-accent); font-size: var(--font-caption); display: flex; align-items: center; justify-content: center; }

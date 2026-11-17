@@ -86,32 +86,43 @@ test('every home card category maps to its own record family without deleting ad
   }
 })
 
-test('home card delete keeps edit mode after failure and exits after the removal callback', async () => {
-  let calls = 0
-  let confirmations = 0
-  const f = front('index', { callFunction: async request => { calls++; return { result: calls === 1 ? { code: 503 } : { code: 0, deleted: 1 } } } })
+test('home delete removes immediately, rolls back failure, and retries with the same id without a reload', async () => {
+  let finish, requests = [], confirmations = 0
+  const f = front('index', { callFunction: request => { requests.push(request); return new Promise(resolve => { finish = resolve }) } })
   f.wx.showModal = options => { confirmations++; options.success({ confirm: true }) }
-  f.app.globalData.loggedIn = true; f.app.globalData.openid = 'user-a'; f.app.globalData.activeBabyId = 'baby-a'
-  f.page.setData({ selectedDate: date, cards: [{ key: 'feeding', name: '喂养', url: '/pages/feeding/index' }], cardEditing: true })
+  Object.assign(f.app.globalData, { loggedIn: true, openid: 'user-a', activeBabyId: 'baby-a' })
+  const cards = [{ key: 'feeding', tag: 'feeding', name: '喂养', value: 2, url: '/pages/feeding/index', swipeX: -55 }]
+  f.page.setData({ selectedDate: date, cards, summaryTags: [{ key: 'feeding', count: 2, value: '2次' }], activeTags: ['feeding'] })
+  f.page._allCards = cards
   let loads = 0
+  const load = f.page.load
   f.page.load = () => { loads++; return Promise.resolve() }
-  const setData = f.page.setData.bind(f.page)
-  f.page.setData = (data, done) => {
-    if (data.cardSettling === false) { setTimeout(() => setData(data, done), 5); return }
-    setData(data, done)
-  }
-  await f.page.removeCard({ currentTarget: { dataset: { key: 'feeding' } } }); await wait(10)
-  assert.equal(confirmations, 1)
-  assert.equal(f.page.data.cards[0].key, 'feeding'); assert.equal(f.page.data.cardEditing, true); assert.equal(f.page.data.cardDeletingKey, '')
-  assert.equal(calls, 1)
-  await f.page.removeCard({ currentTarget: { dataset: { key: 'feeding' } } })
-  assert.equal(confirmations, 2)
-  await wait(240)
-  assert.equal(calls, 2)
+  let pending = f.page.removeCard({ currentTarget: { dataset: { key: 'feeding' } } })
+  await wait(0)
+  assert.equal(f.page.data.cards.length, 0, 'removed before the network resolves')
+  assert.equal(f.page._allCards.length, 0)
+  assert.equal(f.page.data.summaryTags.length, 0)
+  f.page.setData({ cardBusy: false, cardSettling: false }) // hide resets presentation flags while deletion remains in flight
+  await load.call(f.page)
+  assert.equal(requests.length, 1, 'a returning page cannot re-read stale cached cards during deletion')
+  finish({ result: { code: 503 } }); await pending
+  assert.equal(f.page.data.cards[0].key, 'feeding')
+  assert.equal(f.page.data.cards[0].swipeX, 0)
+  assert.equal(f.page._allCards.length, 1)
+  assert.equal(f.page.data.summaryTags[0].count, 2)
+  assert.deepEqual(Array.from(f.page.data.activeTags), ['feeding'])
+  pending = f.page.removeCard({ currentTarget: { dataset: { key: 'feeding' } } })
+  await wait(0)
   assert.equal(f.page.data.cards.length, 0)
-  assert.equal(f.page.data.cardEditing, false)
+  finish({ result: { code: 0, deleted: 1 } }); await pending
+  await wait(220)
+  assert.equal(requests.length, 2)
+  assert.equal(requests[0].data.clientRequestId, requests[1].data.clientRequestId)
+  assert.equal(confirmations, 2)
+  assert.equal(f.page.data.cards.length, 0)
   assert.equal(f.page.data.cardSettling, false)
-  assert.equal(loads, 1)
+  assert.equal(loads, 0)
+  f.page.onUnload()
 })
 
 test('home card delete also prunes the cached _allCards so load() never resurrects it', async () => {
@@ -121,7 +132,7 @@ test('home card delete also prunes the cached _allCards so load() never resurrec
   f.app.globalData.loggedIn = true; f.app.globalData.openid = 'user-a'; f.app.globalData.activeBabyId = 'baby-a'
   const feeding = { key: 'feeding', name: '喂养', url: '/pages/feeding/index' }
   const growth = { key: 'growth', name: '成长', url: '/pages/growth/index' }
-  f.page.setData({ selectedDate: date, cards: [feeding, growth], cardEditing: true })
+  f.page.setData({ selectedDate: date, cards: [feeding, growth] })
   f.page._allCards = [feeding, growth]
   f.page._allCardsDate = date
   f.page._allCardsBabyId = 'baby-a'
@@ -134,24 +145,28 @@ test('home card delete also prunes the cached _allCards so load() never resurrec
   assert.equal(f.page.data.cards[0].key, 'growth')
   assert.equal(f.page._allCards.length, 1)
   assert.equal(f.page._allCards[0].key, 'growth')
-  assert.equal(loads, 1)
+  assert.equal(loads, 0)
   f.page.onUnload()
 })
 
-test('long press enters edit mode without DOM measurement or persisted card order', () => {
+test('home swipe closes before navigation and never measures DOM or persists order', () => {
   const f = front('index')
-  f.app.globalData.openid = 'user-a'; f.app.globalData.activeBabyId = 'baby-a'
-  f.page.setData({ cards: [{ key: 'feeding' }, { key: 'growth' }, { key: 'diary' }], activeTags: ['feeding'] })
-  f.wx.createSelectorQuery = () => { throw new Error('card edit mode must not measure DOM') }
-  f.page.beginCardEdit()
-  assert.equal(f.page.data.cardEditing, true)
-  assert.equal(f.page.data.cards.length, 3)
-  f.page.openCard({ currentTarget: { dataset: { url: '/pages/feeding/index' } } })
+  f.page.setData({ cards: [{ key: 'feeding', swipeX: 0 }, { key: 'growth', swipeX: 0 }], activeTags: ['feeding'] })
+  f.wx.createSelectorQuery = () => { throw new Error('swipe must not measure DOM') }
+  f.page.onCardTouchStart({ currentTarget: { dataset: { key: 'feeding' } }, touches: [{ clientX: 200, clientY: 50 }] })
+  f.page.onCardTouchMove({ touches: [{ clientX: 110, clientY: 50 }] })
+  f.page.onCardTouchEnd()
+  assert.equal(f.page.data.cards[0].swipeX, -55)
+  const event = { currentTarget: { dataset: { key: 'feeding', url: '/pages/feeding/index' } } }
+  f.page.openCard(event)
   assert.equal(f.calls.some(call => call.type === 'navigateTo'), false)
-  assert.deepEqual(f.storage, {})
-  f.page.finishCardEdit()
-  assert.equal(f.page.data.cardEditing, false)
-  f.page.openCard({ currentTarget: { dataset: { url: '/pages/feeding/index' } } })
+  f.page._ignoreCardTapUntil = 0
+  f.page.openCard(event)
   assert.equal(f.calls.filter(call => call.type === 'navigateTo').length, 1)
   assert.deepEqual(f.storage, {})
+  const template = require('node:fs').readFileSync('miniprogram/pages/index/index.wxml', 'utf8')
+  assert.doesNotMatch(template, /bindlongpress|card-remove|beginCardEdit|cardEditing|metric-wiggle/)
+  assert.match(template, /class="metric-swipe/)
+  assert.match(template, /catchtap="removeCard"/)
+  f.page.onUnload()
 })

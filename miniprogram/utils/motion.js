@@ -85,7 +85,7 @@ const methods = {
     this._motionThemePrepared = true
   },
   confirmDanger(options) {
-    if (this._motionConfirmOptions || this._motionInactive) return
+    if (this._motionConfirmOptions || this._motionConfirmSettling || this._motionInactive) return
     this._motionConfirmOptions = options
     this.setData({ motionConfirm: { title: options.title, content: options.content, object: options.object || '', confirmText: options.confirmText || '删除', closing: false } })
   },
@@ -93,17 +93,17 @@ const methods = {
   acceptDanger() { this.finishDanger(true) },
   finishDanger(confirm) {
     if (!this._motionConfirmOptions || this._motionConfirmSettling) return
+    const options = this._motionConfirmOptions
+    this._motionConfirmOptions = null
     this._motionConfirmSettling = true
     this.setData({ 'motionConfirm.closing': true })
     later(this, 'confirm', () => {
-      const options = this._motionConfirmOptions
-      this._motionConfirmOptions = null
       this._motionConfirmSettling = false
       this.setData({ motionConfirm: null })
-      const result = { confirm, cancel: !confirm, errMsg: 'showModal:ok' }
-      if (options && options.success) options.success(result)
-      if (options && options.complete) options.complete(result)
     }, DURATION.sheet)
+    // Business feedback starts on acceptance; the close animation runs independently.
+    const result = { confirm, cancel: !confirm, errMsg: 'showModal:ok' }
+    try { if (options.success) options.success(result) } finally { if (options.complete) options.complete(result) }
   },
   motionBlock() {}
 }

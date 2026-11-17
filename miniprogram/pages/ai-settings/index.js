@@ -4,12 +4,13 @@ const settingsCache = require('../../utils/ai-settings')
 const questionsStore = require('../../utils/common-questions')
 const { detectRange, rangeLabel } = require('../../utils/digest')
 const { tap } = require('../../utils/haptics')
-const { setListItemFields, setListFields } = require('../../utils/list-patch')
+const { createSwipe } = require('../../utils/swipe-gesture')
+const { removeListItem } = require('../../utils/list-patch')
+const questionSwipe = createSwipe({ list: 'questions', field: 'id' })
 const RANGES = questionsStore.RANGES
 const QUESTION_RANGE_LABELS = RANGES.map(item => item.label)
 const CATEGORIES = questionsStore.CATEGORIES
 const ALL_CATEGORIES = questionsStore.ALL_CATEGORIES
-const ACTION_WIDTH_RPX = 220
 
 function categoryPatch(values) {
   const picked = questionsStore.normalizeCategories(values, ALL_CATEGORIES)
@@ -173,6 +174,7 @@ page({
     this.setData({ dirty: currentValue(this.data.showThinking, this.data.prompts) !== this._savedValue })
   },
   loadQuestions() {
+    this.resetQuestionSwipe()
     const questions = questionsStore.loadAll().map(question => {
       const range = question.range || detectRange(question.text) || ''
       return {
@@ -197,11 +199,15 @@ page({
       safety: '不可修改'
     } })
   },
+  onListScroll(e) { this._listScrollTop = e.detail.scrollTop || 0 },
+  scrollListTop() {
+    this.setData({ listScrollTop: this._listScrollTop || 0 }, () => this.setData({ listScrollTop: 0 }))
+  },
   openSection(e) {
     const view = e.currentTarget.dataset.view
     if (!Object.prototype.hasOwnProperty.call(VIEW_TITLES, view) || view === 'list') return
     this.setData({ view, navTitle: VIEW_TITLES[view] }, () => {
-      wx.pageScrollTo({ scrollTop: 0, duration: 0 })
+      this.scrollListTop()
       if (view === 'questions') this.loadQuestions()
     })
   },
@@ -209,13 +215,10 @@ page({
     this.resetQuestionSwipe()
     if (this.data.questionsPanel) this.setData({ questionsPanel: false, questionsClosing: false })
     this.setData({ view: 'list', navTitle: VIEW_TITLES.list }, () => {
-      wx.pageScrollTo({ scrollTop: 0, duration: 0 })
+      this.scrollListTop()
     })
   },
-  questionActionWidth() {
-    const info = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync()
-    return ACTION_WIDTH_RPX * (info.windowWidth || 375) / 750
-  },
+  questionActionWidth: questionSwipe.actionWidth,
   resetQuestionForm() {
     this.closeQuestionSwipe()
     this.setData({ editingQuestionId: '', questionText: '', questionRangeIndex: 1, questionPinned: false, ...categoryPatch(ALL_CATEGORIES) })
@@ -241,6 +244,9 @@ page({
     require('../../utils/motion').closeLater(this, () => this.setData({ questionsPanel: false, questionsClosing: false }))
   },
   startEditQuestion(event) {
+    const row = this.data.questions.find(item => item.id === event.currentTarget.dataset.id)
+    if (row && row.swipeX < 0) { this.closeQuestionSwipe(); return }
+    if (Date.now() < (this._ignoreCardTapUntil || 0)) return
     const id = event.currentTarget.dataset.id
     const question = this.data.questions.find(item => item.id === id)
     if (!question) return
@@ -303,58 +309,14 @@ page({
     }
     if (saved) this.closeQuestionPanel()
   },
-  onQuestionCardTouchStart(event) {
-    const touch = event.touches && event.touches[0], id = event.currentTarget.dataset.id
-    const target = event.target && event.target.dataset || {}
-    if (!touch || !id || target.noSwipe) return
-    const question = this.data.questions.find(item => item.id === id)
-    this._cardGesture = { id, x: touch.clientX, y: touch.clientY, startOffset: question ? question.swipeX || 0 : 0, axis: '' }
-  },
-  onQuestionCardTouchMove(event) {
-    const gesture = this._cardGesture, touch = event.touches && event.touches[0]
-    if (!gesture || !touch) return
-    const dx = touch.clientX - gesture.x, dy = touch.clientY - gesture.y
-    if (!gesture.axis && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) gesture.axis = Math.abs(dx) > Math.abs(dy) * 1.15 ? 'horizontal' : 'vertical'
-    if (gesture.axis !== 'horizontal') return
-    if (dx < -8 && this._openSwipeKey && this._openSwipeKey !== gesture.id) this.closeQuestionSwipe()
-    const offset = Math.max(-this.questionActionWidth(), Math.min(0, gesture.startOffset + dx))
-    const index = this.data.questions.findIndex(item => item.id === gesture.id)
-    setListItemFields(this, 'questions', index, { swipeX: offset })
-    if (Math.abs(dx) > 12) this._ignoreCardTapUntil = Date.now() + 450
-  },
-  onQuestionCardTouchEnd() {
-    const gesture = this._cardGesture
-    if (!gesture) return
-    if (gesture.axis === 'horizontal') {
-      const question = this.data.questions.find(item => item.id === gesture.id)
-      if (question && question.swipeX < -this.questionActionWidth() * .42) this.openQuestionSwipe(gesture.id)
-      else this.closeQuestionSwipe()
-    }
-    this._cardGesture = null
-  },
-  closeQuestionSwipe() {
-    this._openSwipeKey = ''
-    setListFields(this, 'questions', item => item.swipeX ? { swipeX: 0 } : null)
-  },
-  openQuestionSwipe(id) {
-    this._openSwipeKey = id
-    const offset = -this.questionActionWidth()
-    setListFields(this, 'questions', item => {
-      const swipeX = item.id === id ? offset : 0
-      return item.swipeX === swipeX ? null : { swipeX }
-    })
-    this._ignoreCardTapUntil = Date.now() + 450
-  },
-  onQuestionCardTap(event) {
-    const question = this.data.questions.find(item => item.id === event.currentTarget.dataset.id)
-    if (question && question.swipeX < 0) this.closeQuestionSwipe()
-  },
-  resetQuestionSwipe() {
-    this._cardGesture = null
-    this._openSwipeKey = ''
-    this._ignoreCardTapUntil = 0
-    setListFields(this, 'questions', item => item.swipeX ? { swipeX: 0 } : null)
-  },
+  onQuestionCardTouchStart: questionSwipe.onCardTouchStart,
+  onQuestionCardTouchMove: questionSwipe.onCardTouchMove,
+  onQuestionCardTouchEnd: questionSwipe.onCardTouchEnd,
+  onQuestionCardTouchCancel: questionSwipe.onCardTouchCancel,
+  closeQuestionSwipe: questionSwipe.closeSwipe,
+  openQuestionSwipe: questionSwipe.openSwipe,
+  resetQuestionSwipe: questionSwipe.resetSwipe,
+  onQuestionCardTap(event) { this.startEditQuestion(event) },
   removeQuestion(e) {
     const id = e.currentTarget.dataset.id
     const question = questionsStore.loadAll().find(item => item.id === id)
@@ -367,8 +329,12 @@ page({
       confirmText: '删除',
       success: result => {
         if (!result.confirm) return
-        questionsStore.saveAll(questionsStore.loadAll().filter(item => item.id !== id))
-        this.loadQuestions()
+        if (this._motionInactive) return
+        const rollback = removeListItem(this, 'questions', 'id', id)
+        if (!rollback) return
+        this.syncValues()
+        try { questionsStore.saveAll(questionsStore.loadAll().filter(item => item.id !== id)) }
+        catch (error) { rollback(); this.syncValues(); wx.showToast({ title: '删除失败，请重试', icon: 'none' }) }
       }
     })
   },

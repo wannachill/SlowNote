@@ -128,10 +128,13 @@ test('check and uncheck only mark the operated card disabled while a request is 
   f.page.onUnload()
 })
 
-test('swipe edit opens the selected definition and delete uses delete wording for built-in items', async () => {
+test('tap opens the selected definition after closing a swipe and delete uses delete wording for built-in items', async () => {
   const f = milestoneFixture()
   await f.page.load()
   f.page.openSwipe('one')
+  f.page.startEdit({ currentTarget: { dataset: { key: 'one' } } })
+  assert.equal(f.page.data.definition, null, 'the first tap only closes the swipe')
+  f.page._ignoreCardTapUntil = 0
   f.page.startEdit({ currentTarget: { dataset: { key: 'one' } } })
   assert.equal(f.page.data.definition.key, 'one')
   assert.equal(f.page.data.formName, '会抬头')
@@ -155,7 +158,7 @@ test('swipe edit opens the selected definition and delete uses delete wording fo
   f.page.onUnload()
 })
 
-test('tapping a milestone card toggles completion directly and keeps the detail sheet removed', async () => {
+test('completion control reuses toggleDone confirmation while the card opens editing', async () => {
   const f = milestoneFixture()
   await f.page.load()
   let prompts = 0

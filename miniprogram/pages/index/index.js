@@ -51,8 +51,8 @@ page({
     this.setData({ milestoneEntry: { ...overview, label } })
   },
   setDate(date, load = true) {
-    if (this.data.cardBusy || this.data.cardSettling || this.data.cardDeletingKey) return
-    this.finishCardEdit()
+    if (this.data.cardBusy || this.data.cardSettling) return
+    this.resetSwipe()
     this.setData({ selectedDate: date, activeTags: [], monthLabel: Number(date.slice(0, 4)) + '年' + Number(date.slice(5, 7)) + '月', dateLabel: date === dateKey() ? '今天' : date.slice(5).replace('-', '月') + '日', week: week(date), monthDays: monthDays(date) })
     if (load) this.load()
   },
@@ -74,8 +74,8 @@ page({
   },
   // force=true 时忽略 60 秒缓存（下拉刷新 / 刚保存过），但仍先渲染已有内容，避免整页闪骨架。
   async load(force = false) {
-    if (this.data.cardBusy || this.data.cardSettling || this.data.cardDeletingKey) return
-    this.finishCardEdit()
+    if (this._cardDeletePending || this.data.cardBusy || this.data.cardSettling) return
+    this.resetSwipe()
     const version = this._loadVersion = (this._loadVersion || 0) + 1
     const date = this.data.selectedDate, days = week(date)
     if (!app.globalData.loggedIn) {
@@ -137,7 +137,7 @@ page({
     return homeCards.decorate(all.filter(card => active.indexOf(card.tag) >= 0))
   },
   toggleTag(e) {
-    if (this.data.cardEditing || this.data.cardBusy || this.data.cardSettling || this.data.cardDeletingKey) return
+    if (this.data.cardBusy || this.data.cardSettling) return
     const key = e.currentTarget.dataset.key
     if (!key) return
     const all = this._allCards
@@ -150,8 +150,8 @@ page({
   },
   showTabBar(visible) { const tab = this.getTabBar && this.getTabBar(); if (tab) tab.setData({ hidden: !visible }) },
   openPanel() {
-    if (this.data.cardBusy || this.data.cardSettling || this.data.cardDeletingKey) return
-    this.finishCardEdit()
+    if (this.data.cardBusy || this.data.cardSettling) return
+    this.resetSwipe()
     if (!this.data.loggedIn) { this.goMine(); return }
     if (this.data.selectedDate > dateKey()) { wx.showToast({ title: '可以记录今天或过去的日期', icon: 'none' }); return }
     const babyId = app.globalData.activeBabyId || ''
@@ -184,7 +184,10 @@ page({
     wx.navigateTo({ url: item.url + (item.url.includes('?') ? '&' : '?') + 'date=' + this.data.selectedDate })
   },
   openCard(e) {
-    if (this.data.cardEditing || this.data.cardBusy || this.data.cardSettling || this.data.cardDeletingKey) return
+    if (this.data.cardBusy || this.data.cardSettling) return
+    const card = this.data.cards.find(item => item.key === e.currentTarget.dataset.key)
+    if (card && card.swipeX < 0) { this.closeSwipe(); return }
+    if (Date.now() < (this._ignoreCardTapUntil || 0)) return
     const [path, query = ''] = e.currentTarget.dataset.url.split('?')
     const key = e.currentTarget.dataset.key || ''
     const params = query.split('&').filter(value => value && !/^(date|cardEdit|recordKey)=/.test(value))

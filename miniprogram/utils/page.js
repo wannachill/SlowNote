@@ -13,7 +13,7 @@ module.exports = function themedPage(definition) {
       this._redirectingToMine = true
       wx.switchTab({ url: '/pages/mine/index' })
     },
-    data: { ...motion.data, ...definition.data, entryPending: true, themeClass: initial.themeClass, themeAccent: initial.accent, statusBarHeight: 20 },
+    data: { swipeScrollLocked: false, ...motion.data, ...definition.data, entryPending: true, themeClass: initial.themeClass, themeAccent: initial.accent, statusBarHeight: 20 },
     applyTheme() {
       const palette = getApp().palette || theme.resolve()
       this.setData({ themeClass: palette.themeClass, themeAccent: palette.accent })
@@ -55,7 +55,7 @@ module.exports = function themedPage(definition) {
       if (show) return show.call(this)
     },
     async onReady() { await this._entryReady; if (this._entryAllowed && ready) return ready.call(this) },
-    onHide() { motion.dispose.call(this); if (definition.onHide) definition.onHide.call(this) },
-    onUnload() { motion.dispose.call(this); if (definition.onUnload) definition.onUnload.call(this) }
+    onHide() { if (this.resetSwipe) this.resetSwipe(); motion.dispose.call(this); if (definition.onHide) definition.onHide.call(this) },
+    onUnload() { if (this.resetSwipe) this.resetSwipe(); motion.dispose.call(this); if (definition.onUnload) definition.onUnload.call(this) }
   })
 }

@@ -161,15 +161,17 @@ test('home loads timeline and tags together and discards an older date response'
   assert.equal(f.page.data.summaryTags.length, 0)
 })
 
-test('card edit mode does not measure timeline slots or persist reordered card values', () => {
+test('swiping does not measure timeline slots or persist reordered card values', () => {
   const f = front('index')
   f.app.globalData.openid = 'user-a'; f.app.globalData.activeBabyId = 'baby-a'
   f.page.setData({ cards: [{ key: 'breast', value: 2 }, { key: 'growth', value: 6.5 }, { key: 'diary', value: 3 }], activeTags: ['breast'] })
   f.wx.createSelectorQuery = () => { throw new Error('card edit mode must not measure DOM') }
-  f.page.beginCardEdit()
-  assert.equal(f.page.data.cardEditing, true)
+  f.page.onCardTouchStart({ currentTarget: { dataset: { key: 'breast' } }, touches: [{ clientX: 200, clientY: 50 }] })
+  f.page.onCardTouchMove({ touches: [{ clientX: 100, clientY: 50 }] })
+  f.page.onCardTouchEnd()
+  assert.equal(f.page.data.cards[0].swipeX, -55)
   assert.deepEqual(Array.from(f.page.data.cards, card => [card.key, card.value]), [['breast', 2], ['growth', 6.5], ['diary', 3]])
   assert.deepEqual(f.storage, {})
-  f.page.finishCardEdit()
+  f.page.resetSwipe()
   assert.deepEqual(f.storage, {})
 })

@@ -269,7 +269,7 @@ test('左滑只展开当前卡片，展开态点击先收起而不打开详情',
   assert.equal(page.data.items[1].swipeX, 0)
 })
 
-test('左滑删除二次确认后调用云端并刷新列表', async () => {
+test('左滑删除确认后局部移除且不重拉列表', async () => {
   const { page, calls } = pageWith(reports())
   await page.onShow()
   page.confirmDanger = options => {
@@ -281,7 +281,9 @@ test('左滑删除二次确认后调用云端并刷新列表', async () => {
   const remove = calls.find(item => item.data.action === 'remove')
   assert.equal(remove.data.id, 'n1')
   assert.ok(remove.data.clientRequestId.length >= 8)
-  assert.equal(calls.filter(item => item.data.action === 'list').length, 2, '删除成功后重新拉取列表')
+  assert.equal(calls.filter(item => item.data.action === 'list').length, 1, '删除不重拉列表')
+  assert.equal(page.data.items.some(item => item.id === 'n1'), false)
+  assert.equal(page.data.total, 1)
 })
 
 test('取消确认不会删除报告', async () => {

@@ -4,12 +4,12 @@ const { dateKey } = require('../../utils/date')
 const { avatarSrc } = require('../../utils/avatar')
 const { tap } = require('../../utils/haptics')
 const { closeLater } = require('../../utils/motion')
-const { setListItemFields, setListFields } = require('../../utils/list-patch')
+const { removeListItem, filterRemoved } = require('../../utils/list-patch')
+const { createSwipe } = require('../../utils/swipe-gesture')
 const GENDERS = ['male', 'female']
-// Keep in sync with --swipe-action-width in app.wxss.
-const ACTION_WIDTH_RPX = 220
 
 page({
+  ...createSwipe({ list: 'babies', field: 'baby_id' }),
   data: {
     babies: [], activeBabyId: '', editingBabyId: '',
     baby: { nickname: '', birthday: '', gender: 'male', avatar: '' },
@@ -40,70 +40,24 @@ page({
   refresh() {
     this.resetSwipe()
     const g = app.globalData
-    const babies = (g.babies || []).map(b => ({ ...b, avatar: avatarSrc(b), active: b.baby_id === g.activeBabyId, swipeX: 0 }))
+    const babies = filterRemoved(this, 'babies', 'baby_id', g.babies).map(b => ({ ...b, avatar: avatarSrc(b), active: b.baby_id === g.activeBabyId, swipeX: 0 }))
     this.setData({ babies, activeBabyId: g.activeBabyId })
   },
 
   // Swipe gestures mirror ai-tasks: one open card at a time, actions revealed on the right.
-  actionWidth() {
-    const info = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync()
-    return ACTION_WIDTH_RPX * (info.windowWidth || 375) / 750
-  },
-  onCardTouchStart(event) {
-    const touch = event.touches && event.touches[0], id = event.currentTarget.dataset.id
-    if (!touch || !id) return
-    const item = this.data.babies.find(value => value.baby_id === id)
-    this._cardGesture = { id, x: touch.clientX, y: touch.clientY, startOffset: item ? item.swipeX || 0 : 0, axis: '' }
-  },
-  onCardTouchMove(event) {
-    const gesture = this._cardGesture, touch = event.touches && event.touches[0]
-    if (!gesture || !touch) return
-    const dx = touch.clientX - gesture.x, dy = touch.clientY - gesture.y
-    if (!gesture.axis && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) gesture.axis = Math.abs(dx) > Math.abs(dy) * 1.15 ? 'horizontal' : 'vertical'
-    if (gesture.axis !== 'horizontal') return
-    if (dx < -8 && this._openSwipeKey && this._openSwipeKey !== gesture.id) this.closeSwipe()
-    const offset = Math.max(-this.actionWidth(), Math.min(0, gesture.startOffset + dx))
-    const index = this.data.babies.findIndex(item => item.baby_id === gesture.id)
-    setListItemFields(this, 'babies', index, { swipeX: offset })
-    if (Math.abs(dx) > 12) this._ignoreCardTapUntil = Date.now() + 450
-  },
-  onCardTouchEnd() {
-    const gesture = this._cardGesture
-    if (!gesture) return
-    if (gesture.axis === 'horizontal') {
-      const item = this.data.babies.find(value => value.baby_id === gesture.id)
-      if (item && item.swipeX < -this.actionWidth() * .42) this.openSwipe(gesture.id)
-      else this.closeSwipe()
-    }
-    this._cardGesture = null
-  },
-  closeSwipe() {
-    this._openSwipeKey = ''
-    setListFields(this, 'babies', item => item.swipeX ? { swipeX: 0 } : null)
-  },
-  openSwipe(id) {
-    this._openSwipeKey = id
-    const offset = -this.actionWidth()
-    setListFields(this, 'babies', item => {
-      const swipeX = item.baby_id === id ? offset : 0
-      return item.swipeX === swipeX ? null : { swipeX }
-    })
-    this._ignoreCardTapUntil = Date.now() + 450
-  },
-  resetSwipe() {
-    this._cardGesture = null
-    this._openSwipeKey = ''
-    this._ignoreCardTapUntil = 0
-    setListFields(this, 'babies', item => item.swipeX ? { swipeX: 0 } : null)
-  },
   onCardTap(event) {
     const id = event.currentTarget.dataset.id
     const item = this.data.babies.find(value => value.baby_id === id)
     if (item && item.swipeX < 0) { this.closeSwipe(); return }
     if (Date.now() < (this._ignoreCardTapUntil || 0)) return
-    this.switchBaby(id)
+    this.startEdit(event)
   },
 
+  setCurrentBaby() {
+    if (this.data.saving || this.data.uploading || !this.data.editingBabyId) return
+    this.switchBaby(this.data.editingBabyId)
+    this.setData({ panel: false, closing: false })
+  },
   switchBaby(id) {
     if (id === this.data.activeBabyId) return
     app.setActiveBaby(id)
@@ -120,6 +74,9 @@ page({
     })
   },
   startEdit(event) {
+    const row = this.data.babies.find(item => item.baby_id === event.currentTarget.dataset.id)
+    if (row && row.swipeX < 0) { this.closeSwipe(); return }
+    if (Date.now() < (this._ignoreCardTapUntil || 0) || this._deletePending) return
     const id = event.currentTarget.dataset.id
     const baby = app.globalData.babies.find(b => b.baby_id === id)
     if (!baby) return
@@ -170,14 +127,23 @@ page({
     if (!id || !baby) return
     this.closeSwipe()
     this.confirmDanger({ object: baby.nickname, title: '删除宝宝档案', content: '将删除该宝宝的档案及其关联记录，此操作不可恢复。', success: async r => {
-      if (!r.confirm) return
+      if (!r.confirm || this._motionInactive || this._deletePending) return
+      this._deletePending = true
+      const openid = app.globalData.openid
+      this.resetSwipe()
+      const rollback = removeListItem(this, 'babies', 'baby_id', id)
+      if (!rollback) { this._deletePending = false; return }
       try {
         await call('babyProfile', { action: 'delete', babyId: id, clientRequestId: requestId() })
+        if (openid !== app.globalData.openid) return
         app.globalData.babies = app.globalData.babies.filter(b => b.baby_id !== id)
         if (app.globalData.activeBabyId === id) app.setActiveBaby(app.globalData.babies.length ? app.globalData.babies[0].baby_id : '')
         wx.showToast({ title: '已删除', icon: 'success' })
-        this.refresh()
-      } catch (error) { toastError(error) }
+        this.setData({ activeBabyId: app.globalData.activeBabyId })
+        require('../../utils/list-patch').setListFields(this, 'babies', item => ({ active: item.baby_id === app.globalData.activeBabyId }))
+        require('../../utils/home-refresh').invalidateRecords()
+      } catch (error) { rollback(); toastError(error) }
+      finally { this._deletePending = false }
     } })
   },
 

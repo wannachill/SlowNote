@@ -3,12 +3,12 @@ const page = require('../../utils/page')
 const { call, requestId, toastError } = require('../../utils/api')
 const { tap } = require('../../utils/haptics')
 const { dateKey } = require('../../utils/date')
-const { setListItemFields, setListFields } = require('../../utils/list-patch')
+const { setListItemFields, removeListItem, filterRemoved } = require('../../utils/list-patch')
+const { createSwipe } = require('../../utils/swipe-gesture')
 // 报告正文与小迈回答共用同一套 Markdown 子集渲染，标题/加粗/列表在这里同样生效。
 const parseMarkdown = require('../../utils/markdown')
 // 历史报告只有「删除」一个动作，轨道宽度取全局 --swipe-action-width 的一半（110rpx），
-// 使删除按钮与「常见问题」页（两个动作平分 220rpx）的单个按钮等宽。
-const ACTION_WIDTH_RPX = 110
+// 所有列表采用同样的单删除动作宽度。
 
 function dateLabel(value) {
   const [year, month, day] = String(value || '').split('-').map(Number)
@@ -24,6 +24,7 @@ function wechatStatus(delivery) {
 }
 
 page({
+  ...createSwipe({ list: 'items', field: 'id' }),
   data: { items: [], loading: false, error: '', panel: false, closing: false, current: null, reportNodes: [],
     startDate: '', endDate: '', startDateLabel: '', endDateLabel: '', today: '', total: 0, hasMore: false },
 
@@ -51,12 +52,12 @@ page({
     this.resetSwipe()
     return this.load()
   },
-  loadMore() { if (!this.data.loading && this.data.hasMore) return this.load(true) },
+  loadMore() { if (!this._deletePending && !this.data.loading && this.data.hasMore) return this.load(true) },
   async load(append = false) {
     append = append === true
     const version = this._listVersion = (this._listVersion || 0) + 1
     // A refresh must not leave an in-flight gesture behind; the open card is restored below.
-    this._cardGesture = null
+    this.onCardTouchCancel()
     this.setData({ loading: true, error: '' })
     try {
       const offset = append ? this.data.items.length : 0
@@ -64,10 +65,11 @@ page({
         startDate: this.data.startDate, endDate: this.data.endDate })
       if (version !== this._listVersion) return
       const openKey = this._openSwipeKey
+      const kept = filterRemoved(this, 'items', 'id', result.items)
       this.setData({
-        total: result.total === undefined ? result.items.length : result.total,
+        total: Math.max(0, (result.total === undefined ? result.items.length : result.total) - (result.items.length - kept.length)),
         hasMore: !!result.hasMore,
-        items: (append ? this.data.items : []).concat(result.items.map(item => ({
+        items: (append ? this.data.items : []).concat(kept.map(item => ({
           ...item,
           title: item.title || '小迈定时报告',
           swipeX: openKey && openKey === item.id ? -this.actionWidth() : 0,
@@ -77,58 +79,6 @@ page({
       })
     } catch (error) { if (version === this._listVersion) this.setData({ error: error.message }) }
     finally { if (version === this._listVersion) this.setData({ loading: false }) }
-  },
-
-  actionWidth() {
-    const info = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync()
-    return ACTION_WIDTH_RPX * (info.windowWidth || 375) / 750
-  },
-  onCardTouchStart(event) {
-    const touch = event.touches && event.touches[0], id = event.currentTarget.dataset.id
-    if (!touch || !id) return
-    const item = this.data.items.find(value => value.id === id)
-    this._cardGesture = { id, x: touch.clientX, y: touch.clientY, startOffset: item ? item.swipeX || 0 : 0, axis: '' }
-  },
-  onCardTouchMove(event) {
-    const gesture = this._cardGesture, touch = event.touches && event.touches[0]
-    if (!gesture || !touch) return
-    const dx = touch.clientX - gesture.x, dy = touch.clientY - gesture.y
-    if (!gesture.axis && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) gesture.axis = Math.abs(dx) > Math.abs(dy) * 1.15 ? 'horizontal' : 'vertical'
-    if (gesture.axis !== 'horizontal') return
-    if (dx < -8 && this._openSwipeKey && this._openSwipeKey !== gesture.id) this.closeSwipe()
-    const offset = Math.max(-this.actionWidth(), Math.min(0, gesture.startOffset + dx))
-    const index = this.data.items.findIndex(item => item.id === gesture.id)
-    setListItemFields(this, 'items', index, { swipeX: offset })
-    if (Math.abs(dx) > 12) this._ignoreCardTapUntil = Date.now() + 450
-  },
-  onCardTouchEnd() {
-    const gesture = this._cardGesture
-    if (!gesture) return
-    if (gesture.axis === 'horizontal') {
-      const item = this.data.items.find(value => value.id === gesture.id)
-      if (item && item.swipeX < -this.actionWidth() * .42) this.openSwipe(gesture.id)
-      else this.closeSwipe()
-    }
-    this._cardGesture = null
-  },
-  closeSwipe() {
-    this._openSwipeKey = ''
-    setListFields(this, 'items', item => item.swipeX ? { swipeX: 0 } : null)
-  },
-  openSwipe(id) {
-    this._openSwipeKey = id
-    const offset = -this.actionWidth()
-    setListFields(this, 'items', item => {
-      const swipeX = item.id === id ? offset : 0
-      return item.swipeX === swipeX ? null : { swipeX }
-    })
-    this._ignoreCardTapUntil = Date.now() + 450
-  },
-  resetSwipe() {
-    this._cardGesture = null
-    this._openSwipeKey = ''
-    this._ignoreCardTapUntil = 0
-    setListFields(this, 'items', item => item.swipeX ? { swipeX: 0 } : null)
   },
 
   onCardTap(event) {
@@ -178,13 +128,23 @@ page({
       title: '删除这份报告',
       content: '删除后不可恢复。',
       success: async result => {
-        if (!result.confirm) return
+        if (!result.confirm || this._motionInactive || this._deletePending) return
+        this._deletePending = true
+        this._listVersion = (this._listVersion || 0) + 1
+        this.setData({ loading: false })
+        this.resetSwipe()
+        const total = this.data.total
+        const rollback = removeListItem(this, 'items', 'id', id)
+        if (!rollback) { this._deletePending = false; return }
+        this.setData({ total: Math.max(0, total - 1) })
         try {
           await call('aiNotifications', { action: 'remove', id, clientRequestId: requestId() })
-          this._openSwipeKey = ''
+          if (this._nodesCache) delete this._nodesCache[id]
           wx.showToast({ title: '已删除', icon: 'success' })
-          this.load()
-        } catch (error) { toastError(error) }
+        } catch (error) {
+          if (rollback()) this.setData({ total: this.data.total + 1 })
+          toastError(error)
+        } finally { this._deletePending = false }
       }
     })
   }

@@ -130,10 +130,9 @@
   height: var(--icon-size);
 }
 .heading-actions { display: flex; align-items: center; gap: var(--space-s); }
-.swipe-actions { position: absolute; z-index: 0; top: 0; right: 0; bottom: 0; left: auto; display: flex; align-items: stretch; justify-content: flex-end; width: var(--swipe-action-width); border-radius: 0 var(--radius) var(--radius) 0; overflow: hidden; visibility: hidden; pointer-events: none; }
+.swipe-actions { position: absolute; z-index: 0; top: 0; right: 0; bottom: 0; left: auto; display: flex; align-items: stretch; justify-content: flex-end; width: calc(var(--swipe-action-width) / 2); border-radius: 0 var(--radius) var(--radius) 0; overflow: hidden; visibility: hidden; pointer-events: none; }
 .milestone-swipe.swipe-open .swipe-actions { visibility: visible; pointer-events: auto; }
 .swipe-action { display: flex; align-items: center; justify-content: center; flex: 1; min-width: 0; padding: 0 var(--space-xs); border-radius: 0; color: var(--color-on-accent); font-size: var(--font-caption); }
-.edit-action { background: var(--color-accent-ink); }
 .delete-action { background: var(--color-notice); }
 .action-error { display: block; margin: 0 0 var(--space-s); color: var(--color-notice); font-size: var(--font-caption); }
 .fab-plus {
@@ -171,3 +170,8 @@
   -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M20 6L9 17l-5-5' fill='none' stroke='currentColor' stroke-linecap='round' stroke-linejoin='round' stroke-width='2'/%3E%3C/svg%3E") no-repeat center / contain;
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M20 6L9 17l-5-5' fill='none' stroke='currentColor' stroke-linecap='round' stroke-linejoin='round' stroke-width='2'/%3E%3C/svg%3E") no-repeat center / contain;
 }
+
+.page.swipe-page { height: 100vh; min-height: 0; display: flex; flex-direction: column; overflow: hidden; padding-bottom: 0; }
+.swipe-page > .sub-nav, .month-scroll { flex-shrink: 0; }
+.swipe-list-scroll { flex: 1; min-height: 0; height: 0; width: 100%; }
+.swipe-list-content { padding-bottom: calc(var(--space-m) + env(safe-area-inset-bottom)); }

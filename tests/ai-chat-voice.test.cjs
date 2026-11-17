@@ -107,3 +107,49 @@ test('hold timer and touch state are cleaned on unload', () => {
   assert.match(unload, /this\._inputTouchActive = false/)
   assert.match(section(script, 'clearInputHold() {', 'onInputTouchStart(e) {'), /clearTimeout\(this\._inputHoldTimer\)/)
 })
+
+
+test('voice overlay isolates textarea touch events and disables native input while recording', () => {
+  const textarea = template.match(/<textarea class="chat-input"[^>]+/)[0]
+  assert.doesNotMatch(textarea, /bindtouch|catchtouch/)
+  assert.match(textarea, /disabled="\{\{sending \|\| attaching \|\| recording \|\| selecting\}\}"/)
+  assert.match(template, /class="voice-touch-zone" catchtap="focusTextInput"/)
+  assert.match(styles, /\.voice-touch-zone\s*\{[^}]*position:\s*absolute;[^}]*inset:\s*0/)
+})
+
+for (const input of ['', '保留已有文字']) test('hold isolates native focus and preserves text/cursor: ' + (input || 'empty'), async () => {
+  const { front } = require('./helpers.cjs')
+  const f = front('ai-chat'), page = f.page
+  let started = 0, stopped = 0, hidden = 0
+  f.wx.hideKeyboard = () => { hidden++ }
+  page._siManager = { start() { started++ }, stop() { stopped++ } }
+  page.getVoiceManager = () => page._siManager
+  page.setData({ question: input, inputCursor: 3, focusInput: false })
+  const event = { touches: [{ clientX: 150, clientY: 400 }] }
+  page.onInputTouchStart(event)
+  page.onInputTouchStart(event)
+  await new Promise(resolve => setTimeout(resolve, 370))
+  assert.equal(started, 1, 'overlay/shell duplicates do not start twice')
+  assert.equal(hidden, 1)
+  assert.equal(page.data.recording, true)
+  assert.equal(page.data.focusInput, false)
+  assert.equal(page.data.question, input)
+  assert.equal(page.data.inputCursor, 3)
+  page.onInputTouchEnd()
+  page.focusTextInput()
+  assert.equal(stopped, 1)
+  assert.equal(page.data.focusInput, false, 'the trailing tap after a hold must not open keyboard')
+  page._voiceActive = false
+  page.setData({ recording: false, selecting: false })
+  page.onInputTouchStart(event)
+  page.onInputTouchEnd()
+  page.focusTextInput()
+  assert.equal(page.data.focusInput, true)
+  page.onInputBlur()
+  page.onInputTouchStart(event)
+  page.onInputTouchMove({ touches: [{ clientX: 164, clientY: 400 }] })
+  page.onInputTouchEnd()
+  page.focusTextInput()
+  assert.equal(page.data.focusInput, false, 'cancelled movement cannot focus the textarea')
+  page.onUnload()
+})

@@ -99,7 +99,7 @@ test('常见问题卡片横向滑动只展开当前卡片，并在离页时复�
   })
   page.onQuestionCardTouchMove({ touches: [{ clientX: 20, clientY: 22 }] })
   page.onQuestionCardTouchEnd()
-  assert.equal(page.data.questions.find(item => item.id === id).swipeX, -110)
+  assert.equal(page.data.questions.find(item => item.id === id).swipeX, -page.questionActionWidth())
   page.onHide()
   assert.equal(page.data.questions.some(item => item.swipeX), false)
 })

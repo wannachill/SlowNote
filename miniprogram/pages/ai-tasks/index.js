@@ -2,7 +2,8 @@
 // 报告内容始终先落在 ai_notifications；微信订阅消息仅在有可用授权时尽力发送。
 const page = require('../../utils/page'), { call, requestId, toastError } = require('../../utils/api')
 const { tap } = require('../../utils/haptics')
-const { setListItemFields, setListFields } = require('../../utils/list-patch')
+const { setListItemFields, removeListItem, filterRemoved } = require('../../utils/list-patch')
+const { createSwipe } = require('../../utils/swipe-gesture')
 // 数据类型与常见问题页保持一致：feeding / excretion / solid 同源于喂养记录，但可分别选择。
 const ALL = [
   { key: 'feeding', name: '喂养' },
@@ -44,10 +45,9 @@ const STATUS = { completed: '已生成报告', not_configured: 'AI 尚未配置�
 // 仅在出现非正常运行状态时展示状态标签，正常/等待态不打扰用户。
 const STATUS_TAG = { not_configured: ['未配置AI', 'status-warn'], unavailable: ['AI暂不可用', 'status-warn'], permission_changed: ['已暂停', 'status-pause'], retry_pending: ['本次未完成', 'status-warn'] }
 const FREQUENCIES = ['daily', 'weekly', 'monthly']
-// Keep in sync with --swipe-action-width in app.wxss.
-const ACTION_WIDTH_RPX = 220
 
 page({
+  ...createSwipe({ list: 'items', field: '_id' }),
   data: {
     items: [], categories: [], ranges: RANGES, range: 'auto', rangeHint: '', frequencies: ['每天', '每周', '每月'], frequencyIndex: 0,
     weekdays: ['周日', '周一', '周二', '周三', '周四', '周五', '周六'], weekday: 1,
@@ -65,12 +65,12 @@ page({
 
   async load() {
     // A refresh must not leave an in-flight gesture behind; the open card is restored below.
-    this._cardGesture = null
+    this.onCardTouchCancel()
     this.setData({ loading: true, error: '' })
     try {
       const r = await call('aiTasks', { action: 'list' })
       const openKey = this._openSwipeKey
-      const items = (r.items || []).map(item => ({
+      const items = filterRemoved(this, 'items', '_id', r.items).map(item => ({
         ...item,
         swipeX: openKey && openKey === item._id ? -this.actionWidth() : 0,
         categoriesText: item.categories.map(k => (ALL.find(c => c.key === k) || {}).name || LEGACY_CATEGORY_NAMES[k] || k).join('、'),
@@ -86,61 +86,11 @@ page({
   },
 
   // Swipe gestures mirror the baby profile page: one open card at a time, native switch excluded.
-  actionWidth() {
-    const info = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync()
-    return ACTION_WIDTH_RPX * (info.windowWidth || 375) / 750
-  },
-  onCardTouchStart(event) {
-    const touch = event.touches && event.touches[0], id = event.currentTarget.dataset.id
-    const target = event.target && event.target.dataset || {}
-    if (!touch || !id || target.noSwipe) return
-    const item = this.data.items.find(value => value._id === id)
-    this._cardGesture = { id, x: touch.clientX, y: touch.clientY, startOffset: item ? item.swipeX || 0 : 0, axis: '' }
-  },
-  onCardTouchMove(event) {
-    const gesture = this._cardGesture, touch = event.touches && event.touches[0]
-    if (!gesture || !touch) return
-    const dx = touch.clientX - gesture.x, dy = touch.clientY - gesture.y
-    if (!gesture.axis && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) gesture.axis = Math.abs(dx) > Math.abs(dy) * 1.15 ? 'horizontal' : 'vertical'
-    if (gesture.axis !== 'horizontal') return
-    if (dx < -8 && this._openSwipeKey && this._openSwipeKey !== gesture.id) this.closeSwipe()
-    const offset = Math.max(-this.actionWidth(), Math.min(0, gesture.startOffset + dx))
-    const index = this.data.items.findIndex(item => item._id === gesture.id)
-    setListItemFields(this, 'items', index, { swipeX: offset })
-    if (Math.abs(dx) > 12) this._ignoreCardTapUntil = Date.now() + 450
-  },
-  onCardTouchEnd() {
-    const gesture = this._cardGesture
-    if (!gesture) return
-    if (gesture.axis === 'horizontal') {
-      const item = this.data.items.find(value => value._id === gesture.id)
-      if (item && item.swipeX < -this.actionWidth() * .42) this.openSwipe(gesture.id)
-      else this.closeSwipe()
-    }
-    this._cardGesture = null
-  },
-  closeSwipe() {
-    this._openSwipeKey = ''
-    setListFields(this, 'items', item => item.swipeX ? { swipeX: 0 } : null)
-  },
-  openSwipe(id) {
-    this._openSwipeKey = id
-    const offset = -this.actionWidth()
-    setListFields(this, 'items', item => {
-      const swipeX = item._id === id ? offset : 0
-      return item.swipeX === swipeX ? null : { swipeX }
-    })
-    this._ignoreCardTapUntil = Date.now() + 450
-  },
   onCardTap(event) {
     const item = this.data.items.find(value => value._id === event.currentTarget.dataset.id)
-    if (item && item.swipeX < 0) this.closeSwipe()
-  },
-  resetSwipe() {
-    this._cardGesture = null
-    this._openSwipeKey = ''
-    this._ignoreCardTapUntil = 0
-    setListFields(this, 'items', item => item.swipeX ? { swipeX: 0 } : null)
+    if (item && item.swipeX < 0) { this.closeSwipe(); return }
+    if (Date.now() < (this._ignoreCardTapUntil || 0)) return
+    this.startEdit(event)
   },
 
   resetForm() {
@@ -158,6 +108,9 @@ page({
     require('../../utils/motion').closeLater(this, () => this.setData({ panel: false, closing: false }))
   },
   startEdit(event) {
+    const row = this.data.items.find(item => item._id === event.currentTarget.dataset.id)
+    if (row && row.swipeX < 0) { this.closeSwipe(); return }
+    if (Date.now() < (this._ignoreCardTapUntil || 0) || this._deletePending) return
     const id = event.currentTarget.dataset.id
     const item = this.data.items.find(value => value._id === id)
     if (!item) return
@@ -232,7 +185,18 @@ page({
   async toggle(e) { this.motionSettingChange(e); try { await call('aiTasks', { action: 'toggle', id: e.currentTarget.dataset.id, enabled: e.detail.value, clientRequestId: requestId() }); this.load() } catch (error) { toastError(error); this.load() } },
   remove(e) {
     const id = e.currentTarget.dataset.id
-    this.confirmDanger({ object: (this.data.items.find(item => item._id === id) || {}).categoriesText || '', title: '删除报告任务', content: '已生成的站内通知会保留。', success: async r => { if (!r.confirm) return; try { await call('aiTasks', { action: 'remove', id, clientRequestId: requestId() }); this._openSwipeKey = ''; this.load() } catch (error) { toastError(error) } } })
+    if (this._deletePending) return
+    this.confirmDanger({ object: (this.data.items.find(item => item._id === id) || {}).categoriesText || '', title: '删除报告任务', content: '已生成的站内通知会保留。', success: async r => {
+      if (!r.confirm || this._motionInactive || this._deletePending) return
+      this._deletePending = true
+      this.setData({ loading: false })
+      this.resetSwipe()
+      const rollback = removeListItem(this, 'items', '_id', id)
+      if (!rollback) { this._deletePending = false; return }
+      try { await call('aiTasks', { action: 'remove', id, clientRequestId: requestId() }) }
+      catch (error) { rollback(); toastError(error) }
+      finally { this._deletePending = false }
+    } })
   },
   // 开关状态即用户偏好，立即乐观落库并保持开启；订阅授权弹窗由微信自行展示，
   // 不额外弹 toast（开关翻转本身就是反馈），授权与否都不再回退开关、也不刷新列表。

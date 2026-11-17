@@ -1,5 +1,5 @@
 # 一迈一记工程结构
-> 更新日期：2026-11-11｜本文列出实际目录，不以未实现的推荐层次冒充现状。
+> 更新日期：2026-11-17｜本文列出实际目录，不以未实现的推荐层次冒充现状。
 
 ~~~text
 miniprogram/
@@ -10,13 +10,13 @@ miniprogram/
   components/
     net-banner/                 # 断网与网络异常横幅
   custom-tab-bar/               # 首页 / 小迈 / 我的
-  utils/                        # 31 个前端工具模块，清单见下
+  utils/                        # 32 个前端工具模块，清单见下
   pages/
     index/ statistics/ mine/    # 三个底部 Tab
     statistics-detail/          # 分类趋势详情（二级页）
     feeding/ solid/ excretion/ growth/ milestone/ diary/
     baby/ theme/ ai-settings/
-    ai-chat/ ai-history/ ai-tasks/ ai-notifications/ custom-record/
+    ai-chat/ ai-history/ ai-tasks/ ai-notifications/ custom-record/ privacy/ # 共 19 页
 cloudfunctions/                 # 15 个可调用云函数 + _shared
   _shared/                      # runtime/aggregation/record-details/llm/schedule/ai-settings 唯一共享源码
   aiChat/ aiNotifications/ aiReport/ aiSettings/ aiTasks/ asrProxy/
@@ -25,12 +25,12 @@ cloudfunctions/                 # 15 个可调用云函数 + _shared
 scripts/
   sync-cloud-runtime.js         # 同步共享源码到 14 个受管函数 lib/
   check-project.js              # 项目注册与一致性检查
-tests/                          # 44 个 *.test.cjs 文件 + helpers.cjs
+tests/                          # 45 个 *.test.cjs 文件 + helpers.cjs
   ai-chat-images.test.cjs ai-chat-snapshot.test.cjs ai-chat-voice.test.cjs ai-settings-cache.test.cjs ai-settings-questions.test.cjs
   baby-profile.test.cjs chart-bars.test.cjs chart-selection.test.cjs common-questions.test.cjs copy-terse.test.cjs
   custom-record-validation.test.cjs feature-retirement.test.cjs growth-multi-measurement.test.cjs
   home-cache.test.cjs home-card-edit.test.cjs home-card.test.cjs home-timeline.test.cjs history-swipe.test.cjs
-  interaction-motion.test.cjs list-swipe-performance.test.cjs llm-encoding.test.cjs markdown.test.cjs milestone-defs.test.cjs
+  interaction-delete.test.cjs interaction-motion.test.cjs list-swipe-performance.test.cjs llm-encoding.test.cjs markdown.test.cjs milestone-defs.test.cjs
   milestone-entry.test.cjs milestone-gestures.test.cjs mine-profile.test.cjs navigation-routing.test.cjs
   page-cache.test.cjs privacy-policy.test.cjs prompt-defaults.test.cjs question-categories.test.cjs record-details.test.cjs record-mutations.test.cjs references.test.cjs
   registration.test.cjs report-history.test.cjs report-scope.test.cjs slownote.test.cjs
@@ -46,13 +46,13 @@ docs/
 ~~~
 
 ## 前端工具模块
-`miniprogram/utils/` 当前有 31 个 JavaScript 文件：`ai-photos.js`、`ai-sessions.js`、`ai-settings.js`、`api.js`、`avatar.js`、`categories.js`、`chart.js`、`common-questions.js`、`confetti.js`、`date.js`、`digest.js`、`format-number.js`、`haptics.js`、`home-cards.js`、`home-refresh.js`、`list-patch.js`、`markdown.js`、`milestone-overview.js`、`motion.js`、`net.js`、`page-cache.js`、`page.js`、`privacy-content.js`、`record-scope.js`、`references.js`、`registration.js`、`reveal.js`、`statistics-detail-core.js`、`statistics-insights.js`、`theme.js`、`viewmodels.js`。
+`miniprogram/utils/` 当前有 32 个 JavaScript 文件：`ai-photos.js`、`ai-sessions.js`、`ai-settings.js`、`api.js`、`avatar.js`、`categories.js`、`chart.js`、`common-questions.js`、`confetti.js`、`date.js`、`digest.js`、`format-number.js`、`haptics.js`、`home-cards.js`、`home-refresh.js`、`list-patch.js`、`markdown.js`、`milestone-overview.js`、`motion.js`、`net.js`、`page-cache.js`、`page.js`、`privacy-content.js`、`record-scope.js`、`references.js`、`registration.js`、`reveal.js`、`statistics-detail-core.js`、`statistics-insights.js`、`swipe-gesture.js`、`theme.js`、`viewmodels.js`。
 
 `utils/common-questions.js` 的 7 类数据类型是端侧唯一枚举来源，常见问题与定时报告共用；`cloudfunctions/_shared/record-details.js` 镜像类别键并由 `tests/record-details.test.cjs` 校验一致，负责字段白名单、服务端明细渲染和共享长度预算；`pages/ai-tasks` 另在页面内维护 `ALL`（类型）、`RANGES`（报告数据范围）与 `rangeName/rangeHint` 三个纯函数，报告范围的语义以 `cloudfunctions/_shared/schedule.js` 的 `REPORT_RANGES` 为准，两边改动必须同时进行。
 
 `utils/page-cache.js` 是页面读缓存：内存 + 本地存储双层，键为「作用域 + 参数」，默认 60 秒可复用，超过 64KB 的结果只留在内存。记录类写操作经 `utils/home-refresh.js` 的 `invalidateRecords()` 按 `home` / `statistics` 作用域失效；退出登录由 `app.logout()` 整体清空。首页与小迈优先渲染缓存再静默校验，`load(true)` 或下拉刷新跳过缓存，但都不会清空已有内容闪骨架。
 
-`utils/list-patch.js` 用数组路径只更新列表行中变化的字段，供滑动等高频交互复用；用户编辑的常见问题存储按 openid 分桶，无法确认账号归属的旧共享键会被清理。
+`utils/swipe-gesture.js` 为首页/宝宝/常见问题/里程碑/报告任务/历史对话/历史报告七列表共用方向锁与单动作左滑（110rpx），横向期间动态关闭有界列表纵滚，结束/取消/异常/离页解锁。`utils/list-patch.js` 用数组路径只更新行字段，结构删除用 `removeListItem` 局部移除并返回按 scope 隔离的回滚闭包，`filterRemoved` 防旧响应复活已删项；用户编辑的常见问题存储按 openid 分桶，无法确认账号归属的旧共享键会被清理。
 
 常见问题数据和端侧存储工具仍保留；管理入口已并入 `pages/ai-settings/`，没有单独的常见问题页面。`utils/common-questions.js` 同时定义常见问题的 6 档取数范围（今天/近 7 天/本周/本月/近 30 天/本年）与 7 类数据类型及内置默认类别——这 6 档是**提问时**的取数范围，与定时报告的 5 档 `range` 不是同一套枚举，不要互相套用；`utils/digest.js` 请求统计云函数返回的服务端渲染明细，并按响应的 `detailsLimit` 展示/裁剪，不接收原始记录集合。`confetti.js` 仍用于发育里程碑达成效果。
 
@@ -75,7 +75,7 @@ docs/
 
 `statistics` 是小迈主页面：范围选择、通用问答入口和六类概况卡。进入页面先渲染 60 秒内的缓存结果，再按需静默校验，切 Tab 不重复请求；切换范围或下拉刷新才跳过缓存，且不清空已有卡片。仅展示范围内有记录的类别；范围内完全无数据时隐藏概况卡片区并显示登记引导。成长/喂养为多项指标卡，统一三列：标签｜数值+单位｜环比变化，变化不重复单位；其余为单指标卡。`statistics-detail` 显示分类指标、趋势图与选中日期当天该类型记录，不含日历热力图；统计范围从概况卡入口传入。横滑由 `.chart-scroll` 内的透明占位层驱动，明细在 `.detail-scroll` 纵向滚动，页面容器不滚动且禁用整页下拉刷新。横滑只浏览趋势、不刷新当天明细；点选吸附到最近的有登记值日期，空白日期不切换、不请求后台，点选登记日才触发 daily 查询。数值标签集合与选中态无关，每个有值点始终显示数值。`utils/chart.js` 的 `seriesChart()` 由 `statistics-detail` 调用。Canvas 固定为视口宽并位于 `.chart-scroll` 外，滚动层内的透明占位层宽为 `chartWidth`；逻辑布局按 `chartWidth` 计算，`drawFrame()` 固定裁剪 `[0, viewWidth]` 并将逻辑内容平移 `-viewOffset`，不依赖 Canvas 节点随滚动容器移动。选中日期以加粗实心节点显示，不画竖向高亮虚线。日历热力图模块 `utils/heatmap.js` 与 `tests/heatmap.test.cjs` 已在死文件清理中移除，前端工具清单不再列出。
 
-`ai-chat` 保留 WechatSI 惰性加载兼容代码，但个人主体不在 `app.json` 声明插件，加载失败后使用 `RecorderManager → asrProxy` 一次性转写；主体变更为非个人后可加回声明恢复实时预览。`tests/ai-chat-voice.test.cjs` 覆盖无插件声明、惰性加载、转写清理与卸载收尾，以及长按输入框手势、麦克风按钮移除、录音态样式与卸载计时器清理。
+`ai-chat` 保留 WechatSI 惰性加载兼容代码，但个人主体不在 `app.json` 声明插件，加载失败后使用 `RecorderManager → asrProxy` 一次性转写；主体变更为非个人后可加回声明恢复实时预览。`tests/ai-chat-voice.test.cjs` 覆盖无插件声明、惰性加载、转写清理与卸载收尾，以及独立透明语音热区 + shell 去重、textarea 不绑触摸、350ms 长按不聚焦、空/有文字的短按与长按、录音态禁用与卸载计时器清理。`utils/ai-sessions.js` 自动保存保持静默降级，显式删除问答使用严格保存以支持失败回滚；同账号同会话的写入串行，避免先前自动保存晚返回覆盖删除结果。`tests/interaction-delete.test.cjs` 覆盖即时删除、一次写入、成功不重拉、失败恢复、scope 隔离及旧响应保护；真实键盘/系统菜单与方向锁仍待设备复验。
 
 统计详情的右侧纵轴使用按刻度文字宽度收缩的固定栏，数字右对齐；左侧 `.chart-plot-viewport` 绘图区在纵轴栏前结束并独立横向滚动，横线和数据不会延伸到纵轴下方。
 

@@ -5,7 +5,9 @@ const confetti = require('../../utils/confetti')
 const milestoneOverview = require('../../utils/milestone-overview')
 const pageCache = require('../../utils/page-cache')
 const { ageMonth } = require('../../utils/date')
-const { setListItemFields, setListFields } = require('../../utils/list-patch')
+const { createSwipe, lock } = require('../../utils/swipe-gesture')
+const { removeListItem, filterRemoved } = require('../../utils/list-patch')
+const milestoneSwipe = createSwipe({ list: 'visible', field: 'key', eventKey: 'key' })
 const DOMAINS = ['大运动', '精细动作', '语言', '社交', '其他']
 const MONTHS = Array.from({ length: 36 }, (_, index) => index + 1)
 const CLIENT_ID = () => `${Date.now()}-${Math.random().toString(36).slice(2)}`
@@ -13,7 +15,7 @@ const sameData = (left, right) => JSON.stringify(left) === JSON.stringify(right)
 
 require('../../utils/page')({
   data: {
-    loading: false, loadError: '', months: MONTHS, activeMonth: 1, monthScrollInto: 'month-1', visible: [], all: [], busy: false,
+    refreshing: false, loading: false, loadError: '', months: MONTHS, activeMonth: 1, monthScrollInto: 'month-1', visible: [], all: [], busy: false,
     definition: null, domains: DOMAINS, domainIndex: 0, formMonth: 1, formName: '', savingDef: false,
     operatingKey: '',
     actionError: '', draggingKey: '', dropIndex: -1
@@ -39,7 +41,13 @@ require('../../utils/page')({
     return this.load()
   },
   onPullDownRefresh() { return this.load(true).finally(() => wx.stopPullDownRefresh()) },
+  onScrollRefresh() {
+    if (this.data.refreshing) return
+    this.setData({ refreshing: true })
+    return this.onPullDownRefresh().finally(() => this.setData({ refreshing: false }))
+  },
   async load(force = false) {
+    this.cancelCardGestures()
     const version = this._listVersion = (this._listVersion || 0) + 1
     const babyId = app.globalData.activeBabyId || ''
     // Account identity is intentionally omitted; app.logout() clears page-cache entries.
@@ -81,7 +89,7 @@ require('../../utils/page')({
   },
   applyList(result, babyId, scopeKey) {
     const months = result.months || MONTHS
-    const all = result.milestones || []
+    const all = filterRemoved(this, 'all', 'key', result.milestones)
     const activeMonth = months.includes(this.data.activeMonth) ? this.data.activeMonth : (months[0] || 1)
     const visible = this.visibleForMonth(all, activeMonth)
     const scopeChanged = this._loadedScope !== scopeKey
@@ -100,7 +108,7 @@ require('../../utils/page')({
     if (needsUpdate) this.setData(updates)
   },
   visibleForMonth(items, month) {
-    return items.filter(item => Number(item.month) === Number(month)).sort((a, b) => a.sort_order - b.sort_order).map(item => ({
+    return filterRemoved(this, 'all', 'key', items).filter(item => Number(item.month) === Number(month)).sort((a, b) => a.sort_order - b.sort_order).map(item => ({
       ...item,
       swipeX: item.key === this._openSwipeKey ? -this.actionWidth() : 0,
       dragY: 0
@@ -113,13 +121,11 @@ require('../../utils/page')({
   onMonth(event) {
     const month = Number(event.currentTarget.dataset.month)
     if (!Number.isInteger(month)) return
+    this.cancelCardGestures()
     this.setData({ activeMonth: month, monthScrollInto: `month-${month}` })
     this.applyFilter()
   },
-  actionWidth() {
-    const info = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync()
-    return 220 * (info.windowWidth || 375) / 750
-  },
+  actionWidth: milestoneSwipe.actionWidth,
   onMonthSwipeStart(event) {
     const touch = event.touches && event.touches[0]
     if (!touch) return
@@ -139,15 +145,10 @@ require('../../utils/page')({
       this.applyFilter()
     }
   },
-  onCardTouchStart(event) {
-    const touch = event.touches && event.touches[0], key = event.currentTarget.dataset.key
-    if (!touch || !key) return
-    const item = this.data.visible.find(value => value.key === key)
-    this._cardGesture = { key, x: touch.clientX, y: touch.clientY, startOffset: item ? item.swipeX || 0 : 0, axis: '' }
-  },
+  onCardTouchStart: milestoneSwipe.onCardTouchStart,
   onCardTouchMove(event) {
     const gesture = this._cardGesture, touch = event.touches && event.touches[0]
-    if (!gesture || !touch) return
+    if (!gesture || !touch) { this.cancelCardGestures(); return }
     const dx = touch.clientX - gesture.x, dy = touch.clientY - gesture.y
     if (this.data.draggingKey === gesture.key) {
       const dragY = dy
@@ -165,46 +166,24 @@ require('../../utils/page')({
       if (Object.keys(patch).length) this.setData(patch)
       return
     }
-    if (!gesture.axis && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) gesture.axis = Math.abs(dx) > Math.abs(dy) * 1.15 ? 'horizontal' : 'vertical'
-    if (gesture.axis !== 'horizontal') return
-    if (dx < -8 && this._openSwipeKey && this._openSwipeKey !== gesture.key) this.closeSwipe()
-    const offset = Math.max(-this.actionWidth(), Math.min(0, gesture.startOffset + dx))
-    const index = this.data.visible.findIndex(item => item.key === gesture.key)
-    setListItemFields(this, 'visible', index, { swipeX: offset })
-    if (Math.abs(dx) > 12) this._ignoreCardTapUntil = Date.now() + 450
+    milestoneSwipe.onCardTouchMove.call(this, event)
   },
   onCardTouchEnd() {
     const gesture = this._cardGesture
-    if (!gesture) return
-    if (this.data.draggingKey === gesture.key) {
-      this.finishDrag(gesture.key)
-    } else if (gesture.axis === 'horizontal') {
-      const item = this.data.visible.find(value => value.key === gesture.key)
-      const open = item && item.swipeX < -this.actionWidth() * .42
-      if (open) this.openSwipe(gesture.key)
-      else this.closeSwipe()
-    }
-    this._cardGesture = null
+    try {
+      if (gesture && this.data.draggingKey === gesture.key) this.finishDrag(gesture.key)
+      else milestoneSwipe.onCardTouchEnd.call(this)
+    } finally { this._cardGesture = null; lock(this, false) }
   },
+  onCardTouchCancel() { this.cancelCardGestures() },
   cancelCardGestures() {
-    this._cardGesture = null
+    milestoneSwipe.resetSwipe.call(this)
     this._dragCenters = []
-    this._openSwipeKey = ''
-    if (this.data.draggingKey) this.setData({ draggingKey: '', dropIndex: -1, visible: this.data.visible.map(item => ({ ...item, dragY: 0, swipeX: 0 })) })
+    if (this.data.draggingKey) this.setData({ draggingKey: '', dropIndex: -1 })
+    require('../../utils/list-patch').setListFields(this, 'visible', () => ({ dragY: 0, swipeX: 0 }))
   },
-  closeSwipe() {
-    this._openSwipeKey = ''
-    setListFields(this, 'visible', item => item.swipeX ? { swipeX: 0 } : null)
-  },
-  openSwipe(key) {
-    this._openSwipeKey = key
-    const offset = -this.actionWidth()
-    setListFields(this, 'visible', item => {
-      const swipeX = item.key === key ? offset : 0
-      return item.swipeX === swipeX ? null : { swipeX }
-    })
-    this._ignoreCardTapUntil = Date.now() + 450
-  },
+  closeSwipe: milestoneSwipe.closeSwipe,
+  openSwipe: milestoneSwipe.openSwipe,
   toggleDone(event) {
     const item = this.data.visible.find(value => value.key === event.currentTarget.dataset.key)
     if (!item) return
@@ -283,6 +262,9 @@ require('../../utils/page')({
   },
   startAdd() { this.setData({ definition: { key: '', source: 'custom' }, formName: '', domainIndex: 0, formMonth: this.data.activeMonth }) },
   startEdit(event) {
+    const row = this.data.visible.find(item => item.key === event.currentTarget.dataset.key)
+    if (row && row.swipeX < 0) { this.closeSwipe(); return }
+    if (Date.now() < (this._ignoreCardTapUntil || 0) || this.data.draggingKey || this.data.busy) return
     const item = this.data.visible.find(value => value.key === event.currentTarget.dataset.key)
     if (!item) return
     this._openSwipeKey = ''
@@ -318,17 +300,26 @@ require('../../utils/page')({
     wx.showModal({ title: '删除成长里程碑', content: `删除「${item.name}」及其打卡记录？此操作不可撤销。`, confirmText: '删除', confirmColor: '#b42318', success: result => { if (result.confirm) this.deleteDefinition(item) } })
   },
   async deleteDefinition(item) {
+    if (this.data.busy || this._motionInactive) return
     this.setData({ busy: true })
+    const scope = app.globalData.openid + '|' + app.globalData.activeBabyId
+    const rollback = removeListItem(this, 'all', 'key', item.key)
+    this._listVersion = (this._listVersion || 0) + 1
+    this.setData({ loading: false })
+    this.applyFilter()
     try {
       const response = await wx.cloud.callFunction({ name: 'milestoneRecord', data: { action: 'removeDef', key: item.key, baby_id: app.globalData.activeBabyId, clientRequestId: CLIENT_ID() } })
       if (!response.result || response.result.code !== 0) throw new Error('MILESTONE_REMOVE_FAILED')
-      this.invalidateData(); await this.load(true)
-    } catch (error) { wx.showToast({ title: '删除失败，请重试', icon: 'none' }) }
-    finally { this.setData({ busy: false }) }
+      this.invalidateData()
+    } catch (error) {
+      if (rollback) rollback()
+      if (scope === app.globalData.openid + '|' + app.globalData.activeBabyId) this.applyFilter()
+      wx.showToast({ title: '删除失败，请重试', icon: 'none' })
+    } finally { if (scope === app.globalData.openid + '|' + app.globalData.activeBabyId) this.setData({ busy: false }) }
   },
   async beginDrag(event) {
     const key = event.currentTarget.dataset.key
-    if (!key || this.data.busy || this.data.definition) return
+    if (!key || this.data.busy || this.data.definition || !this._cardGesture || this._cardGesture.axis) return
     this._ignoreCardTapUntil = Date.now() + 500
     this._openSwipeKey = ''
     tap('medium')
@@ -337,6 +328,8 @@ require('../../utils/page')({
       query.selectAll('.milestone-swipe').boundingClientRect(rects => resolve((rects || []).map((rect, index) => ({ key: this.data.visible[index] && this.data.visible[index].key, y: rect.top + rect.height / 2 }))))
       query.exec()
     }).catch(() => [])
+    if (this._motionInactive || !this._cardGesture || this._cardGesture.key !== key) return
+    lock(this, true)
     this._dragCenters = centers
     this.setData({ draggingKey: key, dropIndex: this.data.visible.findIndex(item => item.key === key) })
   },

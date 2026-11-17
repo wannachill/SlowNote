@@ -415,6 +415,7 @@
 .attach-plus::after { transform: rotate(90deg); }
 .attach-button.on .attach-plus { transform: rotate(45deg); }
 .chat-input-shell {
+  position: relative;
   flex: 1;
   min-width: 0;
   display: flex;
@@ -823,3 +824,5 @@
   .jump-bottom { animation: none; }
   .think-arrow, .attach-plus { transition: none; }
 }
+
+.voice-touch-zone { position: absolute; z-index: 2; inset: 0; background: transparent; border-radius: inherit; user-select: none; -webkit-user-select: none; }

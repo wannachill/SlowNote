@@ -3,6 +3,17 @@ const DB = 'ai_sessions'
 const MAX_TITLE = 14
 const MAX_CONTENT = 8000
 const MAX_REASONING = 4000
+const writes = new Map()
+
+// An older autosave must settle before a newer explicit delete can persist.
+function writeSession(openid, sessionId, write) {
+  const key = JSON.stringify([openid, sessionId]), previous = writes.get(key)
+  const pending = (previous || Promise.resolve()).catch(() => {}).then(write)
+  writes.set(key, pending)
+  const clear = () => { if (writes.get(key) === pending) writes.delete(key) }
+  pending.then(clear, clear)
+  return pending
+}
 
 function tidy(messages) {
   return (messages || []).map(m => ({
@@ -30,14 +41,16 @@ function titleOf(messages) {
 function byId(openid, sessionId) {
   return wx.cloud.database().collection(DB).where({ openid, sessionId })
 }
-async function saveSession(openid, sessionId, messages) {
+async function saveSession(openid, sessionId, messages, strict = false) {
   try {
     const babyId = getApp().globalData.activeBabyId || ''
     const record = { title: titleOf(messages), messages: tidy(messages), babyId, updatedAt: Date.now() }
-    const existing = await byId(openid, sessionId).limit(1).get()
-    if (existing.data.length) await wx.cloud.database().collection(DB).doc(existing.data[0]._id).update({ data: record })
-    else await wx.cloud.database().collection(DB).add({ data: { openid, sessionId, ...record, createdAt: Date.now() } })
-  } catch (error) { /* 保存失败静默 */ }
+    await writeSession(openid, sessionId, async () => {
+      const existing = await byId(openid, sessionId).limit(1).get()
+      if (existing.data.length) await wx.cloud.database().collection(DB).doc(existing.data[0]._id).update({ data: record })
+      else await wx.cloud.database().collection(DB).add({ data: { openid, sessionId, ...record, createdAt: Date.now() } })
+    })
+  } catch (error) { if (strict) throw error /* 自动保存仍静默，显式删除需要回滚。 */ }
 }
 async function listSessions(openid) {
   const result = await wx.cloud.database().collection(DB)
@@ -53,7 +66,9 @@ async function getSession(openid, sessionId) {
   return res.data[0] || null
 }
 async function removeSession(openid, sessionId) {
-  const res = await byId(openid, sessionId).limit(1).get()
-  if (res.data.length) await wx.cloud.database().collection(DB).doc(res.data[0]._id).remove()
+  return writeSession(openid, sessionId, async () => {
+    const res = await byId(openid, sessionId).limit(1).get()
+    if (res.data.length) await wx.cloud.database().collection(DB).doc(res.data[0]._id).remove()
+  })
 }
 module.exports = { saveSession, listSessions, getSession, removeSession }

@@ -20,7 +20,7 @@
   display: flex;
   align-items: stretch;
   justify-content: flex-end;
-  width: var(--swipe-action-width);
+  width: calc(var(--swipe-action-width) / 2);
   border-radius: 0 var(--radius) var(--radius) 0;
   overflow: hidden;
   visibility: hidden;
@@ -41,7 +41,6 @@
   color: var(--color-on-accent);
   font-size: var(--font-caption);
 }
-.edit-action { background: var(--color-accent-ink); }
 .delete-action { background: var(--color-notice); }
 .baby-row {
   position: relative;
@@ -54,11 +53,11 @@
   background: var(--color-surface);
   border-radius: 0;
   transition: transform var(--motion-quick) var(--curve-spring);
-  will-change: transform;
+  overflow: hidden;
+  isolation: isolate;
 }
-.baby-row.active {
-  background: var(--color-accent-soft);
-}
+.baby-row.active::before { content: ''; position: absolute; inset: 0; z-index: -1; background: var(--color-accent-soft); pointer-events: none; }
+.baby-swipe.swipe-open .baby-row-tag { opacity: 0; visibility: hidden; }
 .baby-row-img {
   width: var(--avatar-row-size);
   height: var(--avatar-row-size);
@@ -132,3 +131,9 @@
   line-height: var(--line-body);
   overflow-wrap: anywhere;
 }
+
+.page.swipe-page { height: 100vh; min-height: 0; display: flex; flex-direction: column; overflow: hidden; padding-bottom: 0; }
+.swipe-page > .sub-nav { flex-shrink: 0; }
+.swipe-list-scroll { flex: 1; min-height: 0; height: 0; width: 100%; }
+
+.swipe-list-content { padding-bottom: calc(var(--space-m) + env(safe-area-inset-bottom)); }

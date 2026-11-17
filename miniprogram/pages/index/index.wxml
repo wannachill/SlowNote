@@ -23,9 +23,9 @@
     </view>
     <button wx:if="{{selectedDate !== today}}" class="text-action back-today" bindtap="goToday" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}">回到今天</button>
   </view>
-  <view class="toolbar day-toolbar"><text class="title">{{dateLabel}}的记录</text><button wx:if="{{cardEditing}}" class="text-action" bindtap="finishCardEdit" disabled="{{cardBusy || cardSettling || cardDeletingKey}}" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" aria-label="完成卡片整理">完成</button></view>
+  <view class="toolbar day-toolbar"><text class="title">{{dateLabel}}的记录</text></view>
   <button wx:if="{{loggedIn}}" class="milestone-entry home-milestone-entry" bindtap="openMilestones" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" aria-label="{{milestoneEntry.label}}"><text class="milestone-entry-label">{{milestoneEntry.label}}</text><view class="chevron" aria-hidden="true"></view></button>
-  <scroll-view class="home-results" scroll-y="{{!cardEditing}}" enhanced show-scrollbar="{{false}}" refresher-enabled="{{true}}" refresher-triggered="{{refreshing}}" bindrefresherrefresh="onScrollRefresh">
+  <scroll-view class="home-results" scroll-y="{{!swipeScrollLocked}}" enhanced show-scrollbar="{{false}}" refresher-enabled="{{true}}" refresher-triggered="{{refreshing}}" bindrefresherrefresh="onScrollRefresh">
   <view wx:if="{{!loggedIn}}" class="status-block"><text>登录后，把宝宝的每一天安心记下。</text><button class="btn-secondary" bindtap="goMine" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}">前往登录</button></view>
   <view wx:elif="{{loading && !cards.length}}" class="status-block skeleton-loading" role="status"><text class="loading-copy">正在找这一天的记录…</text><view class="skeleton-grid" aria-hidden="true"><view wx:for="{{[0,1,2,3]}}" wx:key="*this" class="skeleton-card"><view class="skeleton-line short"></view><view class="skeleton-line value"></view><view class="skeleton-line"></view></view></view></view>
   <view wx:elif="{{error}}" class="status-block"><text>{{error}}</text><button class="btn-secondary" bindtap="load" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}">重试</button></view>
@@ -37,13 +37,14 @@
     </view>
   </scroll-view>
   </view>
-  <view class="metric-grid {{cardEditing ? 'cards-editing' : ''}}">
-    <view wx:for="{{cards}}" wx:key="key" class="metric-slot {{cardDeletingKey === item.key ? 'card-removing' : ''}}" data-key="{{item.key}}" bindlongpress="beginCardEdit">
+  <view class="metric-grid {{cardSettling ? 'cards-settling' : ''}}">
+    <view wx:for="{{cards}}" wx:key="key" class="metric-slot">
       <view class="metric-rail-line" aria-hidden="true"></view>
       <view class="metric-rail-node" aria-hidden="true"></view>
       <text class="metric-rail-time">{{item.time}}</text>
-      <view class="metric-lift"><view class="metric-wiggle" style="{{item.wiggleStyle}}">
-        <button class="metric-card" data-key="{{item.key}}" data-url="{{item.url}}" bindtap="openCard" hover-class="{{cardEditing ? 'none' : 'tap-feedback'}}" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" aria-label="{{item.name}}，{{item.value}}{{item.unit}}，{{item.detail}}{{cardEditing ? '，可删除' : ''}}">
+      <view class="metric-lift"><view class="metric-swipe {{item.swipeX ? 'swipe-open' : ''}}">
+        <view class="swipe-actions"><button class="swipe-action delete-action" data-key="{{item.key}}" catchtap="removeCard" disabled="{{cardBusy}}" hover-class="tap-feedback" aria-label="删除{{selectedDate}}全部{{item.name}}登记">删除</button></view>
+        <button class="metric-card" style="transform: translate({{item.swipeX}}px, 0);" bindtouchstart="onCardTouchStart" bindtouchmove="onCardTouchMove" bindtouchend="onCardTouchEnd" bindtouchcancel="onCardTouchCancel" data-key="{{item.key}}" data-url="{{item.url}}" bindtap="openCard" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" aria-label="{{item.name}}，{{item.value}}{{item.unit}}，{{item.detail}}">
           <view class="line-icon record-icon metric-record-icon icon-category-{{item.key === 'excretion' ? 'diaper' : item.module === 'feeding' && item.key !== 'solid' && item.key !== 'excretion' ? 'feeding' : item.key === 'milestone' ? 'growth' : item.key}}" aria-hidden="true"><view class="category-icon-part category-icon-primary"></view><view class="category-icon-part category-icon-secondary"></view><view class="category-icon-part category-icon-detail"></view></view>
           <view class="metric-body">
             <view class="metric-title-row"><text class="metric-name">{{item.name}}</text><view class="metric-hero"><text class="metric-number">{{item.value}}</text><text class="metric-unit">{{item.unit}}</text></view></view>
@@ -53,7 +54,6 @@
           </view>
         </button>
       </view></view>
-      <button wx:if="{{cardEditing}}" class="card-remove" data-key="{{item.key}}" bindtap="removeCard" disabled="{{cardBusy || cardSettling || cardDeletingKey}}" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" aria-label="删除{{selectedDate}}全部{{item.name}}登记"><view class="card-remove-mark" aria-hidden="true"></view></button>
     </view>
   </view>
   </view>

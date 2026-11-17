@@ -1,5 +1,7 @@
-<view class="theme-root {{themeClass}} page">
+<view class="theme-root {{themeClass}} page swipe-page">
   <view class="sub-nav" style="height: calc({{statusBarHeight}}px + var(--nav-height)); padding-top: {{statusBarHeight}}px;"><button class="sub-nav-back" bindtap="goBack" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" aria-label="返回"></button><text class="sub-nav-title">历史报告</text><view class="sub-nav-spacer" aria-hidden="true"></view></view>
+  <scroll-view class="swipe-list-scroll" scroll-y="{{!swipeScrollLocked}}" enhanced show-scrollbar="{{false}}">
+  <view class="swipe-list-content">
 
   <view class="report-filters">
     <text class="section-meta">报告日期</text>
@@ -19,7 +21,7 @@
       <view class="swipe-actions">
         <button class="swipe-action delete-action" data-id="{{item.id}}" catchtap="remove" hover-class="tap-feedback" aria-label="删除{{item.dateText}}的报告">删除</button>
       </view>
-      <view class="card report-card" data-id="{{item.id}}" style="transform: translate({{item.swipeX}}px, 0);" bindtap="onCardTap" bindtouchstart="onCardTouchStart" bindtouchmove="onCardTouchMove" bindtouchend="onCardTouchEnd" bindtouchcancel="onCardTouchEnd" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}">
+      <view class="card report-card" data-id="{{item.id}}" style="transform: translate({{item.swipeX}}px, 0);" bindtap="onCardTap" bindtouchstart="onCardTouchStart" bindtouchmove="onCardTouchMove" bindtouchend="onCardTouchEnd" bindtouchcancel="onCardTouchCancel" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}">
         <view class="task-main">
           <view class="report-row report-head">
             <text class="title">{{item.title}}</text>
@@ -35,6 +37,7 @@
     <button wx:if="{{hasMore}}" class="text-action report-more" bindtap="loadMore" loading="{{loading}}" disabled="{{loading}}" hover-class="tap-feedback">加载更多</button>
   </view>
 
+  </view></scroll-view>
   <!-- 报告详情 -->
   <view wx:if="{{panel}}" class="mask {{closing ? 'closing' : ''}}" bindtap="closePanel">
     <view class="sheet report-sheet {{closing ? 'closing' : ''}}" catchtap="noop">

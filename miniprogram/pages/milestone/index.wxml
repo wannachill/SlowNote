@@ -1,4 +1,4 @@
-<view class="theme-root {{themeClass}} page">
+<view class="theme-root {{themeClass}} page swipe-page">
   <view class="sub-nav" style="height: calc({{statusBarHeight}}px + var(--nav-height)); padding-top: {{statusBarHeight}}px;">
     <button class="sub-nav-back" bindtap="goBack" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" aria-label="返回"></button>
     <text class="sub-nav-title">成长里程碑</text>
@@ -9,7 +9,8 @@
       <view wx:for="{{months}}" wx:key="*this" id="month-{{item}}" class="month-pill {{activeMonth === item ? 'active' : ''}} pressable" data-month="{{item}}" bindtap="onMonth" aria-role="button" aria-label="{{item}} 月龄" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}">{{item}}月</view>
     </view>
   </scroll-view>
-  <view class="section" bindtouchstart="onMonthSwipeStart" bindtouchend="onMonthSwipeEnd" bindtouchcancel="onMonthSwipeEnd">
+  <scroll-view class="section swipe-list-scroll" refresher-enabled="{{!swipeScrollLocked && !draggingKey}}" refresher-triggered="{{refreshing}}" bindrefresherrefresh="onScrollRefresh" scroll-y="{{!swipeScrollLocked}}" enhanced show-scrollbar="{{false}}" bindtouchstart="onMonthSwipeStart" bindtouchend="onMonthSwipeEnd" bindtouchcancel="onMonthSwipeEnd">
+    <view class="swipe-list-content">
     <view class="section-heading">
       <text class="title">{{activeMonth}} 月龄</text>
       <view class="heading-actions"><button class="link-btn" bindtap="startAdd" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}">＋ 添加</button></view>
@@ -19,14 +20,15 @@
     <view wx:elif="{{loadError}}" class="status-block" role="alert"><text>{{loadError}}</text><button class="btn-secondary" bindtap="load" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}">重试</button></view>
     <view wx:if="{{!loading && !loadError && !visible.length}}" class="empty"><text class="empty-note">当前月龄暂无里程碑。</text></view>
     <view wx:for="{{visible}}" wx:key="key" class="milestone-swipe {{item.swipeX ? 'swipe-open' : ''}} {{draggingKey === item.key ? 'dragging' : ''}} {{dropIndex === index && draggingKey !== item.key ? 'drop-target' : ''}}" data-key="{{item.key}}">
-      <view class="swipe-actions"><button class="swipe-action edit-action" data-key="{{item.key}}" catchtap="startEdit" hover-class="tap-feedback" aria-label="编辑">编辑</button><button class="swipe-action delete-action" data-key="{{item.key}}" catchtap="confirmRemoveDefinition" hover-class="tap-feedback" aria-label="删除">删除</button></view>
-      <view class="milestone pressable" data-key="{{item.key}}" data-card-gesture="true" style="transform: translate({{item.swipeX}}px, {{item.dragY}}px);" bindtap="toggleDone" bindtouchstart="onCardTouchStart" bindtouchmove="onCardTouchMove" bindtouchend="onCardTouchEnd" bindtouchcancel="onCardTouchEnd" bindlongpress="beginDrag" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}">
+      <view class="swipe-actions"><button class="swipe-action delete-action" data-key="{{item.key}}" catchtap="confirmRemoveDefinition" hover-class="tap-feedback" aria-label="删除">删除</button></view>
+      <view class="milestone pressable" data-key="{{item.key}}" data-card-gesture="true" style="transform: translate({{item.swipeX}}px, {{item.dragY}}px);" bindtap="startEdit" bindtouchstart="onCardTouchStart" bindtouchmove="onCardTouchMove" bindtouchend="onCardTouchEnd" bindtouchcancel="onCardTouchCancel" bindlongpress="beginDrag" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}">
         <view class="milestone-main milestone-wiggle" data-card-gesture="true"><text class="milestone-name" data-card-gesture="true">{{item.name}}</text><text class="milestone-domain" data-card-gesture="true">{{item.domain}}</text></view>
         <view wx:if="{{item.done}}" class="milestone-done" data-card-gesture="true"><text class="done-date" data-card-gesture="true">{{item.recordDate}}</text><button class="done-check completed" data-key="{{item.key}}" catchtap="uncheck" disabled="{{busy && operatingKey === item.key}}" hover-class="tap-feedback" aria-label="取消达成"><view class="done-check-mark" aria-hidden="true"></view></button></view>
         <view wx:else class="milestone-undo" data-card-gesture="true"><button class="done-check pending" data-key="{{item.key}}" catchtap="check" disabled="{{busy && operatingKey === item.key}}" hover-class="tap-feedback" aria-label="标记达成"><view class="done-check-mark" aria-hidden="true"></view></button></view>
       </view>
     </view>
-  </view>
+    </view>
+  </scroll-view>
 
   <view wx:if="{{definition}}" class="mask" catchtap="closeDefinition">
     <view class="sheet definition-sheet" catchtap="noop">

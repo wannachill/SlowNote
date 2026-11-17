@@ -1,5 +1,7 @@
-<view class="theme-root {{themeClass}} page settings-page">
+<view class="theme-root {{themeClass}} page settings-page swipe-page">
   <view class="sub-nav" style="height: calc({{statusBarHeight}}px + var(--nav-height)); padding-top: {{statusBarHeight}}px;"><button class="sub-nav-back" bindtap="onBack" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}" aria-label="返回"></button><text class="sub-nav-title">{{navTitle}}</text><view class="sub-nav-spacer" aria-hidden="true"></view></view>
+  <scroll-view class="swipe-list-scroll" scroll-top="{{listScrollTop}}" bindscroll="onListScroll" scroll-y="{{!swipeScrollLocked}}" enhanced show-scrollbar="{{false}}">
+  <view class="swipe-list-content">
   <view wx:if="{{error}}" class="settings-error" role="alert">{{error}}</view>
   <view wx:if="{{!ready && loading}}" class="settings-loading status-block skeleton-loading" role="status"><text class="loading-copy">正在读取小迈设置…</text><view class="skeleton-list"><view wx:for="{{[0,1,2]}}" wx:key="*this" class="skeleton-card"><view class="skeleton-line short"></view><view class="skeleton-line"></view></view></view></view>
   <view wx:if="{{!ready && !loading}}" class="card setting-card"><button class="btn-secondary" bindtap="refreshSettings" hover-class="tap-feedback">重新加载</button></view>
@@ -76,10 +78,9 @@
       <view wx:if="{{!questions.length}}" class="empty question-empty"><text class="empty-note">暂无问题</text></view>
       <view wx:for="{{questions}}" wx:key="id" class="question-swipe {{item.swipeX ? 'swipe-open' : ''}}" data-id="{{item.id}}">
         <view class="question-swipe-actions">
-          <button class="question-swipe-action question-edit-action" data-id="{{item.id}}" catchtap="startEditQuestion" hover-class="tap-feedback" aria-label="编辑问题">编辑</button>
           <button class="question-swipe-action question-delete-action" data-id="{{item.id}}" catchtap="removeQuestion" hover-class="tap-feedback" aria-label="删除问题">删除</button>
         </view>
-        <view class="question-item" data-id="{{item.id}}" style="transform: translate({{item.swipeX}}px, 0);" bindtap="onQuestionCardTap" bindtouchstart="onQuestionCardTouchStart" bindtouchmove="onQuestionCardTouchMove" bindtouchend="onQuestionCardTouchEnd" bindtouchcancel="onQuestionCardTouchEnd" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}">
+        <view class="question-item" data-id="{{item.id}}" style="transform: translate({{item.swipeX}}px, 0);" bindtap="onQuestionCardTap" bindtouchstart="onQuestionCardTouchStart" bindtouchmove="onQuestionCardTouchMove" bindtouchend="onQuestionCardTouchEnd" bindtouchcancel="onQuestionCardTouchCancel" hover-class="tap-feedback" hover-start-time="20" hover-stay-time="60" hover-stop-propagation="{{true}}">
           <view class="question-main">
             <view class="question-heading"><text class="question-text">{{item.text}}</text><text wx:if="{{item.builtin}}" class="question-tag">默认</text></view>
             <text class="form-note question-range">{{item.rangeLabel}} · {{item.categoriesLabel}}</text>
@@ -97,6 +98,7 @@
     </view>
   </view>
 
+  </view></scroll-view>
   <view wx:if="{{questionsPanel}}" class="mask {{questionsClosing ? 'closing' : ''}}" bindtap="closeQuestionPanel">
     <view class="sheet question-sheet {{questionsClosing ? 'closing' : ''}}" catchtap="noop">
       <view class="sheet-heading">
