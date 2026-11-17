@@ -152,7 +152,7 @@ test('profile shares baby by current family but theme stays per user, with repla
   assert.equal((await a.main({action:'theme',theme_pref:{mode:'system'},clientRequestId:'legacy-system-theme'})).code,400)
   assert.equal((await b.main({action:'get'})).theme_pref,null)
 })
-test('deleting a baby removes only its AI sessions across multiple batches',async()=>{
+test('deleting a baby removes only its AI sessions across multiple batches with replay receipts',async()=>{
   const data=seed()
   data.babies=[{_id:'baby-a',openid:'user-a',family_id:'',nickname:'小满'}]
   data.ai_sessions=Array.from({length:45},(_,index)=>({_id:`session-${String(index).padStart(2,'0')}`,openid:'user-a',babyId:'baby-a',sessionId:`s${index}`}))
@@ -163,13 +163,177 @@ test('deleting a baby removes only its AI sessions across multiple batches',asyn
   assert.deepEqual(db.rows('ai_sessions').map(row=>row._id),['other-baby','other-user'])
   assert.equal((await api.main(event)).duplicate,true)
 })
-test('baby deletion succeeds when best-effort AI session cleanup fails',async()=>{
+test('baby deletion reports failed AI session batches and retries after the profile is gone',async()=>{
   const data=seed();data.babies=[{_id:'baby-a',openid:'user-a',family_id:'',nickname:'小满'}]
+  data.ai_sessions=[{_id:'session-a',openid:'user-a',babyId:'baby-a'}]
   const db=memoryDb(data),collection=db.collection.bind(db)
-  db.collection=name=>{if(name==='ai_sessions')throw new Error('cleanup unavailable');return collection(name)}
-  const result=await service('babyProfile',db).main({action:'delete',babyId:'baby-a',clientRequestId:'delete-baby-456'})
+  let fails=true
+  db.collection=name=>{const query=collection(name),doc=query.doc;query.doc=id=>{const ref=doc(id);if(name==='ai_sessions')ref.remove=async()=>{if(fails)throw Error('cleanup unavailable');return doc(id).remove()};return ref};return query}
+  const api=service('babyProfile',db),event={action:'delete',babyId:'baby-a',clientRequestId:'delete-baby-456'}
+  const result=await api.main(event)
   assert.equal(result.code,0)
+  assert.equal(result.babyDeleted,true)
+  assert.equal(result.pending.ai_sessions.code,503)
   assert.equal(db.rows('babies').some(row=>row._id==='baby-a'),false)
+  fails=false
+  const retried=await api.main(event)
+  assert.equal(retried.code,0)
+  assert.equal(Object.keys(retried.pending).length,0)
+  assert.equal(db.rows('ai_sessions').length,0)
+})
+
+test('baby cascade deletes every record and builtin/custom definition, retaining other babies and users',async()=>{
+  const data=seed(),collections=['feeding_records','growth_records','diary_records','custom_records','milestone_records','milestone_defs']
+  data.babies=[{_id:'baby-a',openid:'user-a'},{_id:'baby-b',openid:'user-a'}]
+  for(const name of collections)data[name]=[
+    {_id:'own',openid:'user-a',baby_id:'baby-a',source:'builtin'},
+    {_id:'custom',openid:'user-a',baby_id:'baby-a',source:'custom'},
+    {_id:'other-baby',openid:'user-a',baby_id:'baby-b',key:'kept-custom',name:'保留事项',month:1,source:'custom'},
+    {_id:'other-user',openid:'user-b',baby_id:'baby-a'}
+  ]
+  data.feeding_records.push(...['feed','solid','excretion'].map(type=>({_id:type,openid:'user-a',baby_id:'baby-a',type})))
+  data.ai_settings=[{_id:'settings',openid:'user-a'}];data.families=[{_id:'family'}]
+  const db=memoryDb(data),event={action:'delete',babyId:'baby-a',clientRequestId:'cascade-records-001'}
+  const result=await service('babyProfile',db).main(event)
+  assert.equal(result.code,0);assert.equal(Object.keys(result.pending).length,0)
+  for(const name of collections)assert.deepEqual(db.rows(name).map(row=>row._id),['other-baby','other-user'],name)
+  assert.equal(db.rows('users').length,2);assert.equal(db.rows('ai_settings').length,1);assert.equal(db.rows('families').length,1)
+  const list=await service('milestoneRecord',db).main({action:'list',baby_id:'baby-b'})
+  assert.equal(list.code,0)
+  assert.equal(list.milestones.filter(row=>row.source==='builtin').length,68)
+})
+
+test('baby cascade freezes family scope, rejects unauthorized deletion and never crosses a family',async()=>{
+  const data=seed()
+  data.family_members=[{_id:'member',openid:'user-a',familyId:'family-a'}]
+  data.babies=[{_id:'baby-a',openid:'user-b',family_id:'family-a'}]
+  data.growth_records=[{_id:'target',openid:'user-b',family_id:'family-a',baby_id:'baby-a'},{_id:'other-family',openid:'user-a',family_id:'family-b',baby_id:'baby-a'},{_id:'other-baby',family_id:'family-a',baby_id:'baby-b'}]
+  const event={action:'delete',babyId:'baby-a',clientRequestId:'family-cascade-001'}
+  // A non-owner outside the family cannot delete it.
+  data.users.push({_id:'user-c',openid:'user-c'})
+  const isolated=memoryDb(data),api=service('babyProfile',isolated)
+  assert.equal((await service('babyProfile',isolated,{openid:'user-c'}).main(event)).code,404)
+  const result=await api.main(event)
+  assert.equal(result.code,0)
+  assert.deepEqual(isolated.rows('growth_records').map(row=>row._id),['other-family','other-baby'])
+  isolated.rows('family_members')[0].familyId='family-b'
+  assert.equal((await api.main(event)).code,409)
+})
+
+test('baby cascade disables only dedicated own tasks and removes their precise histories',async()=>{
+  const data=seed();data.babies=[{_id:'baby-a',openid:'user-a'}]
+  data.ai_tasks=[{_id:'own-task',openid:'user-a',baby_id:'baby-a',enabled:true,lease_token:'running'},{_id:'all-task',openid:'user-a',baby_id:'',enabled:true},{_id:'other-baby',openid:'user-a',baby_id:'baby-b',enabled:true},{_id:'other-user',openid:'user-b',baby_id:'baby-a',enabled:true}]
+  for(const name of ['ai_runs','ai_notifications'])data[name]=data.ai_tasks.map(task=>({_id:task._id,openid:task.openid,task_id:task._id})).concat({_id:'foreign-history',openid:'user-b',task_id:'own-task'})
+  const db=memoryDb(data),result=await service('babyProfile',db).main({action:'delete',babyId:'baby-a',clientRequestId:'cascade-tasks-001'})
+  assert.equal(result.code,0);assert.equal(result.cleaned.ai_tasks,1)
+  const own=db.rows('ai_tasks').find(row=>row._id==='own-task')
+  assert.equal(own.enabled,false);assert.equal(own.lease_token,'');assert.equal(+own.lease_until,0)
+  assert.ok(db.rows('ai_tasks').filter(row=>row._id!=='own-task').every(row=>row.enabled))
+  for(const name of ['ai_runs','ai_notifications'])assert.deepEqual(db.rows(name).map(row=>row._id),['all-task','other-baby','other-user','foreign-history'])
+})
+
+test('baby cascade retries only failed frozen batches and preserves records added after deletion',async()=>{
+  const data=seed();data.babies=[{_id:'baby-a',openid:'user-a'},{_id:'baby-b',openid:'user-a'}]
+  data.growth_records=Array.from({length:81},(_,i)=>({_id:'growth-'+String(i).padStart(3,'0'),openid:'user-a',baby_id:'baby-a'}))
+  const db=memoryDb(data),collection=db.collection.bind(db),removed=[]
+  let fails=true
+  db.collection=name=>{const query=collection(name),doc=query.doc;query.doc=id=>{const ref=doc(id);if(name==='growth_records')ref.remove=async()=>{if(id==='growth-040'&&fails)throw Error('offline');removed.push(id);return doc(id).remove()};return ref};return query}
+  const api=service('babyProfile',db),event={action:'delete',babyId:'baby-a',clientRequestId:'cascade-retry-001'}
+  const first=await api.main(event)
+  assert.equal(first.code,0);assert.equal(first.cleaned.growth_records,41);assert.equal(first.pending.growth_records.batches,1)
+  db.rows('growth_records').push({_id:'later',openid:'user-a',baby_id:'baby-a'})
+  db.rows('ai_sessions').push({_id:'later-session',openid:'user-a',babyId:'baby-a'})
+  fails=false
+  const retry=await api.main(event)
+  assert.equal(retry.cleaned.growth_records,81);assert.equal(Object.keys(retry.pending).length,0)
+  assert.deepEqual(db.rows('growth_records').map(row=>row._id),['later'])
+  assert.equal(db.rows('ai_sessions')[0]._id,'later-session')
+  await api.main(event)
+  assert.equal(new Set(removed).size,removed.length,'completed batches must not delete twice')
+  assert.equal((await api.main({...event,babyId:'baby-b'})).code,409)
+  assert.equal(db.rows('babies')[0]._id,'baby-b')
+})
+
+test('baby cascade exposes changed record ownership instead of silently skipping the batch',async()=>{
+  const data=seed();data.babies=[{_id:'baby-a',openid:'user-a'}];data.growth_records=[{_id:'growth',openid:'user-a',baby_id:'baby-a'}]
+  const db=memoryDb(data),collection=db.collection.bind(db)
+  db.collection=name=>{const query=collection(name),doc=query.doc;query.doc=id=>{const ref=doc(id);if(name==='babies')ref.remove=async()=>{db.rows('growth_records')[0].baby_id='baby-b';return doc(id).remove()};return ref};return query}
+  const result=await service('babyProfile',db).main({action:'delete',babyId:'baby-a',clientRequestId:'changed-cascade-001'})
+  assert.equal(result.code,0);assert.equal(result.pending.growth_records.code,409)
+  assert.equal(result.cleaned.growth_records,0);assert.equal(db.rows('growth_records').length,1)
+})
+
+test('over-limit cascade snapshots fail before removing the profile',async()=>{
+  const data=seed();data.babies=[{_id:'baby-a',openid:'user-a'}]
+  data.growth_records=Array.from({length:10001},(_,i)=>({_id:String(i).padStart(5,'0'),openid:'user-a',baby_id:'baby-a'}))
+  const db=memoryDb(data),result=await service('babyProfile',db).main({action:'delete',babyId:'baby-a',clientRequestId:'limit-cascade-001'})
+  assert.equal(result.code,413);assert.equal(result.message,'TOO_MANY_RECORDS');assert.equal(db.rows('babies').length,1)
+})
+
+test('unavailable cascade snapshots preserve the profile and can be retried without losing frozen IDs',async()=>{
+  const data=seed();data.babies=[{_id:'baby-a',openid:'user-a'}]
+  data.growth_records=[{_id:'frozen',openid:'user-a',baby_id:'baby-a'}]
+  const db=memoryDb(data),collection=db.collection.bind(db),event={action:'delete',babyId:'baby-a',clientRequestId:'snapshot-failure-001'}
+  let fails=true
+  db.collection=name=>{if(name==='ai_sessions'&&fails)throw Error('snapshot unavailable');return collection(name)}
+  const api=service('babyProfile',db)
+  assert.equal((await api.main(event)).code,503)
+  assert.equal(db.rows('babies').length,1)
+  db.rows('growth_records').push({_id:'later',openid:'user-a',baby_id:'baby-a'})
+  fails=false
+  assert.equal((await api.main(event)).code,0)
+  assert.deepEqual(db.rows('growth_records').map(row=>row._id),['later'])
+})
+
+function cascadeFileService(db,files,failFiles=false){
+  const cloud={DYNAMIC_CURRENT_ENV:'test',init(){},database:()=>db,getWXContext:()=>({OPENID:'user-a'}),async deleteFile({fileList}){files.push(...fileList);if(failFiles)throw Error('storage unavailable');return{fileList:fileList.map(fileID=>({fileID,status:0}))}}}
+  return service('babyProfile',db,{substitutions:{'wx-server-sdk':cloud}})
+}
+test('baby cascade deletes owned unreferenced avatar/diary files while keeping shared and foreign files',async()=>{
+  const avatar='cloud://env/avatars/user-a/baby-a/a.png',owned='cloud://env/diary/user-a/a.png',shared='cloud://env/diary/user-a/shared.png',foreign='cloud://env/diary/user-b/foreign.png'
+  const data=seed();data.babies=[{_id:'baby-a',openid:'user-a',avatar}]
+  const sessionFile='cloud://env/diary/user-a/session.png'
+  data.diary_records=[{_id:'diary',openid:'user-a',baby_id:'baby-a',images:[owned,shared,foreign,'boy',sessionFile]},{_id:'remaining',openid:'user-b',baby_id:'baby-b',images:[shared]}]
+  data.ai_sessions=[{_id:'remaining-session',openid:'user-a',babyId:'baby-b',messages:[{images:[sessionFile]}]}]
+  const db=memoryDb(data),files=[],api=cascadeFileService(db,files),event={action:'delete',babyId:'baby-a',clientRequestId:'cascade-files-001'}
+  assert.equal((await api.main(event)).code,0)
+  assert.deepEqual(files.sort(),[avatar,owned].sort())
+  await api.main(event);assert.equal(files.length,2,'replay must not delete files twice')
+})
+
+test('shared avatars and uncertain reference scans keep files instead of deleting another record image',async()=>{
+  const avatar='cloud://env/avatars/user-a/shared.png'
+  for(const scanFails of [false,true]){
+    const data=seed();data.babies=[{_id:'baby-a',openid:'user-a',avatar},{_id:'baby-b',openid:'user-a',avatar}]
+    const db=memoryDb(data),files=[],collection=db.collection.bind(db)
+    if(scanFails)db.collection=name=>{const q=collection(name),where=q.where;q.where=cond=>{if(name==='diary_records'&&!Object.keys(cond).length)throw Error('reference scan unavailable');return where.call(q,cond)};return q}
+    const result=await cascadeFileService(db,files).main({action:'delete',babyId:'baby-a',clientRequestId:'shared-avatar-001'})
+    assert.equal(result.code,0);assert.equal(files.length,0);assert.equal(db.rows('babies').length,1)
+  }
+})
+
+test('diary files from a failed batch are collected on retry without deleting the avatar twice',async()=>{
+  const avatar='cloud://env/avatars/user-a/a.png',image='cloud://env/diary/user-a/a.png'
+  const data=seed();data.babies=[{_id:'baby-a',openid:'user-a',avatar}];data.diary_records=[{_id:'diary',openid:'user-a',baby_id:'baby-a',images:[image]}]
+  const db=memoryDb(data),collection=db.collection.bind(db),files=[],event={action:'delete',babyId:'baby-a',clientRequestId:'retry-diary-files-001'}
+  let fails=true
+  db.collection=name=>{const query=collection(name),doc=query.doc;query.doc=id=>{const ref=doc(id);if(name==='diary_records')ref.remove=async()=>{if(fails)throw Error('delete failed');return doc(id).remove()};return ref};return query}
+  const api=cascadeFileService(db,files)
+  const first=await api.main(event)
+  assert.equal(first.pending.diary_records.code,503);assert.deepEqual(files,[avatar])
+  fails=false
+  const retried=await api.main(event)
+  assert.equal(Object.keys(retried.pending).length,0)
+  assert.deepEqual(files,[avatar,image])
+})
+
+test('builtin/foreign avatars never delete files and storage failure never rolls back the cascade',async()=>{
+  for(const avatar of ['', 'boy','girl','cloud://env/avatars/user-b/x.png','cloud://env/avatars/user-a/x.png']){
+    const data=seed();data.babies=[{_id:'baby-a',openid:'user-a',avatar}]
+    const db=memoryDb(data),files=[],result=await cascadeFileService(db,files,true).main({action:'delete',babyId:'baby-a',clientRequestId:'default-avatar-001'})
+    assert.equal(result.code,0);assert.equal(db.rows('babies').length,0)
+    assert.equal(files.length,avatar.includes('/avatars/user-a/')?1:0)
+  }
 })
 test('task consent, category validation, ownership, replay and schedule are enforced',async()=>{
   const db=memoryDb(seed([])),api=service('aiTasks',db),e={action:'save',categories:['feeding'],frequency:'daily',time:'21:00',weekday:1,consent:true,clientRequestId:request}

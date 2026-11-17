@@ -74,6 +74,13 @@ test('隐私政策页复用主题与设计令牌，不硬编码颜色', () => {
   assert.doesNotMatch(wxss, /#[0-9a-fA-F]{3,8}/)
 })
 
+test('宝宝级联删除的范围、可重试及文件边界在隐私说明中一致披露', () => {
+  for (const file of ['miniprogram/utils/privacy-content.js', 'docs/legal/privacy-policy.md', 'docs/legal/privacy-policy.txt', 'docs/legal/privacy-guide-fill.md']) {
+    const text = read(file)
+    for (const pattern of [/里程碑打卡/, /清单定义/, /停用/, /运行记录/, /站内报告/, /原请求/, /没有后台自动清理|没有后台清理/, /生命周期/, /不递归强删|不跨链路强删/]) assert.match(text, pattern, file)
+  }
+})
+
 test('合规占位符已清除，联系邮箱已公示且 #15 已勾选', () => {
   const { CONTACT_EMAIL } = load('miniprogram/utils/privacy-content.js')
   const doc = read('docs/legal/privacy-policy.md')

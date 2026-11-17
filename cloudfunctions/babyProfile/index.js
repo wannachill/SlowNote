@@ -1,25 +1,6 @@
-const { endpoint, access, all, hash, requestId, text, validDate, key, fail, mutateOnce, readDoc } = require('./lib/runtime')
-async function cleanupAISessions(db, openid, babyId, clientId) {
-  const sessions = await all(db, 'ai_sessions', { openid, babyId })
-  const batchKey = hash(`${clientId}:${babyId}`)
-  const snapshot = await mutateOnce(db, openid, { clientRequestId: `${batchKey}_ai_snapshot` }, 'baby-del-ai-snapshot', async () => ({ code: 0, ids: sessions.map(item => item._id) }))
-  for (let offset = 0, batch = 0; offset < snapshot.ids.length; offset += 40, batch++) {
-    const ids = snapshot.ids.slice(offset, offset + 40)
-    try {
-      await mutateOnce(db, openid, { clientRequestId: `${batchKey}_ai_${batch}` }, 'baby-del-ai-batch', async tx => {
-        let deleted = 0
-        for (const id of ids) {
-          const session = await readDoc(tx, 'ai_sessions', id)
-          if (!session || session.openid !== openid || session.babyId !== babyId) continue
-          await tx.collection('ai_sessions').doc(id).remove()
-          deleted++
-        }
-        return { code: 0, deleted }
-      })
-    } catch (_) { /* Failure is silent; the baby is already deleted. Continue with later batches. */ }
-  }
-}
-exports.main = endpoint(async ({ event, db, openid }) => {
+const { endpoint, access, hash, requestId, text, validDate, key, fail, mutateOnce } = require('./lib/runtime')
+const { deleteBaby } = require('./cleanup')
+exports.main = endpoint(async ({ event, db, cloud, openid }) => {
   const context = await access(db, openid)
   const user = (await db.collection('users').where({ openid }).limit(1).get()).data[0]
   const listBabies = async (store) => {
@@ -45,16 +26,7 @@ exports.main = endpoint(async ({ event, db, openid }) => {
   }
   if (event.action === 'delete') {
     const babyId = text(event.babyId || '', 64, true)
-    const result = await mutateOnce(db, openid, event, 'baby-del', async tx => {
-      const found = await tx.collection('babies').where({ _id: babyId, ...context.scope }).limit(1).get()
-      if (!found.data.length) fail(404, 'BABY_NOT_FOUND')
-      await tx.collection('babies').doc(babyId).remove()
-      return { code: 0 }
-    })
-    if (result.code === 0) {
-      try { await cleanupAISessions(db, openid, babyId, clientId) } catch (_) { /* Failure is silent; the baby is already deleted. */ }
-    }
-    return result
+    return deleteBaby({ db, cloud, openid, context, babyId, clientId })
   }
   if (event.action !== 'save') fail(400, 'UNKNOWN_ACTION')
   const nickname = text(event.nickname, 24, true), birthday = event.birthday || '', gender = event.gender, avatar = event.avatar || ''
