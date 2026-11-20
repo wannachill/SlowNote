@@ -1,9 +1,10 @@
 # 一迈一记 · 部署检查清单
 
-> 更新日期：2026-11-17
+> 更新日期：2026-11-20
 > 本文档由项目文档体系生成并维护，请在每次上线前逐项核对。
 
 ## 1. 上线前检查
+- [ ] 2026-11-20 记录日期支持时分秒：先运行 `node scripts/sync-cloud-runtime.js`（共享 `runtime.js` 新增 `validTime/timeKey/normalizeRecordTime/recordTimeOf/recordTimeValue`），再至少重新部署 `feedingRecord` / `growthRecord` / `diaryRecord` / `customRecord` / `statistics` 五个函数；其余 9 个含 `lib/` 的函数也应同步部署，保持 14 份共享副本版本一致。`login` 无改动可不部署。只提交 Git 或只发布小程序不会更新线上云函数：云端仍是旧代码时，端侧传 `recordTime` 会被忽略、新记录不带 `record_time`，首页时间轴仍按 `created_at` 显示同一时刻。发布后真机验证：六个登记页日期 + 时/分/秒选择器默认当前北京时间；补录两条不同时刻的历史记录按时刻正确排序；编辑回填时刻、改时刻后幂等键失效可再次提交；旧记录回退 `created_at` 且不显示虚构时间；首页 rail（`--timeline-width: 152rpx`）容纳 HH:mm、登记页历史列表容纳 HH:mm:ss；键盘/光标、删除回滚、刘海屏与六套主题无回归。本轮本地 420/420 测试通过、静态检查仍为原有 5 条告警，未部署云函数、未清理生产库、未执行真机验收。
 - [ ] 2026-11-17 新增记录宝宝校验：运行 `node scripts/sync-cloud-runtime.js` 后，重新部署 `feedingRecord` / `growthRecord` / `diaryRecord` / `customRecord` 与复用共享校验的 `milestoneRecord`；其余同步 lib 的相关云函数也应随发布部署以保持版本一致。发布首页后验证未建宝宝时 ＋ 按钮引导去宝宝信息页、取消不跳转；绕过前端直接 add 空 baby_id 返回 400，非当前 scope 的宝宝返回 404。统计/查询与全部宝宝定时报告仍允许空 baby_id。只提交 Git 不会更新线上云函数；本次未部署、未清理生产库，历史 baby_id:'' 孤儿记录需按已确认上线清理方案单独处理；若采用从零开始方案，须先确认目标集合及备份再清空，不能把历史数据清理当成本次自动动作。
 - [ ] 白名单上线：先创建 `allowlist`（客户端拒绝读写，仅云函数访问），手动添加家人 openid（含自己），每条为 `{_id: sha256(openid).slice(0,32), openid, remark, created_at}`（字段名须一致；云函数写入时用 `db.serverDate()`）；再运行同步脚本并部署全部 14 个含 lib 的函数（含 aiReport，login 逻辑未改可不部署）；之后在这 14 个函数逐个设置 `ALLOWLIST_ENABLED=true`，核对无漏项；最后用名单内/外微信验证可用/403 NOT_ALLOWED，以及“我的”页拦截卡片（仅 `notAllowed && openid` 时显示两行引导文案「本小程序仅限家庭成员使用，请联系管理员」「请复制下方 openid 并发送给管理员开通权限」、可选中 openid、「复制 openid」按钮含成功/失败 toast），其余设置入口对名单外账号隐藏。名单空或集合缺失且开关已开会拒绝全部受保护调用；新增/移除成员最多 60 秒缓存延迟。DeepSeek / 硅基流动控制台设置日消费上限作为额外兜底。本轮未创建生产集合、未改云端环境变量或部署。
 - [ ] 2026-11-17 宝宝级联删除：重新部署 `babyProfile`（含私有 `cleanup.js`），再发布消费 cleaned/pending 的宝宝页与更新后的隐私政策；本次未改 `_shared`、未部署其他函数、未执行生产删除。测试环境验证六个记录/定义集合、本人会话、专属任务停用及历史清理、共享文件保护、失败同请求重试；核查 `mutation_receipts` 保留和相关查询索引。文件失败需生命周期/人工兜底，不能宣称已配置自动清理。
@@ -19,7 +20,7 @@
 - 小迈分别在空输入/已有文字、键盘关闭/已打开时长按约 350ms：待机 textarea 禁用、完整短按后才启用/聚焦，编辑时透明热区移除；长按及尾随点击不误弹键盘/系统选择菜单，不改草稿，松手即停。复验滑动/多指取消、权限失败、隐藏/卸载清理与 ASR 临时音频删除；六套主题、窄屏/多行输入时图片/发送图标及文字居中，数量角标不挤动图标，录音/转写内联状态不遮内容。原生焦点、disabled 切换、键盘与光标交互仍须真机核实。
 - 各删除确认后列表立即局部变化，不等待 400ms 关闭动画/网络；联网只发一次对应写入，无成功后全量重拉；模拟失败恢复原卡片并提示；取消/未确认离页不删除。小迈显式删除问答保存失败也须恢复。
 - 刘海/非刘海屏复验导航、卡片圆角、内滚动底部安全区、首页时间轴/FAB/TabBar；六套主题视觉不变。
-- 本地 376/376 测试通过，静态检查仍为原有 5 条告警；本轮输入区浏览器映射覆盖六套主题 × 320/375/430px × 空输入/聚焦空输入/草稿/多行/录音/转写/照片共 126 组，验证几何与主题，不代表原生键盘已验收。未改云函数、默认提示词、报告 Markdown、隐私政策与 app.json，本轮无云函数重新部署项。2.0.0 仍按此前用户确认记录为审核中，本地代码不进入该审核包；审核通过后要用新交互，须重新编译上传并提审，或纳入驳回整改版本。上线清单保持 36/38，旧勾选不视为本轮真机通过。
+- 本地 376/376 测试通过，静态检查仍为原有 5 条告警；本轮输入区浏览器映射覆盖六套主题 × 320/375/430px × 空输入/聚焦空输入/草稿/多行/录音/转写/照片共 126 组，验证几何与主题，不代表原生键盘已验收。未改云函数、默认提示词、报告 Markdown、隐私政策与 app.json，本轮无云函数重新部署项。2.0.0 仍按此前用户确认记录为审核中，本地代码不进入该审核包；审核通过后要用新交互，须重新编译上传并提审，或纳入驳回整改版本。上线清单保持 36/38，旧勾选不视为本轮真机通过。（本行为 2026-11-17 当时基线；2026-11-20 当前基线为 420/420、48 个测试文件，见 §1 首条。上述「本轮未改云函数、无云函数重新部署项」仅指 2026-11-17 那一轮，2026-11-20 已改 `_shared/runtime.js` 与五个云函数。）
 
 ## 2. 云函数
 白名单受保护的 14 个函数：aiChat、aiNotifications、aiReport、aiSettings、aiTasks、asrProxy、babyProfile、customRecord、diaryRecord、feedingRecord、growthRecord、homeCards、milestoneRecord、statistics。前 13 个交互入口由 endpoint → identity 校验（此处“13 个”不含 aiReport）；aiReport 每个任务在认领前按 task.openid 复核，不改 TIMER_ONLY。`aiSettings.checkAccess` 仅返回 code=0，供登录后一次轻量检查。`login` 持续开放用于获取本人的 openid，加人后在“我的”页下拉刷新或重进小程序重新检查。未设开关或值不等于字面 `true` 时不拦截。
@@ -86,7 +87,7 @@ DeepSeek 思考模式由小迈页面的「深度思考」开关控制，默认�
 | users | `openid`（唯一；先核对历史重复） |
 | babies | `openid + updated_at`、`family_id + updated_at` |
 | family_members | `openid`（唯一）、`familyId + joined_at` |
-| feeding_records / diary_records / growth_records / custom_records / milestone_records | `openid + record_date + _id`、`family_id + record_date + _id`、`openid + baby_id + record_date`（旧记录另有 `created_at + _id`） |
+| feeding_records / diary_records / growth_records / custom_records / milestone_records | `openid + record_date + _id`、`family_id + record_date + _id`、`openid + baby_id + record_date`（旧记录另有 `created_at + _id`）；`record_time` 不建索引，仅用于同日排序与展示，删除快照仍按 `record_date` |
 | milestone_defs | `openid + baby_id`、`family_id + baby_id`（含 `key` / `month` 等值过滤） |
 | ai_tasks | `enabled + next_run_at + lease_until`（调度扫描）、`openid + created_at` |
 | ai_notifications | `openid + created_at`、`delivery_status` |

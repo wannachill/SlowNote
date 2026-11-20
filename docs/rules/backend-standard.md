@@ -1,7 +1,7 @@
 # 一迈一记（SlowNote） 后端与外部服务边界
 
 > 后端方案：微信云开发（云函数 + 云数据库 + 云存储）
-> 更新日期：2026-11-12
+> 更新日期：2026-11-20
 
 ## 1. 始终适用的服务边界
 
@@ -29,7 +29,7 @@
 
 | 项目 | 规则 |
 |---|---|
-| 输入 | 类型、范围、枚举、大小和文件内容均校验 |
+| 输入 | 类型、范围、枚举、大小和文件内容均校验；记录类 add/update 另接收可选 `recordTime`（`HH:mm:ss`，北京时间），由 `_shared/runtime.js` 的 `normalizeRecordTime()` 校验，非法返回 `400 INVALID_TIME`、缺省写服务器当前北京时间并落库为 `record_time`；读取由 `recordTimeOf()` 优先取 `record_time`，旧数据回退 `created_at` 换算的北京时间，两者都缺失时返回空串 |
 | 输出 | 稳定结构；分页包含游标/总量约定 |
 | 错误 | 可机器处理的错误码 + 可读消息 + 追踪标识 |
 | 版本 | 破坏性变更通过版本或兼容窗口发布 |
@@ -46,6 +46,7 @@
 
 - 函数最小权限、环境隔离、依赖锁定；限制并发、执行时长与返回大小。
 - 校验云函数调用身份和数据库安全规则，不信任客户端传入用户标识。
+- 记录时刻（2026-11-20）：四个记录云函数 add/update 的 `recordTime` 由 `_shared/runtime.js` 的 `normalizeRecordTime()` 统一校验（`HH:mm:ss`，非法返回 `400 INVALID_TIME`，缺省写服务器当前北京时间），落库为 `record_time`；`record_date` 仍只存日期，`created_at` 只表示实际写入时间。`list` 读取用 `recordTimeOf()` 优先 `record_time`、旧数据回退 `created_at` 换算的北京时间，`recordTimeValue()` 仅用于同一天内排序；`diaryRecord` 的跨日期全量 list 不按时刻重排。`statistics.daily` 的 `times` 用完整 HH:mm:ss 取当天最新、展示截断为 HH:mm。共享源码改动后必须跑 `node scripts/sync-cloud-runtime.js` 并重新部署 14 个含 `lib/` 的函数，至少包含 `feedingRecord` / `growthRecord` / `diaryRecord` / `customRecord` / `statistics`。AI 明细白名单渲染与 `milestoneRecord` 不涉及时刻。
 - 默认提示词（SAFETY / style / vision / report）与三场景拼接只由 `cloudfunctions/_shared/ai-settings.js` 的 `compose()` 定义；`aiChat` / `aiReport` 显式传入 system，`_shared/llm.js` 的兜底同样复用 `compose()`，禁止在别处另写一份默认文案。调整默认文案须同步 14 份 `lib/`、递增 `aiSettings` 的 `build` 标记并重新部署；`PREVIOUS_DEFAULTS` 保留历史默认全文，用于老用户静默归一与「已自定义」判定；本轮已保留两代。加粗与分节属 `style` / `report` 可编辑风格段，不写进 SAFETY：只用双星号加粗总结论与需留意/就医警示点、不整段加粗；因渲染器不支持表格与图表，提示词同时禁止输出表格或图表代码，图表若要做须由 `aggregate()` 的真实记录产出结构化序列并由端侧绘制，不能让模型生成。
 
 ## 6. 登录身份与功能可用性

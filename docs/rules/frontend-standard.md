@@ -1,6 +1,6 @@
 # 一迈一记前端规范
 > 原生 WXML/WXSS/JS；源码 miniprogram/，不引入 UI 框架。
-> 更新日期：2026-11-17
+> 更新日期：2026-11-20
 
 ## 1. 设计语言
 极简、留白、系统字体/PingFang SC 优先。操作与内容只使用中性色与一种强调色（随所选主题色变化，见 §3）；页面背景允许 §3 定义的主题渐变，不延伸到卡片、弹层或控件。不得新增其他渐变、阴影堆叠、Emoji、玻璃效果或无关插画。
@@ -17,7 +17,7 @@
 - 颜色、字号、间距、圆角、控件高度、层级均定义于 app.wxss；页面 WXSS 只做编排并引用变量。
 - 系统字体，常规/中等字重；字号令牌 caption 28rpx / body 30rpx / control 32rpx / title 34rpx / heading 44rpx / data 52rpx / brand 48rpx，面向大众小程序可读性（caption=14px 为最小可读下限，禁止更小）。字体栈 -apple-system → PingFang SC → HarmonyOS Sans → MiSans → 微软雅黑，适配各系统中文渲染。数字 tabular-nums，表单控件显式继承。
 - --control-height=max(88rpx,44px)，--input-height=max(96rpx,44px)，--entry-height=208rpx，--fab-size=max(112rpx,56px)；按压 --press-scale .98 / 主按钮 --press-scale-primary .96 / --opacity-pressed .76。周历使用全宽外扩布局，使 320px 宽仍满足每列至少 44px。
-- 首页当日记录使用单列全宽槽位，时间轴节点与卡片按 `--rail-gutter` 留出左侧轨道，时刻位于卡片上方；图标、名称、数值与信息项放在卡片内。`--timeline-width` 仍供日记等既有时间轴布局使用，不作为首页轨道宽度。三等分成长输入；图像正方形。安全区使用 env(safe-area-inset-bottom)。
+- 首页当日记录使用单列全宽槽位，时间轴节点与卡片按 `--rail-gutter` 留出左侧轨道，时刻位于卡片上方；图标、名称、数值与信息项放在卡片内。`--timeline-width` 仍供日记等既有时间轴布局使用，不作为首页轨道宽度；2026-11-20 起该值为 `152rpx`，用于登记页历史时间轴容纳 HH:mm:ss，首页 rail 仍只展示 HH:mm。三等分成长输入；图像正方形。安全区使用 env(safe-area-inset-bottom)。
 - tab 层与 sheet 层分离。首页弹层显示时隐藏自定义 tabBar，关闭/离页恢复；TabBar 固定贴底，只保留系统安全区，按钮触控高度至少 `--control-height`；紧凑栏高使用 `--tab-height: max(96rpx, 48px)`，页面及滚动区底部预留 `--tab-height + env(safe-area-inset-bottom)`。首页 FAB（pages/index .record-fab）位于导航之上：bottom = calc(var(--tab-height) + var(--space-ml) + env(safe-area-inset-bottom))，与 tabBar 保持清晰间距、互不遮挡；首页 `.home-results` 额外预留 FAB 高度与间距。
 - 滚动分区（2026-10-29）：首页宝宝信息、日期条与当天标题固定，只在 `.home-results` 中滚动记录；小迈 Tab 为页面级滚动，`.statistics-header` 随页面滚动（不 sticky、不设背景，避免与主题渐变拼接出分割线），安全区与 `--tab-page-top` 偏移写在头部 padding 内，原生下拉刷新保留。统计详情页 `.chart-body` 用 flex 分为左侧 `.chart-plot-viewport` 绘图区与右侧固定纵轴栏，`bindtap` 绑在该绘图区；Canvas 位于 `.chart-scroll`（scroll-x）外并固定为视口宽，与滚动层同处绘图区内，滚动层只包含宽度为 `chartWidth` 的透明占位层；当天明细置于 `.detail-scroll`（scroll-y）内纵向滚动，根容器 `.detail-fixed` 为 100vh + overflow:hidden 不滚动，整页禁用下拉刷新。Canvas 2D 是原生绘制层，父级 WXSS 的 overflow / clip-path 无法可靠裁剪；`utils/chart.js` 的 `drawFrame()` 以逻辑宽 `chartWidth` 布局，固定裁剪 `[0, viewWidth]` 后平移 `-viewOffset`，不依赖原生 canvas 位图是否随滚动容器位移，且禁止把宽于视口的 canvas 放入 scroll-view。`clipViewport()` 只更新 `viewOffset / viewWidth`，滚动以 16ms 合并重绘、偏移未变化则不重画。`onChartTap` 以不滚动的 `.chart-plot-viewport`（不含右侧固定纵轴栏）为坐标基准并加回 `viewOffset`，否则点击会偏一个滚动距离。`onChartScroll` 只更新绘制视口，不做日期换算、不调用 `selectChartDateValue` / `loadDayDetails`；选中日期的切换唯一入口是 `onChartTap`，横滑期间无云函数调用。选中日期只以加粗实心节点强调，不画竖向高亮虚线；“我的”页标题固定、主体由 `.mine-scroll` 承载。三个 Tab 页的底部导航继续固定。二级页 `.sub-nav` sticky，小迈对话与历史页分别在消息/历史列表滚动，表单弹层保留 `.sheet-scroll`。
 - 统计详情右侧纵轴为独立固定栏，栏宽按最宽刻度文字加少量内边距计算，刻度文字右对齐；左侧 `.chart-plot-viewport` 才是横向滚动绘图区，网格线和数据不进入纵轴栏。
@@ -72,12 +72,12 @@ app.js 管理身份、宝宝资料缓存与主题；api.js 统一新页面云调
 保护页面先等待初始化，未登录跳转我的；退出后不自动登录。核心三页可展示未登录引导。
 敏感 API 如媒体选择、订阅授权仅由用户动作触发。聊天同意说明与任务分析同意分开，避免自动外发档案。
 对话自动保存至云集合 ai_sessions（openid 隔离、幂等 upsert、图片仅存 fileID、自动保存失败静默降级不阻断，显式删除使用严格保存并在失败时恢复被删问答）；历史对话列表页倒序展示，左滑露出「删除」（宽度 `calc(var(--swipe-action-width) / 2)`，与历史报告一致；二次确认沿用 `templates/motion-confirm.wxml`），点击载入会话继续提问；手势复用 `utils/swipe-gesture.js`，局部 `setData` 与删除回滚复用 `utils/list-patch.js`，常显删除图标已移除（§4.1 少即是多）；照片上传到本人 diary 路径，服务端校验 fileID 归属。密钥仅在云函数环境变量中。
-- 宝宝生日与记录日期统一使用原生 `<picker mode="date">`（`end` 上限为今天）；历史 `components/wheel-date-picker` 三列滚轮组件已移除，空目录已清理且不再注册为自定义组件，勿在新页面或文档中引用。
+- 宝宝生日统一使用原生 `<picker mode="date">`（`end` 上限为今天）；记录日期同样用 `mode="date"`（上限今天），但六个登记页（feeding/solid/excretion/growth/diary/custom-record）必须再并列一个 `mode="multiSelector"` 三列（时/分/秒，24/60/60）选择记录时刻，二者组成 `.datetime-row`（`.datetime-date` 与 `.datetime-time` 两个 picker），默认当前北京时间，字段 `recordTime` 为 `HH:mm:ss`。共用逻辑在 `utils/record-time.js` 的 `withRecordTime()` 包装器：注入 `timeColumns` / `timeIndexes` / `recordTime`、选择器事件、回填与重置；`normal` 与 `panel` 两种模式都要渲染同一对选择器，页面不得各自实现。原生 `<picker mode="time">` 只到分钟，不能替代。历史 `components/wheel-date-picker` 三列滚轮组件已移除，空目录已清理且不再注册为自定义组件，勿在新页面或文档中引用。
 - Tab 页读取走 `utils/page-cache.js`：先渲染缓存再静默校验，同参 60 秒内复用、不重复请求云函数；记录新增/修改/删除与首页卡片删除经 `utils/home-refresh.invalidateRecords()` 失效 `home`、`statistics` 两个作用域，退出登录由 `app.logout()` 整体清空。静默刷新时不得清空 `cards` / `moduleCards`，否则整页骨架会闪；下拉刷新用 `load(true)` 跳过缓存但仍保留既有内容。新增写操作时必须同步接入失效，否则 60 秒内会读到旧数据。
 - **富文本渲染**：小迈对话回答与历史报告详情共用 `utils/markdown.js` 的 `parseMarkdown()`，经 `<rich-text nodes>` 渲染二级小标题、列表、加粗与行内代码；`md-*` 样式须在各自页面 WXSS 用**直接类选择器**定义，rich-text 内部节点不响应后代选择器。`parseMarkdown` 有意把 Markdown 表格降级为纯文本、不支持图表，因此默认提示词禁止模型输出表格与图表代码；扩展渲染能力之前不得在提示词里要求表格/图表。报告详情原为 `<text selectable>`，改 rich-text 后长按选择失效，已在详情元信息行补「复制全文」按钮（`wx.setClipboardData`），并按报告 ID 缓存解析节点避免长正文重复计算。
 
 ## 6. 验证
-node --test tests/*.cjs；node scripts/check-project.js。
+node --test tests/*.test.cjs；node scripts/check-project.js。当前全量基线 420/420（48 个测试文件，2026-11-20）。
 浏览器映射可验证几何/主题与示意 Canvas，不能替代微信编译、组件隔离、原生 picker/switch、键盘、安全区和读屏真机测试。
 
 `check-project` 当前恒有 5 条 `hardcoded visual value` 基线告警：`pages/index`、`pages/statistics`、`pages/mine` 的 Tab 页标题区高度 `176rpx` 与内容起始 `28rpx`，`pages/statistics-detail` 的纵轴文字偏移 `4px/8px` 与渐变遮罩宽度 `24rpx`，`pages/milestone` 的勾选圈 `24rpx`。这些是早期实现遗留的同一语义值散落，改动会引起像素级视觉变化，收敛时必须单独一轮并逐页比对截图；除这 5 条之外的任何新增告警都视为本次改动引入的问题，必须清零再交付。
@@ -109,7 +109,7 @@ node --test tests/*.cjs；node scripts/check-project.js。
 - 骨架：复用首页、小迈主页面与统计详情已有 loading 分支；按对应页面布局显示占位，保留 loading 文案；数据卡到达反馈按页面实现。
 - 行内校验：喂养数值/辅食名称/排尿次数、宝宝昵称沿用原条件及文案；错误提示在输入下方，编辑清除相应错误，不清空草稿、不改变 payload。
 - 自定义登记数值：普通页与面板登记共用行内校验，数值与单位分开填写；单位为自由输入，前端最多 6 字，云函数字段上限为 8 字。数值可留空，填写时须符合云端范围 0～999999。仅提交时去掉数值首尾空白，草稿保持原样；字段修改清除对应错误，失败重试复用 `clientRequestId`，权限和云端校验不变。
-- 成长快捷登记（2026-10-28，2026-11-04 更新）：身高、体重、头围在同一表单中横向三列分别选填，记录日期位于顶部（日期在前），可单次提交一个或多个指标；每项沿用成长记录云端边界（身高 1～250 cm、体重 0.1～300 kg、头围 1～100 cm），至少填写一项，接口字段及幂等键不变。新增入口（panel，首页 + → 成长）与点击首页卡片编辑（normal）共用同一横向三列表单。normal 模式进入时按选定日期回填当天已有记录（有则更新、无则新增）；当天类别删除统一从首页卡片左滑进入，成长表单没有独立删除入口，不再展示跨日期的历史记录列表，首页卡片作用域严格对应当天。
+- 成长快捷登记（2026-10-28，2026-11-04 更新）：身高、体重、头围在同一表单中横向三列分别选填，记录日期位于顶部（日期在前），可单次提交一个或多个指标；每项沿用成长记录云端边界（身高 1～250 cm、体重 0.1～300 kg、头围 1～100 cm），至少填写一项，接口字段及幂等键不变。新增入口（panel，首页 + → 成长）与点击首页卡片编辑（normal）共用同一横向三列表单。normal 模式进入时按选定日期回填当天已有记录（有则更新、无则新增）；当天类别删除统一从首页卡片左滑进入，成长表单没有独立删除入口，不再展示跨日期的历史记录列表，首页卡片作用域严格对应当天。表单顶部记录日期同时选择时/分/秒；normal 回填当天记录时一并回填 `record_time`，用户手动改过时刻后 `_timeTouched` 阻止 onShow/日期重查覆盖，切换日期时清除该标记。
 - 危险确认：仅替换原已存在的删除宝宝/历史对话/小迈配置常见问题/分析任务确认入口，复用 templates/motion-confirm.wxml；遮罩拦截触摸，取消在前，不自动聚焦删除。原文案/对象/回调保留，点击确定时最多回调一次，400ms closing 只负责视觉卸载，不阻塞删除。取消或未确认离页不执行删除；已经确认的请求不因退出动画/离页被撤销。确认后先局部移除再写入，失败恢复被删行并提示，不覆盖其它行的新更改，不跨账号/宝宝/日期范围回滚；成功不得再 load/refresh 整表重拉。通知总数同步调整，旧列表响应不得复活已删项。无确认的操作不新增弹窗。
 - 设置与类型：switch 保留原生滑动，同组卡片闪光 300ms；喂养类型/便便状态/小迈范围 touchstart 临时放大 1.05、邻项让位 6rpx，350ms 复原，选中逻辑不变。
 - 减少动态效果：既有 prefers-reduced-motion 兜底块同时关闭新水波、抖动、类型让位、骨架流光、主题扩散与模态缩放；不支持此媒体特性的微信端仍使用上述有限时长方案，不据此承诺系统设置可被读取。
@@ -137,7 +137,7 @@ node --test tests/*.cjs；node scripts/check-project.js。
 - 点击仍用 openCard 进入当前日期的对应登记页；已滑开先收起，手势结束时间窗内不误跳转。汇总标签继续多选筛选，日期切换清空筛选，下拉刷新保留；删除同步移除空类别标签、更新喂养剩余次数，不让标签与卡片脱节。
 - 确认文案仍明确“当前日期 + 当前卡片类别的全部登记”，保留 requireWriteAccess、homeCards.deleteDay、clientRequestId 失败重试复用与 home-refresh.invalidateRecords()。确认即移除本地 cards/_allCards，200ms 收束动画与云调用并行；失败恢复卡片和标签，成功不 load，不用动画/网络往返阻塞反馈。
 - 时间轴按 dailyCards 的原始 summary/times 排序，不解析 detail、不合并自定义同名记录、不增加本地排序键；喂养次数仅统计 feed，辅食/排泄独立。切换日期/宝宝/登出/离页复位滑动与锁滚状态。
-- statistics.daily 的可选 times 表示所选日期/宝宝各类目最新 created_at 的北京时间 HH:mm，非逐笔时刻；旧云函数无有效值时留空。服务端仍须同时校验用户/家庭 scope、baby_id、record_date、category；mutation_receipts 幂等及 40 条批处理删除快照保持原实现，本轮不改云函数。
+- statistics.daily 的可选 times 表示所选日期/宝宝各类目当天最新记录时刻（HH:mm）：服务端 `recordTimeOf()` 优先取 `record_time`（HH:mm:ss）再截断，旧数据回退 `created_at` 北京时间，仍非逐笔时刻；两者都无有效值时留空。完整 HH:mm:ss 只用于同日排序/取最新，展示保持 HH:mm 以适配首页 rail 宽度（`--timeline-width: 152rpx`）；登记页历史列表用 `displayTime()` 显示到秒，与首页口径不同。服务端仍须同时校验用户/家庭 scope、baby_id、record_date、category；mutation_receipts 幂等及 40 条批处理删除快照按 `record_date` 固定，不受 `record_time` 影响。
 - 首页 FAB 坐标、层级、类目弹层与 tabBar 隐藏/恢复不变，列表内部继续预留导航/FAB/安全区空间。真机需检查七列表横向零纵移/纯纵滚动、误触、失败恢复与刘海屏，不能以浏览器或 Node 测试代替。
 
 历史报告日期筛选：直接选择起止日期，默认本月（北京时间月初至今天）；按报告生成时间 created_at 在云端筛选，包含起止当天。页面通过 aiNotifications 的 list 传 startDate/endDate/offset；接口返回 total/hasMore，每页 20 份，按生成时间和 ID 倒序，支持加载更多。无结果保留日期选择器并显示范围空态，快速切换时丢弃旧请求响应。

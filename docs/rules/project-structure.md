@@ -1,5 +1,5 @@
 # 一迈一记工程结构
-> 更新日期：2026-11-17｜本文列出实际目录，不以未实现的推荐层次冒充现状。
+> 更新日期：2026-11-20｜本文列出实际目录，不以未实现的推荐层次冒充现状。
 
 ~~~text
 miniprogram/
@@ -10,7 +10,7 @@ miniprogram/
   components/
     net-banner/                 # 断网与网络异常横幅
   custom-tab-bar/               # 首页 / 小迈 / 我的
-  utils/                        # 32 个前端工具模块，清单见下
+  utils/                        # 33 个前端工具模块，清单见下
   pages/
     index/ statistics/ mine/    # 三个底部 Tab
     statistics-detail/          # 分类趋势详情（二级页）
@@ -25,7 +25,7 @@ cloudfunctions/                 # 15 个可调用云函数 + _shared
 scripts/
   sync-cloud-runtime.js         # 同步共享源码到 14 个受管函数 lib/
   check-project.js              # 项目注册与一致性检查
-tests/                          # 46 个 *.test.cjs 文件 + helpers.cjs
+tests/                          # 48 个 *.test.cjs 文件 + helpers.cjs
   allowlist.test.cjs            # 门禁开关/缓存/定时器/登录与未授权提示回归
   ai-chat-images.test.cjs ai-chat-snapshot.test.cjs ai-chat-voice.test.cjs ai-settings-cache.test.cjs ai-settings-questions.test.cjs
   baby-profile.test.cjs chart-bars.test.cjs chart-selection.test.cjs common-questions.test.cjs copy-terse.test.cjs
@@ -33,7 +33,8 @@ tests/                          # 46 个 *.test.cjs 文件 + helpers.cjs
   home-cache.test.cjs home-card-edit.test.cjs home-card.test.cjs home-timeline.test.cjs history-swipe.test.cjs
   interaction-delete.test.cjs interaction-motion.test.cjs list-swipe-performance.test.cjs llm-encoding.test.cjs markdown.test.cjs milestone-defs.test.cjs
   milestone-entry.test.cjs milestone-gestures.test.cjs mine-profile.test.cjs navigation-routing.test.cjs
-  page-cache.test.cjs privacy-policy.test.cjs prompt-defaults.test.cjs question-categories.test.cjs record-details.test.cjs record-mutations.test.cjs references.test.cjs
+  no-baby-guard.test.cjs        # 未登记宝宝时首页 FAB 拦截与四个记录云函数 add 归属校验
+  page-cache.test.cjs privacy-policy.test.cjs prompt-defaults.test.cjs question-categories.test.cjs record-details.test.cjs record-mutations.test.cjs record-time.test.cjs references.test.cjs
   registration.test.cjs report-history.test.cjs report-scope.test.cjs slownote.test.cjs
   statistics-action.test.cjs statistics-brief.test.cjs statistics-detail-core.test.cjs statistics-detail.test.cjs
   statistics-insights.test.cjs swipe-card-radius.test.cjs
@@ -47,7 +48,9 @@ docs/
 ~~~
 
 ## 前端工具模块
-`miniprogram/utils/` 当前有 32 个 JavaScript 文件：`ai-photos.js`、`ai-sessions.js`、`ai-settings.js`、`api.js`、`avatar.js`、`categories.js`、`chart.js`、`common-questions.js`、`confetti.js`、`date.js`、`digest.js`、`format-number.js`、`haptics.js`、`home-cards.js`、`home-refresh.js`、`list-patch.js`、`markdown.js`、`milestone-overview.js`、`motion.js`、`net.js`、`page-cache.js`、`page.js`、`privacy-content.js`、`record-scope.js`、`references.js`、`registration.js`、`reveal.js`、`statistics-detail-core.js`、`statistics-insights.js`、`swipe-gesture.js`、`theme.js`、`viewmodels.js`。
+`miniprogram/utils/` 当前有 33 个 JavaScript 文件：`ai-photos.js`、`ai-sessions.js`、`ai-settings.js`、`api.js`、`avatar.js`、`categories.js`、`chart.js`、`common-questions.js`、`confetti.js`、`date.js`、`digest.js`、`format-number.js`、`haptics.js`、`home-cards.js`、`home-refresh.js`、`list-patch.js`、`markdown.js`、`milestone-overview.js`、`motion.js`、`net.js`、`page-cache.js`、`page.js`、`privacy-content.js`、`record-scope.js`、`record-time.js`、`references.js`、`registration.js`、`reveal.js`、`statistics-detail-core.js`、`statistics-insights.js`、`swipe-gesture.js`、`theme.js`、`viewmodels.js`。
+
+`utils/record-time.js`（2026-11-20）是六个登记页共用的记录时刻工具：`TIME_COLUMNS`（时/分/秒 24/60/60）、`validTime()`、`timeKey()`（北京时间换算，空值返回空串、不虚构时间）、`nowTime()`、`timeToIndexes()` / `indexesToTime()`、`displayTime(recordTime, createdAt)`（旧数据回退 `created_at`）、`recordTimeData()` 与 `withRecordTime()` 页面包装器。包装器注入默认当前时刻与 `multiSelector` 选择器事件，改时刻清空 `_requestId` / `_id` 以免同一 `clientRequestId` 被判重复；`growth` 另用 `_timeTouched` 防止 onShow / 日期重查覆盖手动选择。云端对应逻辑在 `cloudfunctions/_shared/runtime.js`，改动后须跑 `node scripts/sync-cloud-runtime.js` 同步 14 个 `lib/`。
 
 `utils/common-questions.js` 的 7 类数据类型是端侧唯一枚举来源，常见问题与定时报告共用；`cloudfunctions/_shared/record-details.js` 镜像类别键并由 `tests/record-details.test.cjs` 校验一致，负责字段白名单、服务端明细渲染和共享长度预算；`pages/ai-tasks` 另在页面内维护 `ALL`（类型）、`RANGES`（报告数据范围）与 `rangeName/rangeHint` 三个纯函数，报告范围的语义以 `cloudfunctions/_shared/schedule.js` 的 `REPORT_RANGES` 为准，两边改动必须同时进行。
 
