@@ -6,31 +6,36 @@ const key = (date = new Date()) => new Date(new Date(date).getTime() + 8 * 36000
 function validDate(value) {
   return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(value)) && new Date(`${value}T00:00:00Z`).toISOString().slice(0, 10) === value
 }
-// 记录时刻 HH:mm:ss（北京时间）。record_date 仍是 YYYY-MM-DD，时间独立存储。
+// 记录时刻 HH:mm（北京时间）。record_date 仍是 YYYY-MM-DD，时间独立存储。
 function validTime(value) {
-  return typeof value === 'string' && /^([01]\d|2[0-3]):[0-5]\d:[0-5]\d$/.test(value)
+  return typeof value === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(value)
+}
+// 读取兼容旧 HH:mm:ss，统一截断到分钟；非法值返回空串。
+function minuteOf(value) {
+  if (typeof value !== 'string') return ''
+  return /^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/.test(value) ? value.slice(0, 5) : ''
 }
 function timeKey(value) {
   if (value === undefined || value === null || value === '') return ''
   const ms = new Date(value).getTime()
   if (!Number.isFinite(ms) || ms <= 0) return ''
-  return new Date(ms + 8 * 3600000).toISOString().slice(11, 19)
+  return new Date(ms + 8 * 3600000).toISOString().slice(11, 16)
 }
-// 写入值：缺省用服务器当前北京时间，传入则严格校验；拒绝非法值而不是静默吞掉。
+// 写入值：缺省用服务器当前北京时间，合法值截断到 HH:mm；拒绝非法值而不是静默吞掉。
 function normalizeRecordTime(value) {
-  if (value === undefined || value === null || value === '') return timeKey(new Date()) || '00:00:00'
-  if (!validTime(value)) fail(400, 'INVALID_TIME')
-  return value
+  if (value === undefined || value === null || value === '') return timeKey(new Date()) || '00:00'
+  const minute = minuteOf(value)
+  if (!minute) fail(400, 'INVALID_TIME')
+  return minute
 }
-// 读取值：优先用户指定的 record_time；旧数据回退 created_at 的北京时间。
+// 读取值：优先用户指定的 record_time（兼容旧 HH:mm:ss）；旧数据回退 created_at 的北京时间。
 function recordTimeOf(record) {
-  if (validTime(record && record.record_time)) return record.record_time
-  return timeKey(record && record.created_at)
+  return minuteOf(record && record.record_time) || timeKey(record && record.created_at)
 }
-// 用于排序的可比分钟/秒数，缺失时为 0。
+// 用于同一天排序的可比分钟数，缺失时为 -1。
 function recordTimeValue(record) {
   const parts = recordTimeOf(record).split(':').map(Number)
-  return parts.length === 3 && parts.every(Number.isFinite) ? parts[0] * 3600 + parts[1] * 60 + parts[2] : -1
+  return parts.length === 2 && parts.every(Number.isFinite) ? parts[0] * 60 + parts[1] : -1
 }
 function requestId(event) {
   const id = event.clientRequestId || event.client_request_id
@@ -143,5 +148,5 @@ async function mutateOnce(db, openid, event, operation, handler) {
     return result
   })
 }
-module.exports = { hash, fail, key, validDate, validTime, timeKey, normalizeRecordTime, recordTimeOf, recordTimeValue, requestId, text, number, identity, isAllowed, access, all, createOnce, endpoint, readDoc, mutateOnce }
+module.exports = { hash, fail, key, validDate, validTime, minuteOf, timeKey, normalizeRecordTime, recordTimeOf, recordTimeValue, requestId, text, number, identity, isAllowed, access, all, createOnce, endpoint, readDoc, mutateOnce }
 module.exports.requireBaby = requireBaby

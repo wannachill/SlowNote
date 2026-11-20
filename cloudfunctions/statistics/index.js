@@ -48,15 +48,14 @@ exports.main = endpoint(async ({ event, db, openid }) => {
     const { data } = await aggregate(db, context, dates, babyId), selected = {}, marks = new Set()
     for (const [category, rows] of Object.entries(data)) { rows.forEach(r => marks.add(recordDate(r))); selected[category] = rows.filter(r => recordDate(r) === event.date) }
     const times = {}
-    // 排序用用户指定的 record_time（HH:mm:ss），旧数据回退 created_at 的北京时间；
-    // 全部按 HH:mm:ss 文本比较（同一天内字典序即时间序），避免跨时区换算误差。
+    // recordTimeOf 统一返回 HH:mm（兼容旧 HH:mm:ss 截断），旧数据回退 created_at 的北京时间。
+    // 同一天内 HH:mm 字典序即时间序，避免跨时区换算误差；首页 rail 展示同一口径。
     const { recordTimeOf } = require('./lib/runtime')
     const timeOf = rows => (rows || []).reduce((latest, record) => {
       const value = recordTimeOf(record)
       return value && value > latest ? value : latest
     }, '')
-    // 时间轴 rail 宽度有限，展示沿用 HH:mm；排序用完整 HH:mm:ss 后再截断。
-    const putTime = (key, rows) => { const value = timeOf(rows); if (value) times[key] = value.slice(0, 5) }
+    const putTime = (key, rows) => { const value = timeOf(rows); if (value) times[key] = value }
     const feedingTimes = {}
     for (const record of selected.feeding || []) {
       const payload = record.payload || {}
@@ -64,7 +63,7 @@ exports.main = endpoint(async ({ event, db, openid }) => {
       const value = recordTimeOf(record)
       if (value && value > (feedingTimes[key] || '')) feedingTimes[key] = value
     }
-    for (const [key, value] of Object.entries(feedingTimes)) times[key] = value.slice(0, 5)
+    for (const [key, value] of Object.entries(feedingTimes)) times[key] = value
     putTime('growth', selected.growth)
     putTime('diary', selected.diary)
     putTime('milestone', selected.milestone)
