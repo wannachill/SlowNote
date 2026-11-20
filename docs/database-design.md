@@ -1,5 +1,5 @@
 # 一迈一记数据库与接口事实
-> 版本 1.9｜2026-11-20｜微信云数据库；业务 ID 使用实际 _id。openid 仅由可信云上下文获取。
+> 版本 1.10｜2026-11-20｜微信云数据库；业务 ID 使用实际 _id。openid 仅由可信云上下文获取。
 
 ## 1. 归属与权限
 前端不直连业务集合写入；ai_sessions 是对话历史例外，由小程序端按 openid 规则保存。服务端 SDK 必须校验登录身份及家庭/宝宝/对象数据范围。家庭管理入口与管理函数已下线，但已有 `family_members` 与 `family_id` 仍参与历史数据 scope；有当前家庭成员关系时按 family_id 查询，否则按 openid 查询。不接收客户端指定身份/家庭作为查询范围。宝宝档案支持多记录，按当前 scope 列表并以 baby_id 选择；不使用单一家庭档案替代多宝宝数据。
@@ -13,22 +13,22 @@ expense（花销）已于 2026-10-29 下线，历史 `expense_records` 保留，
 | users | openid、nickname、created_at、last_login_at；新增 theme_pref={color: blue/pink/orange/mint/purple/dark}（6 套渐变主题，color-only，无独立明暗模式；深色作为独立主题色存在）、theme_request_id、updated_at |
 | allowlist | `_id=hash(openid)=sha256(openid).slice(0,32)` 唯一；openid、remark、created_at（服务端写入用 `db.serverDate()`，控制台人工建档填写创建时间）；客户端拒绝读写，仅云函数可读写。运营者先在控制台手动添加家人 openid，再逐个开启函数环境变量。`runtime.isAllowed()` 只接收可信 openid，集合缺失/异常拒绝访问，不向端侧返回成员名单 |
 | families / family_members | 历史家庭归属数据；家庭管理产品入口与函数已下线。family_members.openid/familyId 仍供服务端 scope 兼容读取，family_id 记录不在本次数据文档更新中迁移或清理 |
-| feeding_records | openid、family_id、baby_id、type、payload、record_date=YYYY-MM-DD、record_time=HH:mm:ss、client_request_id、created_at；删除宝宝时按冻结 scope + baby_id 清理 feed/solid/excretion 全部记录 |
-| growth_records | openid、family_id、baby_id、height/weight/head(可空)、record_date、record_time=HH:mm:ss、client_request_id、created_at；删除宝宝时按 scope + baby_id 清理 |
-| diary_records | openid、family_id、baby_id、content、images(fileID[])、record_date、record_time=HH:mm:ss、client_request_id、created_at；删除宝宝时按 scope + baby_id 清理，图片按 §6 校验归属与剩余引用 |
+| feeding_records | openid、family_id、baby_id、type、payload、record_date=YYYY-MM-DD、record_time=HH:mm、client_request_id、created_at；删除宝宝时按冻结 scope + baby_id 清理 feed/solid/excretion 全部记录 |
+| growth_records | openid、family_id、baby_id、height/weight/head(可空)、record_date、record_time=HH:mm、client_request_id、created_at；删除宝宝时按 scope + baby_id 清理 |
+| diary_records | openid、family_id、baby_id、content、images(fileID[])、record_date、record_time=HH:mm、client_request_id、created_at；删除宝宝时按 scope + baby_id 清理，图片按 §6 校验归属与剩余引用 |
 | milestone_records | openid、family_id、baby_id、milestone_key、domain、record_date、client_request_id、created_at（不含 record_time）；全部是用户打卡，删除宝宝时按 scope + baby_id 全删 |
 
 `reminder_items` 随智能提醒功能于 2026-11-11 下线，不再写入；存量数据保留但不参与统计与 AI 摘要。
 
 feeding.type 继续为 feed/solid/excretion；细类使用 payload.mode=breast/bottle/formula/mixed，不破坏历史统计口径。mixed 仅为历史数据兼容保留（前端标签与聚合仍识别），前端自 2026-10-29 起不再产生。
 feed payload：亲喂 durationMin，其他 amountMl；solid 当前写入 name/note（历史 amountG 字段不清理）；excretion：kind(stool/urine，缺省 stool) + count/shape(大便)，小便当前按 count 写入（历史 urineMl 字段不清理）。
-记录日期与时间契约（2026-11-20）：`record_date` 仍为 YYYY-MM-DD（用户选中的今天/过去日期，写入仅允许今天及过去），新增独立字段 `record_time`=HH:mm:ss（北京时间，用户选中的当天时刻；缺省为服务器当前北京时间）。`created_at` 始终是实际写入时间，三者互不覆盖。四个记录云函数 `feedingRecord` / `growthRecord` / `diaryRecord` / `customRecord` 的 add/update 经共享 `normalizeRecordTime()` 写入：缺省取当前北京时间；传入值必须严格匹配 `^([01]\d|2[0-3]):[0-5]\d:[0-5]\d$`，非法返回 `400 INVALID_TIME`，不静默吞掉。前端六个登记页（feeding/solid/excretion/growth/diary/custom-record）用 `mode="date"` 选日期 + `mode="multiSelector"` 三列（时/分/秒）选时刻，默认当前北京时间；提交带 `recordTime`，编辑回填由 `record_time` 恢复，新建/取消编辑后 `resetRecordTime()` 重置为当前时刻；改动时刻会清空前端 `_requestId` / `_id`，避免同一 `clientRequestId` 被 `createOnce` 判重复而忽略新值。读取统一走 `recordTimeOf()`：优先 `record_time`，旧数据或缺字段回退 `created_at` 换算的北京时间 HH:mm:ss，两者都缺失时返回空串、不虚构时间。`feedingRecord` 的 listToday/listDate 与 `customRecord` 的 list 在同一天内按 `recordTimeValue()` 降序、再按 `created_at` 兜底；`diaryRecord` 的跨日期全量 list 保持 `created_at desc`（按一天内时刻排序会打乱跨天顺序），端侧 `groupByDate()` 用 `displayTime()` 展示 `record_time`。`statistics.daily.times` 用完整 HH:mm:ss 文本比较取各类目最新时刻，展示仍截断为 HH:mm。旧 feeding/diary 无 `record_date` 时以 `created_at` 北京时间归日，旧记录无 `record_time` 时按上述回退，均无需批量迁移；索引与 `homeCards.deleteDay` 删除快照仍只按 `record_date`，不因新增时刻字段变化。`milestone_records` 与 AI 明细白名单渲染不涉及时刻。
+记录日期与时间契约（2026-11-20，精度为时:分）：`record_date` 仍为 YYYY-MM-DD（用户选中的今天/过去日期，写入仅允许今天及过去），独立字段 `record_time`=HH:mm（北京时间，用户选中的当天时刻；缺省为服务器当前北京时间）。`created_at` 始终是实际写入时间，三者互不覆盖。四个记录云函数 `feedingRecord` / `growthRecord` / `diaryRecord` / `customRecord` 的 add/update 经共享 `normalizeRecordTime()` 写入：缺省取当前北京时间；传入值接受 HH:mm（正则 `^([01]\d|2[0-3]):[0-5]\d$`），旧客户端传来的 HH:mm:ss 截断到分钟并落库为 HH:mm，非法值返回 `400 INVALID_TIME`，不静默吞掉。前端六个登记页（feeding/solid/excretion/growth/diary/custom-record）用 `mode="date"` 选日期 + `mode="multiSelector"` 两列（时/分，24/60）选时刻，两个 picker 等宽（`.datetime-date` 与 `.datetime-time` 同为 `flex: 1 1 0%`），默认当前北京时间；提交带 `recordTime`，编辑回填由 `record_time` 恢复，新建/取消编辑后 `resetRecordTime()` 重置为当前时刻；改动时刻会清空前端 `_requestId` / `_id`，避免同一 `clientRequestId` 被 `createOnce` 判重复而忽略新值。读取统一走 `recordTimeOf()`：优先 `record_time`（旧 HH:mm:ss 值截断为 HH:mm），旧数据或缺字段回退 `created_at` 换算的北京时间 HH:mm，两者都缺失时返回空串、不虚构时间。`feedingRecord` 的 listToday/listDate 与 `customRecord` 的 list 在同一天内按 `recordTimeValue()`（当日分钟数）降序、再按 `created_at` 兜底；`diaryRecord` 的跨日期全量 list 保持 `created_at desc`（按一天内时刻排序会打乱跨天顺序），端侧 `groupByDate()` 用 `displayTime()` 展示 `record_time`。`statistics.daily.times` 直接用 HH:mm 文本比较取各类目最新时刻、按同一口径展示。旧 feeding/diary 无 `record_date` 时以 `created_at` 北京时间归日，旧记录无 `record_time` 时按上述回退，均无需批量迁移；索引与 `homeCards.deleteDay` 删除快照仍只按 `record_date`，不因新增时刻字段变化。`milestone_records` 与 AI 明细白名单渲染不涉及时刻。
 
 ## 3. 新增集合
 | 集合 | 字段、约束与来源 |
 |---|---|
 | babies | 多档案：每宝宝一条，_id=hash(openid:baby_id 派生)，baby_id=_id；字段 nickname(必填≤24)、birthday(可空合法日期≤今天)、gender(unknown/male/female)、avatar(''/boy/girl/cloud fileID；空=按性别用内置默认头像)、openid、family_id、client_request_id、updated_at；get 返回列表，save 按 babyId 更新/无则新建，delete 校验归属删除 |
-| custom_records | _id=hash(openid:请求ID)；openid、family_id、category(custom)、label(≤24)、value(可空数字)、unit(服务端≤8；前端输入≤6)、note(≤300)、record_date、record_time=HH:mm:ss、client_request_id、created_at。历史户外类记录保留只读，前端已无该类目 |
+| custom_records | _id=hash(openid:请求ID)；openid、family_id、category(custom)、label(≤24)、value(可空数字)、unit(服务端≤8；前端输入≤6)、note(≤300)、record_date、record_time=HH:mm、client_request_id、created_at。历史户外类记录保留只读，前端已无该类目 |
 | expense_records | 历史集合，功能已下线，不再新增或参与当前统计/AI 摘要；存量数据保留 |
 | ai_sessions | 小迈对话历史（**由小程序端直接写入**，非云函数）：openid、sessionId、title(≤14)、messages[]、babyId、updatedAt、createdAt；openid 隔离，upsert 幂等，保存失败静默降级不阻断对话；图片仅存 fileID。安全规则建议仅本人可读写；索引 `openid + updatedAt`、`openid + sessionId` |
 | ai_tasks | _id=hash(openid:请求ID)；openid、baby_id(可选，空=聚合全部)、categories[]（feeding/excretion/solid/growth/diary/milestone/custom）、range(auto/today/3d/7d/30d；auto=跟随频率，monthly 恒为 auto=上月整月，旧任务缺字段按 auto 处理)、report_title(可选，≤20字，微信推送「报告结果」一行，未配置则该字段不展示)、frequency(daily/weekly/monthly)、time(HH:mm 北京时间)、weekday(0..6；monthly 忽略调度含义)、consent、enabled(任务是否运行/暂停)、**notify(可选，默认 false；单任务微信通知开关，true 才尝试订阅消息推送，否则仅站内通知)**、next_run_at、lease_until、lease_token、client_request_id、created_at、last_run_at/last_status/updated_at |
