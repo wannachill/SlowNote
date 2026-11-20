@@ -3,8 +3,9 @@ const { tap } = require('../../utils/haptics')
 const references = require('../../utils/references')
 const currentBabyName = require('../../utils/record-scope').currentBabyName
 const milestoneOverview = require('../../utils/milestone-overview')
+const { withRecordTime, displayTime } = require('../../utils/record-time')
 // 成长页按选定日期维护当天一条多指标记录。
-require('../../utils/page')({
+require('../../utils/page')(withRecordTime({
   data: {
     lookupLoading: false, lookupError: '',
     milestoneEntry: { label: '成长里程碑', month: null, done: 0, total: 0 },
@@ -86,6 +87,7 @@ require('../../utils/page')({
   onDate(e) {
     if (this.data.submitting || this.data.closing || this.data.lookupLoading) return
     this._requestId = ''
+    this._timeTouched = false
     this.setData({ recordDate: e.detail.value }, () => {
       if (!this.data.panelMode || this.data.cardEditMode) this.loadSelectedDateRecord()
     })
@@ -107,6 +109,11 @@ require('../../utils/page')({
       if (version !== this._recordLookupVersion || date !== this.data.recordDate || babyId !== (getApp().globalData.activeBabyId || '')) return
       if (!result || result.code !== 0) throw new Error('未能读取当天记录，请重试')
       const record = (result.records || [])[0]
+      // 用户手动选定的时刻不被 onShow / 切日期的重查覆盖；未手动改时才回填云端值。
+      if (!this._timeTouched) {
+        if (record) this.fillRecordTime(displayTime(record.record_time, record.created_at))
+        else this.resetRecordTime()
+      }
       this.setData({
         editingId: record ? record._id : '',
         height: record && record.height != null ? String(record.height) : '',
@@ -159,8 +166,8 @@ require('../../utils/page')({
       const res = await wx.cloud.callFunction({
         name: 'growthRecord',
         data: editingId
-          ? { action: 'update', id: editingId, height: values.height, weight: values.weight, head: values.head, recordDate }
-          : { action: 'add', height: values.height, weight: values.weight, head: values.head, recordDate, baby_id: getApp().globalData.activeBabyId, clientRequestId }
+          ? { action: 'update', id: editingId, height: values.height, weight: values.weight, head: values.head, recordDate, recordTime: this.data.recordTime }
+          : { action: 'add', height: values.height, weight: values.weight, head: values.head, recordDate, recordTime: this.data.recordTime, baby_id: getApp().globalData.activeBabyId, clientRequestId }
       })
       const r = res.result
       if (r.code !== 0) throw new Error('RECORD_FAILED')
@@ -176,4 +183,4 @@ require('../../utils/page')({
       this.setData({ submitting: false })
     }
   }
-})
+}))

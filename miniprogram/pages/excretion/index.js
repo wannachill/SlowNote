@@ -2,6 +2,7 @@ const { dateKey, parseDate } = require('../../utils/date')
 const { tap } = require('../../utils/haptics')
 const references = require('../../utils/references')
 const currentBabyName = require('../../utils/record-scope').currentBabyName
+const { withRecordTime, displayTime, timeToIndexes } = require('../../utils/record-time')
 // 便便记录页：独立登记排泄（大便/小便次数与大便状态），数据流走 feedingRecord 云函数（服务端鉴权+幂等，type=excretion）
 const SHAPES = ['正常', '偏稀', '偏干', '水样']
 const EX_KINDS = [
@@ -9,7 +10,7 @@ const EX_KINDS = [
   { key: 'urine', name: '小便' }
 ]
 
-require('../../utils/page')({
+require('../../utils/page')(withRecordTime({
   data: {
     loading: false, loadError: '',
     recordDate: dateKey(), today: dateKey(),
@@ -35,7 +36,7 @@ require('../../utils/page')({
   onShow() { this.setData({ babyName: currentBabyName() }); if (!this.data.panelMode || this.data.cardEditMode) this.loadToday(); this.refreshHint() },
   onDate(e) { if (this.data.submitting || this.data.closing || (this.data.cardEditMode && this.data.loading)) return; this._requestId = ''; this.setData({ recordDate: e.detail.value }); if (!this.data.panelMode) this.loadToday() },
 
-  openPanel(e) { if (this.data.submitting || this.data.closing) return; this._requestId = ''; tap(); this.setData({ panel: e.currentTarget.dataset.panel, closing: false, editingId: '' }) },
+  openPanel(e) { if (this.data.submitting || this.data.closing) return; this._requestId = ''; tap(); this.setData({ panel: e.currentTarget.dataset.panel, closing: false, editingId: '' }); this.resetRecordTime() },
   closePanel(saved) {
     if (!saved && this.data.editingId) this.setData({ editingId: '', exKind: 'stool', exCount: '', exShape: '' })
     require('../../utils/registration').close(this, saved === true)
@@ -46,7 +47,7 @@ require('../../utils/page')({
     if (!record) return
     const payload = record.payload || {}
     this._requestId = ''
-    this.setData({ editingId: record.id, panel: 'excretion', panelMode: this.data.cardEditMode || this.data.panelMode, closing: false, exKind: payload.kind || 'stool', exCount: String(payload.count || ''), exShape: payload.shape || '', recordDate: record.recordDate, fieldErrors: {}, fieldShake: '' })
+    this.setData({ editingId: record.id, panel: 'excretion', panelMode: this.data.cardEditMode || this.data.panelMode, closing: false, exKind: payload.kind || 'stool', exCount: String(payload.count || ''), exShape: payload.shape || '', recordDate: record.recordDate, recordTime: record.recordTime, timeIndexes: timeToIndexes(record.recordTime), fieldErrors: {}, fieldShake: '' })
     this.refreshHint()
   },
   refreshHint() {
@@ -96,8 +97,8 @@ require('../../utils/page')({
       const res = await wx.cloud.callFunction({
         name: 'feedingRecord',
         data: editingId
-          ? { action: 'update', id: editingId, type: 'excretion', payload, recordDate: this.data.recordDate }
-          : { action: 'add', type: 'excretion', payload, recordDate: this.data.recordDate, baby_id: getApp().globalData.activeBabyId, clientRequestId }
+          ? { action: 'update', id: editingId, type: 'excretion', payload, recordDate: this.data.recordDate, recordTime: this.data.recordTime }
+          : { action: 'add', type: 'excretion', payload, recordDate: this.data.recordDate, recordTime: this.data.recordTime, baby_id: getApp().globalData.activeBabyId, clientRequestId }
       })
       const r = res.result
       if (r.code !== 0) throw new Error('RECORD_FAILED')
@@ -107,6 +108,7 @@ require('../../utils/page')({
       tap('medium')
       if (this.data.panelMode) { this.closePanel(true); return }
       this.setData({ exCount: '', exShape: '', editingId: '' })
+      this.resetRecordTime()
       this.closePanel(true)
       this.loadToday()
     } catch (e) {
@@ -132,7 +134,8 @@ require('../../utils/page')({
         .filter((d) => d.type === 'excretion' && (!this.data.cardEditMode || !this.data.recordKey || this.data.recordKey === 'excretion'))
         .map((d) => ({
           id: d.id,
-          time: this.formatTime(d.created_at),
+          time: displayTime(d.record_time, d.created_at),
+          recordTime: displayTime(d.record_time, d.created_at),
           desc: this.describe(d), payload: d.payload || {}, recordDate: d.record_date
         }))
       this.setData({ todayRecords: records }, () => {
@@ -158,4 +161,4 @@ require('../../utils/page')({
     const kind = p.kind === 'urine' ? '小便' : '大便'
     return `${kind}${p.count ? ' ' + p.count + ' 次' : ''}${p.shape ? ' · ' + p.shape : ''}`
   }
-})
+}))

@@ -1,4 +1,4 @@
-const { endpoint, access, requireBaby, createOnce, requestId, hash, validDate, key, fail, number, text } = require('./lib/runtime')
+const { endpoint, access, requireBaby, createOnce, requestId, hash, validDate, key, fail, number, text, normalizeRecordTime, recordTimeOf, recordTimeValue } = require('./lib/runtime')
 const { records, range } = require('./lib/aggregation')
 exports.main = endpoint(async ({event, db, openid}) => {
   const context=await access(db,openid)
@@ -6,8 +6,8 @@ exports.main = endpoint(async ({event, db, openid}) => {
   const babyId=typeof event.baby_id==='string'&&event.baby_id.length<=64?event.baby_id:''
   if(action==='listToday'||action==='listDate'){
     const day=event.recordDate||key(event.startOfDay||new Date())
-    const rows=(await records(db,'feeding_records',context.scope,range('day',day),babyId)).sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)).slice(0,50)
-    return {code:0,records:rows.map(r=>({id:r._id,type:r.type,payload:r.payload,created_at:r.created_at,record_date:r.record_date}))}
+    const rows=(await records(db,'feeding_records',context.scope,range('day',day),babyId)).sort((a,b)=>recordTimeValue(b)-recordTimeValue(a)||new Date(b.created_at||0)-new Date(a.created_at||0)).slice(0,50)
+    return {code:0,records:rows.map(r=>({id:r._id,type:r.type,payload:r.payload,created_at:r.created_at,record_date:r.record_date,record_time:recordTimeOf(r)}))}
   }
   if(action==='delete'){
     if(typeof event.id!=='string'||!event.id)fail(400,'INVALID_ID')
@@ -38,7 +38,8 @@ exports.main = endpoint(async ({event, db, openid}) => {
     const payload=validatePayload(event.type,event.payload)
     const date=event.recordDate
     if(!validDate(date)||date>key())fail(400,'INVALID_DATE')
-    await db.collection('feeding_records').doc(found._id).update({data:{payload,record_date:date}})
+    const time=normalizeRecordTime(event.recordTime)
+    await db.collection('feeding_records').doc(found._id).update({data:{payload,record_date:date,record_time:time}})
     return {code:0,data:{id:found._id}}
   }
   if(action!=='add')fail(400,'UNKNOWN_ACTION')
@@ -46,6 +47,7 @@ exports.main = endpoint(async ({event, db, openid}) => {
   const {type}=event,p=event.payload
   const payload=validatePayload(type,p)
   const date=event.recordDate||key();if(!validDate(date)||date>key())fail(400,'INVALID_DATE')
-  const clientId=requestId(event), result=await createOnce(db,'feeding_records',hash(openid+':'+clientId),{openid,family_id:context.familyId,type,payload,baby_id:babyId,record_date:date,client_request_id:clientId,created_at:db.serverDate()})
+  const time=normalizeRecordTime(event.recordTime)
+  const clientId=requestId(event), result=await createOnce(db,'feeding_records',hash(openid+':'+clientId),{openid,family_id:context.familyId,type,payload,baby_id:babyId,record_date:date,record_time:time,client_request_id:clientId,created_at:db.serverDate()})
   return {code:0,duplicate:result.duplicate,data:{id:result.id}}
 })

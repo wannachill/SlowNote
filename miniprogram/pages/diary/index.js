@@ -1,13 +1,14 @@
 const { dateKey, parseDate } = require('../../utils/date')
 const { tap } = require('../../utils/haptics')
 const currentBabyName = require('../../utils/record-scope').currentBabyName
+const { withRecordTime, displayTime, timeToIndexes } = require('../../utils/record-time')
 // 成长日记页：图文日常记录 + 时光轴视图
 // 图片先上传云存储得到 fileID，再随文字写入 diary_records
 const app = getApp()
 const MAX_IMAGE_BYTES = 2 * 1024 * 1024
 const invokeWx = (method, options) => new Promise((resolve, reject) => method({ ...options, success: resolve, fail: reject }))
 
-require('../../utils/page')({
+require('../../utils/page')(withRecordTime({
   data: {
     loading: false, loadError: '',
     recordDate: dateKey(), today: dateKey(),
@@ -47,14 +48,14 @@ require('../../utils/page')({
     if (!record) return
     this._requestId = ''
     this._uploadedImages = null
-    this.setData({ panelMode: this.data.cardEditMode || this.data.panelMode, editingId: record.id, content: record.content || '', images: (record.images || []).slice(), recordDate: record.recordDate, fieldErrors: {}, fieldShake: '' })
+    this.setData({ panelMode: this.data.cardEditMode || this.data.panelMode, editingId: record.id, content: record.content || '', images: (record.images || []).slice(), recordDate: record.recordDate, recordTime: record.recordTime, timeIndexes: timeToIndexes(record.recordTime), fieldErrors: {}, fieldShake: '' })
     wx.pageScrollTo({ scrollTop: 0, duration: 0 })
   },
 
   cancelEdit() {
     this._requestId = ''
     this._uploadedImages = null
-    this.setData({ editingId: '', content: '', images: [], recordDate: dateKey(), fieldErrors: {}, fieldShake: '' })
+    this.setData({ editingId: '', content: '', images: [], recordDate: dateKey(), fieldErrors: {}, fieldShake: '' }); this.resetRecordTime()
   },
 
   chooseImages() {
@@ -136,8 +137,8 @@ require('../../utils/page')({
       const res = await wx.cloud.callFunction({
         name: 'diaryRecord',
         data: editingId
-          ? { action: 'update', id: editingId, content: content.trim(), images: fileIDs, recordDate: this.data.recordDate }
-          : { action: 'add', content: content.trim(), images: fileIDs, recordDate: this.data.recordDate, baby_id: app.globalData.activeBabyId, clientRequestId }
+          ? { action: 'update', id: editingId, content: content.trim(), images: fileIDs, recordDate: this.data.recordDate, recordTime: this.data.recordTime }
+          : { action: 'add', content: content.trim(), images: fileIDs, recordDate: this.data.recordDate, recordTime: this.data.recordTime, baby_id: app.globalData.activeBabyId, clientRequestId }
       })
       const r = res.result
       if (r.code !== 0) throw new Error('RECORD_FAILED')
@@ -146,7 +147,7 @@ require('../../utils/page')({
       wx.showToast({ title: editingId ? '已更新' : '已记下', icon: 'success' })
       tap('medium')
       if (this.data.panelMode) { this.closePanel(true); return }
-      this.setData({ content: '', images: [], editingId: '' })
+      this.setData({ content: '', images: [], editingId: '' }); this.resetRecordTime()
       this.loadRecords()
     } catch (e) {
       wx.showToast({ title: '发布失败，请重试', icon: 'none' })
@@ -196,7 +197,8 @@ require('../../utils/page')({
       map[date].items.push({
         id: d._id,
         recordDate: d.record_date || date,
-        time: this.formatTime(d.created_at),
+        time: displayTime(d.record_time, d.created_at),
+        recordTime: displayTime(d.record_time, d.created_at),
         content: d.content,
         images: d.images || []
       })
@@ -221,4 +223,4 @@ require('../../utils/page')({
     const p = (n) => (n < 10 ? '0' + n : n)
     return `${p(d.getUTCHours())}:${p(d.getUTCMinutes())}`
   }
-})
+}))

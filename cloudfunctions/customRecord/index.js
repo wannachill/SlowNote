@@ -1,4 +1,4 @@
-const { endpoint, access, requireBaby, hash, requestId, text, number, validDate, key, fail, createOnce } = require('./lib/runtime')
+const { endpoint, access, requireBaby, hash, requestId, text, number, validDate, key, fail, createOnce, normalizeRecordTime, recordTimeValue } = require('./lib/runtime')
 exports.main = endpoint(async ({ event, db, openid }) => {
   const context = await access(db, openid)
   const babyId = typeof event.baby_id === 'string' && event.baby_id.length <= 64 ? event.baby_id : ''
@@ -6,6 +6,7 @@ exports.main = endpoint(async ({ event, db, openid }) => {
     const date = event.recordDate || key()
     if (!validDate(date)) fail(400, 'INVALID_DATE')
     const records = (await db.collection('custom_records').where({ ...context.scope, record_date: date, ...(babyId ? { baby_id: babyId } : {}) }).orderBy('created_at', 'desc').limit(50).get()).data
+      .sort((a, b) => recordTimeValue(b) - recordTimeValue(a) || new Date(b.created_at || 0) - new Date(a.created_at || 0))
     return { code: 0, records }
   }
   if (event.action === 'delete' || event.action === 'update') {
@@ -23,7 +24,7 @@ exports.main = endpoint(async ({ event, db, openid }) => {
     const value = number(event.value, 0, 999999, true)
     await db.collection('custom_records').doc(found._id).update({ data: {
       category: event.category, label, value,
-      unit: text(event.unit || '', 8), note: text(event.note || '', 300), record_date: recordDate
+      unit: text(event.unit || '', 8), note: text(event.note || '', 300), record_date: recordDate, record_time: normalizeRecordTime(event.recordTime)
     } })
     return { code: 0, data: { id: found._id } }
   }
@@ -38,7 +39,7 @@ exports.main = endpoint(async ({ event, db, openid }) => {
   const result = await createOnce(db, 'custom_records', hash(`${openid}:${clientId}`), {
     openid, family_id: context.familyId, category: event.category, label, value,
     unit: text(event.unit || '', 8), note: text(event.note || '', 300), baby_id: babyId, record_date: recordDate,
-    client_request_id: clientId, created_at: db.serverDate()
+    record_time: normalizeRecordTime(event.recordTime), client_request_id: clientId, created_at: db.serverDate()
   })
   return { code: 0, duplicate: result.duplicate, data: { id: result.id } }
 })

@@ -5,6 +5,18 @@
   border-radius: var(--radius);
   overflow-wrap: anywhere;
 }
+.custom-entry-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-s);
+}
+.custom-entry-time {
+  flex: none;
+  color: var(--color-text-2);
+  font-size: var(--font-caption);
+  font-variant-numeric: tabular-nums;
+}
 
 .page {
   padding-top: 0;

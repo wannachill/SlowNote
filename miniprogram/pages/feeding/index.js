@@ -3,6 +3,7 @@ const { tap } = require('../../utils/haptics')
 const references = require('../../utils/references')
 const formatNumber = require('../../utils/format-number')
 const currentBabyName = require('../../utils/record-scope').currentBabyName
+const { withRecordTime, displayTime } = require('../../utils/record-time')
 // 喂奶记录页：独立登记喂养（亲喂时长 / 瓶喂·配方奶奶量 ml），数据流走 feedingRecord 云函数（服务端鉴权+幂等）
 const FEED_TYPES = [
   { key: 'breast', name: '亲喂' },
@@ -11,7 +12,7 @@ const FEED_TYPES = [
 ]
 const TYPE_LABEL = { breast: '亲喂', bottle: '瓶喂', formula: '配方奶', mixed: '混合' }
 
-require('../../utils/page')({
+require('../../utils/page')(withRecordTime({
   data: {
     loading: false, loadError: '',
     recordDate: dateKey(), today: dateKey(),
@@ -36,7 +37,7 @@ require('../../utils/page')({
   onShow() { this.setData({ babyName: currentBabyName() }); if (!this.data.panelMode || this.data.cardEditMode) this.loadToday(); this.refreshHint() },
   onDate(e) { if (this.data.submitting || this.data.closing || (this.data.cardEditMode && this.data.loading)) return; this._requestId = ''; this.setData({ recordDate: e.detail.value }); if (!this.data.panelMode) this.loadToday() },
 
-  openPanel(e) { if (this.data.submitting || this.data.closing) return; this._requestId = ''; tap(); this.setData({ panel: e.currentTarget.dataset.panel, closing: false, editingId: '' }) },
+  openPanel(e) { if (this.data.submitting || this.data.closing) return; this._requestId = ''; tap(); this.setData({ panel: e.currentTarget.dataset.panel, closing: false, editingId: '' }); this.resetRecordTime() },
   closePanel(saved) {
     if (!saved && this.data.editingId) this.setData({ editingId: '', duration: '', amount: '' })
     require('../../utils/registration').close(this, saved === true)
@@ -51,6 +52,7 @@ require('../../utils/page')({
       editingId: record.id, panel: 'feed', panelMode: this.data.cardEditMode || this.data.panelMode, closing: false, feedType: payload.mode || 'breast',
       duration: breast ? String(payload.durationMin || '') : '',
       amount: breast ? '' : String(payload.amountMl || ''), recordDate: record.recordDate,
+      recordTime: record.recordTime, timeIndexes: require('../../utils/record-time').timeToIndexes(record.recordTime),
       fieldErrors: {}, fieldShake: ''
     })
     this.refreshHint()
@@ -97,8 +99,8 @@ require('../../utils/page')({
       const res = await wx.cloud.callFunction({
         name: 'feedingRecord',
         data: editingId
-          ? { action: 'update', id: editingId, type, payload, recordDate: this.data.recordDate }
-          : { action: 'add', type, payload, recordDate: this.data.recordDate, baby_id: getApp().globalData.activeBabyId, clientRequestId }
+          ? { action: 'update', id: editingId, type, payload, recordDate: this.data.recordDate, recordTime: this.data.recordTime }
+          : { action: 'add', type, payload, recordDate: this.data.recordDate, recordTime: this.data.recordTime, baby_id: getApp().globalData.activeBabyId, clientRequestId }
       })
       const r = res.result
       if (r.code !== 0) throw new Error('RECORD_FAILED')
@@ -108,6 +110,7 @@ require('../../utils/page')({
       tap('medium')
       if (this.data.panelMode) { this.closePanel(true); return }
       this.setData({ duration: '', amount: '', editingId: '' })
+      this.resetRecordTime()
       this.closePanel(true)
       if (!this.data.panelMode) this.loadToday()
     } catch (e) {
@@ -134,7 +137,8 @@ require('../../utils/page')({
         .filter((d) => !this.data.cardEditMode || !['breast', 'bottle', 'formula', 'mixed'].includes(this.data.recordKey) || (d.payload || {}).mode === this.data.recordKey)
         .map((d) => ({
           id: d.id,
-          time: this.formatTime(d.created_at),
+          time: displayTime(d.record_time, d.created_at),
+          recordTime: displayTime(d.record_time, d.created_at),
           desc: this.describe(d), payload: d.payload || {}, recordDate: d.record_date
         }))
       this.setData({ todayRecords: records }, () => {
@@ -161,4 +165,4 @@ require('../../utils/page')({
     const mode = TYPE_LABEL[p.mode] || '喂奶'
     return p.durationMin ? `${mode} ${formatNumber(p.durationMin, 2)} 分钟` : `${mode} ${formatNumber(p.amountMl, 2)} ml`
   }
-})
+}))

@@ -3,7 +3,8 @@ const { dateKey, parseDate } = require('../../utils/date')
 const { tap } = require('../../utils/haptics')
 const formatNumber = require('../../utils/format-number')
 const currentBabyName = require('../../utils/record-scope').currentBabyName
-page({
+const { withRecordTime, displayTime, timeToIndexes } = require('../../utils/record-time')
+page(withRecordTime({
   data: { category: 'custom', panelMode: false, cardEditMode: false, babyName: '', label: '', value: '', unit: '', note: '', editingId: '', recordDate: dateKey(), today: dateKey(), submitting: false, loading: false, records: [], error: '' },
   onLoad(options) { this.setData({ category: 'custom', panelMode: options.panel === '1' || options.cardEdit === '1', cardEditMode: options.cardEdit === '1', babyName: currentBabyName(), recordDate: parseDate(options.date) ? options.date : dateKey() }) },
   onShow() { this.setData({ babyName: currentBabyName() }); if (!this.data.panelMode || this.data.cardEditMode) this.load() },
@@ -18,7 +19,7 @@ page({
     try {
       const r = await call('customRecord', { action: 'list', recordDate: date, baby_id: getApp().globalData.activeBabyId })
       if (version === this._listVersion && date === this.data.recordDate) {
-        const records = r.records.filter(r => r.category === this.data.category).map(item => ({ ...item, valueText: item.value == null ? '' : formatNumber(item.value, item.unit === '次' ? 0 : 2) }))
+        const records = r.records.filter(r => r.category === this.data.category).map(item => ({ ...item, time: displayTime(item.record_time, item.created_at), recordTime: displayTime(item.record_time, item.created_at), valueText: item.value == null ? '' : formatNumber(item.value, item.unit === '次' ? 0 : 2) }))
         this.setData({ records, error: '' }, () => {
           if (this.data.cardEditMode && !this._cardEditOpened && records.length) {
             this._cardEditOpened = true
@@ -37,7 +38,7 @@ page({
     const record = this.data.records.find(item => item._id === e.currentTarget.dataset.id)
     if (!record) return
     this._id = ''
-    this.setData({ panelMode: true, editingId: record._id, label: record.label || '', value: record.value == null ? '' : String(record.value), unit: record.unit || '', note: record.note || '', fieldErrors: {}, fieldShake: '' })
+    this.setData({ panelMode: true, editingId: record._id, label: record.label || '', value: record.value == null ? '' : String(record.value), unit: record.unit || '', note: record.note || '', recordTime: record.recordTime, timeIndexes: timeToIndexes(record.recordTime), fieldErrors: {}, fieldShake: '' })
   },
   async save() {
     if (this.data.submitting || this.data.closing || (this.data.cardEditMode && this.data.loading)) return
@@ -56,13 +57,13 @@ page({
     try {
       await call('customRecord', {
         action: editingId ? 'update' : 'add', ...(editingId ? { id: editingId } : { baby_id: getApp().globalData.activeBabyId, clientRequestId: this._id }),
-        category: 'custom', label: this.data.label, value, unit: this.data.unit, note: this.data.note, recordDate: this.data.recordDate
+        category: 'custom', label: this.data.label, value, unit: this.data.unit, note: this.data.note, recordDate: this.data.recordDate, recordTime: this.data.recordTime
       })
       this._id = ''
       require('../../utils/home-refresh').markSaved(this.data.recordDate)
       wx.showToast({ title: editingId ? '已更新' : '已记录', icon: 'success' }); tap('medium')
       if (this.data.panelMode) { this.closePanel(true); return }
-      this.setData({ label: '', value: '', unit: '', note: '', editingId: '' }); this.load()
+      this.setData({ label: '', value: '', unit: '', note: '', editingId: '' }); this.resetRecordTime(); this.load()
     } catch (error) { toastError(error) } finally { this.setData({ submitting: false }) }
   }
-})
+}))

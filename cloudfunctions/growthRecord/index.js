@@ -1,4 +1,4 @@
-const { endpoint, access, requireBaby, createOnce, requestId, hash, validDate, key, fail, number } = require('./lib/runtime')
+const { endpoint, access, requireBaby, createOnce, requestId, hash, validDate, key, fail, number, normalizeRecordTime } = require('./lib/runtime')
 exports.main=endpoint(async({event,db,openid})=>{
   const context=await access(db,openid)
   const action=event.action||'add'
@@ -22,7 +22,7 @@ exports.main=endpoint(async({event,db,openid})=>{
     if(!validDate(recordDate)||recordDate>key())fail(400,'INVALID_DATE')
     const values={height:number(event.height,1,250,true),weight:number(event.weight,0.1,300,true),head:number(event.head,1,100,true)}
     if(Object.values(values).every(v=>v==null))fail(400,'EMPTY_CONTENT')
-    await db.collection('growth_records').doc(found._id).update({data:{...values,record_date:recordDate}})
+    await db.collection('growth_records').doc(found._id).update({data:{...values,record_date:recordDate,record_time:normalizeRecordTime(event.recordTime)}})
     return {code:0,data:{id:found._id}}
   }
   if(action!=='add')fail(400,'UNKNOWN_ACTION')
@@ -31,6 +31,6 @@ exports.main=endpoint(async({event,db,openid})=>{
   if(!validDate(recordDate)||recordDate>key())fail(400,'INVALID_DATE')
   const values={height:number(event.height,1,250,true),weight:number(event.weight,0.1,300,true),head:number(event.head,1,100,true)}
   if(Object.values(values).every(v=>v==null))fail(400,'EMPTY_CONTENT')
-  const clientId=requestId(event), result=await createOnce(db,'growth_records',hash(openid+':'+clientId),{openid,family_id:context.familyId,...values,baby_id:babyId,record_date:recordDate,client_request_id:clientId,created_at:db.serverDate()})
+  const clientId=requestId(event), result=await createOnce(db,'growth_records',hash(openid+':'+clientId),{openid,family_id:context.familyId,...values,baby_id:babyId,record_date:recordDate,record_time:normalizeRecordTime(event.recordTime),client_request_id:clientId,created_at:db.serverDate()})
   return {code:0,duplicate:result.duplicate,data:{id:result.id}}
 })

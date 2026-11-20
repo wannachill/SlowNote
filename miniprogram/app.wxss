@@ -107,7 +107,7 @@ page, .theme-root {
   --ruler-height: 80rpx;
   --ruler-short: 8rpx;
   --ruler-middle: 40rpx;
-  --timeline-width: 112rpx;
+  --timeline-width: 152rpx;
   --rail-gutter: 32rpx;
   --rail-time-height: 40rpx;
   --chart-height: 320rpx;
@@ -1088,7 +1088,18 @@ page, .theme-root.page, .theme-root.chat-page, .theme-root.history-page, .theme-
   color: var(--color-text-2);
   font-size: var(--font-caption);
   line-height: var(--line-body);
+  font-variant-numeric: tabular-nums;
 }
+/* 记录日期 + 时刻（时:分:秒）并排，默认当前时间，便于补录历史数据 */
+.datetime-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-s);
+}
+.datetime-row > picker { flex: 1 1 0%; min-width: 0; }
+.datetime-row .datetime-date { flex: 1.3 1 0%; }
+.datetime-row .datetime-time { flex: 1 1 0%; }
+.datetime-row .datetime-time .select-value { font-variant-numeric: tabular-nums; }
 .record-desc {
   flex: 1 1 0%;
   min-width: 0;
